@@ -1,0 +1,9 @@
+Flask==3.0.3
+PyMuPDF==1.24.9
+
+# Optional -- only needed for auto-scaffolding reading/writing/listening page
+# numbers from a scanned PDF that has no text layer (see lib/pdf_structure.py).
+# Also requires the Tesseract binary itself:
+#   macOS:          brew install tesseract
+#   Ubuntu/Debian:  apt install tesseract-ocr
+pytesseract==0.3.13

@@ -1,0 +1,17 @@
+# Ignore all mock test content
+tests/*
+
+# Keep the folder itself
+!tests/.gitkeep
+!tests/README.md
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.env
