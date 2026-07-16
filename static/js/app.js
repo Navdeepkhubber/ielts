@@ -1,12 +1,19 @@
+/* IELTS Practice Portal — front-end
+   Views: home (mock library) -> mock (tests) -> exam (reading/listening/writing) -> results
+   All state flows through `go()` actions; no inline onclick strings, so mock/test
+   names with quotes, apostrophes, or unicode are safe. */
+
 const app = document.getElementById("app");
+const modalRoot = document.getElementById("modal-root");
 let timerInterval = null;
 
-document.querySelectorAll("header nav button").forEach(btn => {
-  btn.onclick = () => {
-    if (btn.dataset.view === "home") renderHome();
-    if (btn.dataset.view === "dashboard") renderDashboard();
-  };
-});
+/* ---------------- utilities ---------------- */
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[c]);
+}
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
@@ -14,47 +21,17 @@ async function api(path, opts) {
   return res.headers.get("content-type")?.includes("json") ? res.json() : res;
 }
 
-// ---------------- HOME: pick a mock, then a test within it ----------------
-
-async function renderHome() {
-  clearTimer();
-  const mocks = await api("/api/mocks");
-  app.innerHTML = `<h2>Mocks</h2>` + (mocks.length === 0
-    ? `<p>No mocks found. Add a mock folder under <code>tests/</code> following the README convention.</p>`
-    : mocks.map(m => `
-      <div class="test-card">
-        <div>
-          <h3>${m.mock_name}</h3>
-          <div class="badges">${Object.keys(m.tests).map(t => `<span>${t}</span>`).join("")}</div>
-        </div>
-        <div class="section-buttons">
-          <button onclick='renderMockTests(${JSON.stringify(m.id)})'>Open</button>
-        </div>
-      </div>
-    `).join(""));
+function loading(label) {
+  app.innerHTML = `<div class="loading"><div class="spinner"></div><span>${esc(label)}</span></div>`;
 }
 
-async function renderMockTests(mockId) {
-  clearTimer();
-  const mock = await api(`/api/mocks/${encodeURIComponent(mockId)}`);
-  const tests = Object.entries(mock.tests);
-  app.innerHTML = `
-    <button onclick="renderHome()">&larr; All mocks</button>
-    <h2>${mock.mock_name}</h2>
-    ${tests.map(([name, cfg]) => `
-      <div class="test-card">
-        <div><h3>${name}</h3></div>
-        <div class="section-buttons">
-          ${cfg.reading ? `<button onclick="startReading('${mockId}','${name}')">Reading</button>` : ""}
-          ${cfg.listening ? `<button onclick="startListening('${mockId}','${name}')">Listening</button>` : ""}
-          ${cfg.writing ? `<button onclick="startWriting('${mockId}','${name}')">Writing</button>` : ""}
-        </div>
-      </div>
-    `).join("")}
-  `;
+function toast(msg) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
 }
-
-// ---------------- SHARED TIMER ----------------
 
 function clearTimer() {
   if (timerInterval) clearInterval(timerInterval);
@@ -68,10 +45,7 @@ function startTimer(totalSeconds, onTick, onExpire) {
   timerInterval = setInterval(() => {
     remaining -= 1;
     onTick(remaining);
-    if (remaining <= 0) {
-      clearTimer();
-      onExpire();
-    }
+    if (remaining <= 0) { clearTimer(); onExpire(); }
   }, 1000);
 }
 
@@ -82,9 +56,283 @@ function fmtTime(sec) {
   return `${m}:${s}`;
 }
 
-// ---------------- READING ----------------
+function confirmModal({ title, body, confirmLabel, onConfirm }) {
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" data-close="1">
+      <div class="modal" role="dialog" aria-modal="true">
+        <h3>${esc(title)}</h3>
+        <p>${esc(body)}</p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" data-close="1">Keep working</button>
+          <button class="btn btn-primary" data-confirm="1">${esc(confirmLabel)}</button>
+        </div>
+      </div>
+    </div>`;
+  modalRoot.querySelector(".modal-overlay").addEventListener("click", e => {
+    if (e.target.dataset.close) modalRoot.innerHTML = "";
+    if (e.target.dataset.confirm) { modalRoot.innerHTML = ""; onConfirm(); }
+  });
+}
+
+/* ---------------- navigation (event delegation) ---------------- */
+
+const routes = {};
+function go(action, payload) { routes[action](payload); }
+
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-action]");
+  if (!el || el.disabled) return;
+  const action = el.dataset.action;
+  if (routes[action]) routes[action](el.dataset);
+});
+
+let examInProgress = false; // set while a timed section is running
+
+function navigateTo(view) {
+  const doNav = () => {
+    examInProgress = false;
+    document.querySelectorAll(".topnav .nav-link").forEach(b =>
+      b.classList.toggle("active", b.dataset.view === view));
+    if (view === "home") renderHome();
+    if (view === "dashboard") renderDashboard();
+  };
+  if (examInProgress) {
+    confirmModal({
+      title: "Leave the test?",
+      body: "Your answers for this section will be lost and the attempt won't be scored.",
+      confirmLabel: "Leave test",
+      onConfirm: doNav,
+    });
+  } else doNav();
+}
+
+document.querySelectorAll(".topnav .nav-link").forEach(btn => {
+  btn.addEventListener("click", () => navigateTo(btn.dataset.view));
+});
+document.querySelector(".wordmark").addEventListener("click", () => navigateTo("home"));
+document.querySelector(".wordmark").style.cursor = "pointer";
+
+/* ---------------- HOME: mock library ---------------- */
+
+async function renderHome() {
+  clearTimer();
+  loading("Loading your mock tests…");
+  let mocks;
+  try { mocks = await api("/api/mocks"); }
+  catch (err) { app.innerHTML = `<div class="empty-state"><h3>Couldn't load tests</h3><p>${esc(err.message)}</p></div>`; return; }
+
+  if (mocks.length === 0) {
+    app.innerHTML = `
+      <div class="page-head"><h2>Mock tests</h2></div>
+      <div class="empty-state">
+        <h3>No mock tests yet</h3>
+        <p>Drop a mock folder into <code>tests/</code> — a PDF plus an <code>audio/Test&nbsp;N/</code> folder —<br>
+        then restart the app. Everything else is generated for you.</p>
+      </div>`;
+    return;
+  }
+
+  app.innerHTML = `
+    <div class="page-head">
+      <h2>Mock tests</h2>
+      <p class="sub">${mocks.length} book${mocks.length === 1 ? "" : "s"} in your library. Pick one to begin.</p>
+    </div>
+    <div class="mock-grid">
+      ${mocks.map(m => {
+        const tests = Object.entries(m.tests);
+        const has = k => tests.some(([, cfg]) => cfg[`has_${k}`]);
+        return `
+        <button class="mock-card" data-action="openMock" data-mock="${esc(m.id)}">
+          <h3>${esc(m.mock_name)}</h3>
+          <span class="meta">${tests.length} test${tests.length === 1 ? "" : "s"}</span>
+          <span class="chips">
+            <span class="chip ${has("listening") ? "on" : ""}">Listening</span>
+            <span class="chip ${has("reading") ? "on" : ""}">Reading</span>
+            <span class="chip ${has("writing") ? "on" : ""}">Writing</span>
+          </span>
+        </button>`;
+      }).join("")}
+    </div>`;
+}
+routes.openMock = d => renderMockTests(d.mock);
+
+/* ---------------- MOCK: tests within ---------------- */
+
+async function renderMockTests(mockId) {
+  clearTimer();
+  loading("Opening mock…");
+  const mock = await api(`/api/mocks/${encodeURIComponent(mockId)}`);
+  const tests = Object.entries(mock.tests);
+
+  app.innerHTML = `
+    <button class="back-link" data-action="goHome">&larr; All mocks</button>
+    <div class="page-head">
+      <h2>${esc(mock.mock_name)}</h2>
+      <p class="sub">Choose a section to sit under timed, exam-day conditions.</p>
+    </div>
+    ${tests.map(([name, cfg]) => `
+      <div class="test-row">
+        <h3>${esc(name)}</h3>
+        <div class="section-buttons">
+          <button class="btn ${cfg.listening ? "btn-primary" : ""}" ${cfg.listening ? "" : "disabled title='Not configured in manifest.json yet'"}
+                  data-action="startListening" data-mock="${esc(mockId)}" data-test="${esc(name)}">Listening</button>
+          <button class="btn ${cfg.reading ? "btn-primary" : ""}" ${cfg.reading ? "" : "disabled title='Not configured in manifest.json yet'"}
+                  data-action="startReading" data-mock="${esc(mockId)}" data-test="${esc(name)}">Reading</button>
+          <button class="btn ${cfg.writing ? "btn-primary" : ""}" ${cfg.writing ? "" : "disabled title='Not configured in manifest.json yet'"}
+                  data-action="startWriting" data-mock="${esc(mockId)}" data-test="${esc(name)}">Writing</button>
+        </div>
+      </div>`).join("")}
+  `;
+}
+routes.goHome = () => renderHome();
+routes.startListening = d => startListening(d.mock, d.test);
+routes.startReading = d => startReading(d.mock, d.test);
+routes.startWriting = d => startWriting(d.mock, d.test);
+
+/* ---------------- shared exam pieces ---------------- */
+
+function answerSheetHtml(groups, prefix) {
+  // groups: [{label, from, to}] -- renders each part/passage as its own
+  // block with a header, like a real IELTS answer sheet.
+  return groups.map(g => {
+    const qs = [];
+    for (let q = g.from; q <= g.to; q++) qs.push(q);
+    return `
+      <div class="sheet-group">
+        <div class="sheet-group-head">${esc(g.label)} <span class="sheet-group-range">Questions ${g.from}–${g.to}</span></div>
+        <div class="answer-sheet">
+          ${qs.map(q => `
+            <div class="sheet-cell" id="cell-${q}">
+              <span class="num">${q}</span>
+              <input type="text" id="${prefix}-${q}" data-q="${q}" autocomplete="off" spellcheck="false" aria-label="Answer for question ${q}">
+            </div>`).join("")}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function wireAnswerSheet(container) {
+  const inputs = [...container.querySelectorAll(".sheet-cell input")];
+
+  const refresh = () => {
+    const counter = document.getElementById("answeredCount");
+    if (counter) {
+      const done = inputs.filter(i => i.value.trim() !== "").length;
+      counter.textContent = `${done} / ${inputs.length} answered`;
+    }
+  };
+
+  inputs.forEach((inp, idx) => {
+    inp.addEventListener("input", refresh);
+    inp.addEventListener("keydown", e => {
+      if (e.key === "Enter" && inputs[idx + 1]) { e.preventDefault(); inputs[idx + 1].focus(); }
+    });
+  });
+}
+
+function collectAnswers(prefix) {
+  const answers = {};
+  document.querySelectorAll(`[id^="${prefix}-"]`).forEach(el => {
+    answers[el.id.split("-")[1]] = el.value;
+  });
+  return answers;
+}
+
+function unansweredCount(prefix) {
+  return [...document.querySelectorAll(`[id^="${prefix}-"]`)].filter(el => el.value.trim() === "").length;
+}
+
+function examBarHtml(sectionName, { mockId } = {}) {
+  return `
+    <div class="exam-bar">
+      <button class="btn-exit" data-action="exitExam" data-mock="${esc(mockId || "")}" title="Exit this test">&larr; Exit</button>
+      <span class="divider"></span>
+      <span class="section-name">${esc(sectionName)}</span>
+      <span class="divider"></span>
+      <span class="answered-count" id="answeredCount"></span>
+      <span class="spacer"></span>
+      <span class="timer-pill" id="timerPill">--:--</span>
+    </div>`;
+}
+routes.exitExam = d => {
+  confirmModal({
+    title: "Exit this test?",
+    body: "Your answers for this section will be lost and the attempt won't be scored.",
+    confirmLabel: "Exit test",
+    onConfirm: () => { examInProgress = false; clearTimer(); d.mock ? renderMockTests(d.mock) : renderHome(); },
+  });
+};
+
+function tickTimer(remaining, warnAt) {
+  const pill = document.getElementById("timerPill");
+  if (!pill) return;
+  pill.textContent = fmtTime(remaining);
+  if (remaining <= warnAt) pill.classList.add("warning");
+}
+
+/* ---------------- text view (extracted content) ---------------- */
+
+async function fetchContent(mockId, testName) {
+  try {
+    return await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/content`);
+  } catch { return null; }
+}
+
+function textWithInlineInputs(text, prefix, qFrom, qTo) {
+  // Escape, then turn numbered gaps ("7 ........" / "7 ____") into inline
+  // inputs synced with the answer sheet. Only numbers in this section's
+  // range become inputs, so years/quantities in prose are left alone.
+  let html = esc(text);
+  html = html.replace(/\b(\d{1,2})\s*(?:[.…·]{3,}|_{3,})/g, (m, num) => {
+    const q = Number(num);
+    if (q < qFrom || q > qTo) return m;
+    return `<span class="inline-q"><span class="inline-qnum">${q}</span><input class="inline-input" data-inline-q="${q}" data-prefix="${prefix}" autocomplete="off" spellcheck="false" aria-label="Answer for question ${q}"></span>`;
+  });
+  // simple typography: blank-line separated paragraphs
+  return html.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+}
+
+function wireInlineInputs(container) {
+  container.querySelectorAll(".inline-input").forEach(inp => {
+    const q = inp.dataset.inlineQ, prefix = inp.dataset.prefix;
+    const sheet = document.getElementById(`${prefix}-${q}`);
+    if (!sheet) return;
+    inp.addEventListener("input", () => {
+      sheet.value = inp.value;
+      sheet.dispatchEvent(new Event("input"));
+    });
+    sheet.addEventListener("input", () => {
+      if (document.activeElement !== inp) inp.value = sheet.value;
+    });
+  });
+}
+
+function viewToggleHtml(hasText) {
+  if (!hasText) return "";
+  return `
+    <div class="view-toggle">
+      <button class="vt-btn active" data-vt="text">Text</button>
+      <button class="vt-btn" data-vt="book">Book view</button>
+    </div>`;
+}
+
+function wireViewToggle(container) {
+  const tabs = container.querySelector(".view-toggle");
+  if (!tabs) return;
+  tabs.addEventListener("click", e => {
+    const btn = e.target.closest(".vt-btn");
+    if (!btn) return;
+    tabs.querySelectorAll(".vt-btn").forEach(b => b.classList.toggle("active", b === btn));
+    const mode = btn.dataset.vt;
+    container.querySelectorAll(".content-text").forEach(el => el.style.display = mode === "text" ? "" : "none");
+    container.querySelectorAll(".content-book").forEach(el => el.style.display = mode === "book" ? "" : "none");
+  });
+}
+
+/* ---------------- READING ---------------- */
 
 async function startReading(mockId, testName) {
+  loading("Preparing reading section…");
   const cfg = await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}`);
   const rcfg = cfg.reading;
   const totalSeconds = rcfg.duration_minutes * 60;
@@ -93,127 +341,192 @@ async function startReading(mockId, testName) {
     body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "reading", time_allowed_seconds: totalSeconds })
   });
 
-  const allQuestions = [];
+  const content = await fetchContent(mockId, testName);
+  const rtexts = content?.reading?.passages || [];
+  const groups = rcfg.passages.map((p, i) => ({ label: `Passage ${i + 1}`, from: p.questions[0], to: p.questions[1] }));
+  let totalQ = 0;
   let materialHtml = "";
-  rcfg.passages.forEach(p => {
-    p.pages.forEach(pageNum => {
-      materialHtml += `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pageNum}">`;
-    });
-    for (let q = p.questions[0]; q <= p.questions[1]; q++) allQuestions.push(q);
+  rcfg.passages.forEach((p, i) => {
+    const imgs = p.pages.map(pg =>
+      `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pg}" alt="Reading passage page ${pg}" loading="lazy">`).join("");
+    const txt = rtexts[i]?.text;
+    if (txt) {
+      materialHtml += `
+        <div class="passage-block">
+          <div class="passage-head">Reading Passage ${i + 1}</div>
+          <div class="content-text">${textWithInlineInputs(txt, "ans", p.questions[0], p.questions[1])}</div>
+          <div class="content-book" style="display:none">${imgs}</div>
+        </div>`;
+    } else {
+      materialHtml += `<div class="passage-block"><div class="passage-head">Reading Passage ${i + 1}</div>${imgs}</div>`;
+    }
+    totalQ += p.questions[1] - p.questions[0] + 1;
   });
+  const hasText = rtexts.some(t => t?.text);
 
   app.innerHTML = `
-    <div class="timer-bar" id="timerBar">Reading — <span id="timerLabel"></span> remaining</div>
+    ${examBarHtml("Reading", { mockId })}
+    ${viewToggleHtml(hasText)}
     <div class="exam-shell">
       <div class="exam-material">${materialHtml}</div>
       <div class="exam-answers">
-        <h3>Answers</h3>
-        ${allQuestions.map(q => `
-          <div class="q-row">
-            <label>${q}.</label>
-            <input type="text" id="ans-${q}" autocomplete="off">
-          </div>`).join("")}
-        <button class="submit-btn" onclick="submitReading(${attempt.attempt_id}, '${mockId}', '${testName}', false)">Submit Reading</button>
+        <h3>Answer sheet</h3>
+        ${answerSheetHtml(groups, "ans")}
+        <div class="submit-area">
+          <button class="btn btn-primary" id="submitBtn">Submit reading</button>
+        </div>
       </div>
-    </div>
-  `;
+    </div>`;
 
-  startTimer(totalSeconds, remaining => {
-    document.getElementById("timerLabel").textContent = fmtTime(remaining);
-    const bar = document.getElementById("timerBar");
-    if (bar && remaining <= 300) bar.classList.add("warning");
-  }, () => submitReading(attempt.attempt_id, mockId, testName, true));
-}
+  examInProgress = true;
+  wireAnswerSheet(app);
+  wireInlineInputs(app);
+  wireViewToggle(app);
+  document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
 
-function collectAnswers(prefix) {
-  const answers = {};
-  document.querySelectorAll(`[id^="${prefix}-"]`).forEach(el => {
-    const qnum = el.id.split("-")[1];
-    answers[qnum] = el.value;
+  const doSubmit = auto => submitSection({
+    attemptId: attempt.attempt_id, mockId, testName,
+    section: "reading", prefix: "ans", label: "Reading", auto, groups,
   });
-  return answers;
-}
-
-async function submitReading(attemptId, mockId, testName, autoSubmitted) {
-  clearTimer();
-  const answers = collectAnswers("ans");
-  const result = await api(`/api/attempts/${attemptId}/submit`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "reading", answers, auto_submitted: autoSubmitted })
+  document.getElementById("submitBtn").addEventListener("click", () => {
+    const left = unansweredCount("ans");
+    if (left > 0) {
+      confirmModal({
+        title: "Submit with blanks?",
+        body: `${left} question${left === 1 ? " is" : "s are"} still unanswered. Blank answers are marked wrong.`,
+        confirmLabel: "Submit anyway",
+        onConfirm: () => doSubmit(false),
+      });
+    } else doSubmit(false);
   });
-  renderResults("Reading", result, autoSubmitted, mockId);
+
+  startTimer(totalSeconds, r => tickTimer(r, 300), () => doSubmit(true));
 }
 
-// ---------------- LISTENING ----------------
+/* ---------------- LISTENING ---------------- */
 
 async function startListening(mockId, testName) {
+  loading("Preparing listening section…");
   const cfg = await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}`);
   const lcfg = cfg.listening;
-  const transferSeconds = 10 * 60;
+  // Real IELTS listening: ~30 min of audio + 10 min transfer = 40 min total.
+  const totalSeconds = (lcfg.duration_minutes || 40) * 60;
   const attempt = await api("/api/attempts/start", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "listening", time_allowed_seconds: 0 })
+    body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "listening", time_allowed_seconds: totalSeconds })
   });
 
-  const allQuestions = [];
-  let audioHtml = "";
+  const groups = lcfg.parts.map((p, i) => ({ label: `Part ${i + 1}`, from: p.questions[0], to: p.questions[1] }));
+  const totalQ = groups.reduce((a, g) => a + g.to - g.from + 1, 0);
+
+  const content = await fetchContent(mockId, testName);
+  const ltexts = content?.listening?.parts || [];
+  let materialHtml = "";
   lcfg.parts.forEach((p, i) => {
     const pages = p.pages || [];
-    const pagesHtml = pages.length
-      ? pages.map(pageNum => `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pageNum}">`).join("")
-      : `<div class="missing-sheet">No question sheet pages configured for this part yet — add a "pages" array to this part in manifest.json.</div>`;
-    audioHtml += `
+    const imgs = pages.length
+      ? pages.map(pg => `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pg}" alt="Listening part ${i + 1} question sheet, page ${pg}" loading="lazy">`).join("")
+      : `<div class="missing-sheet">The question sheet for this part isn't configured yet. Add its page numbers to the <strong>pages</strong> list for this part in manifest.json.</div>`;
+    const txt = ltexts[i]?.text;
+    const sheetHtml = txt
+      ? `<div class="content-text">${textWithInlineInputs(txt, "lans", p.questions[0], p.questions[1])}</div>
+         <div class="content-book" style="display:none">${imgs}</div>`
+      : imgs;
+    const src = `/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/audio?file=${encodeURIComponent(p.file)}`;
+    materialHtml += `
       <div class="listening-part">
         <div class="audio-bar">
-          <strong>Part ${i + 1}</strong>
-          <audio controls src="/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/audio?file=${encodeURIComponent(p.file)}"></audio>
+          <span class="part-label">Part ${i + 1} · Q${p.questions[0]}–${p.questions[1]}</span>
+          <button class="btn btn-primary btn-play" data-part="${i}">▶ Play (once only)</button>
+          <div class="audio-progress"><div class="audio-progress-fill" id="audioFill-${i}"></div></div>
+          <span class="audio-time" id="audioTime-${i}">not started</span>
+          <audio id="audioEl-${i}" preload="none" src="${src}"></audio>
         </div>
-        <div class="question-sheet">${pagesHtml}</div>
+        <div class="question-sheet">${sheetHtml}</div>
       </div>`;
-    for (let q = p.questions[0]; q <= p.questions[1]; q++) allQuestions.push(q);
   });
+  const hasText = ltexts.some(t => t?.text);
 
   app.innerHTML = `
-    <div class="timer-bar" id="timerBar">Listening — play each part, then answer</div>
+    ${examBarHtml("Listening", { mockId })}
+    ${viewToggleHtml(hasText)}
     <div class="exam-shell">
-      <div class="exam-material">${audioHtml}</div>
+      <div class="exam-material">${materialHtml}</div>
       <div class="exam-answers">
-        <h3>Answers</h3>
-        ${allQuestions.map(q => `
-          <div class="q-row">
-            <label>${q}.</label>
-            <input type="text" id="lans-${q}" autocomplete="off">
-          </div>`).join("")}
-        <button class="submit-btn" onclick="beginTransferTime(${attempt.attempt_id}, '${mockId}', '${testName}')">Finished listening — start 10 min check time</button>
+        <h3>Answer sheet</h3>
+        ${answerSheetHtml(groups, "lans")}
+        <div class="submit-area">
+          <button class="btn btn-primary" id="submitBtn">Submit listening</button>
+        </div>
       </div>
-    </div>
-  `;
+    </div>`;
 
-  window._listeningTransferSeconds = transferSeconds;
+  examInProgress = true;
+  wireAnswerSheet(app);
+  wireInlineInputs(app);
+  wireViewToggle(app);
+  document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
+
+  // Exam-condition audio: plays exactly once, no pause, no seeking, no replay.
+  document.querySelectorAll(".btn-play").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = btn.dataset.part;
+      const el = document.getElementById(`audioEl-${i}`);
+      btn.disabled = true;
+      btn.textContent = "Playing…";
+      el.play();
+      el.addEventListener("timeupdate", () => {
+        if (el.duration) {
+          document.getElementById(`audioFill-${i}`).style.width = `${el.currentTime / el.duration * 100}%`;
+          document.getElementById(`audioTime-${i}`).textContent =
+            `${fmtTime(Math.floor(el.currentTime))} / ${fmtTime(Math.floor(el.duration))}`;
+        }
+      });
+      el.addEventListener("ended", () => {
+        btn.textContent = "✓ Played";
+        document.getElementById(`audioTime-${i}`).textContent = "finished";
+      });
+      // if the browser pauses it for any reason mid-play, resume -- the
+      // recording is heard once, straight through, like the real exam
+      el.addEventListener("pause", () => { if (!el.ended) el.play(); });
+    });
+  });
+
+  const doSubmit = auto => submitSection({
+    attemptId: attempt.attempt_id, mockId, testName,
+    section: "listening", prefix: "lans", label: "Listening", auto, groups,
+  });
+
+  document.getElementById("submitBtn").addEventListener("click", () => {
+    const left = unansweredCount("lans");
+    if (left > 0) {
+      confirmModal({
+        title: "Submit with blanks?",
+        body: `${left} question${left === 1 ? " is" : "s are"} still unanswered. Blank answers are marked wrong.`,
+        confirmLabel: "Submit anyway",
+        onConfirm: () => doSubmit(false),
+      });
+    } else doSubmit(false);
+  });
+
+  startTimer(totalSeconds, r => tickTimer(r, 300), () => doSubmit(true));
 }
 
-function beginTransferTime(attemptId, mockId, testName) {
-  const totalSeconds = window._listeningTransferSeconds;
-  document.querySelector(".submit-btn").outerHTML =
-    `<button class="submit-btn" onclick="submitListening(${attemptId}, '${mockId}', '${testName}', false)">Submit Listening</button>`;
-  startTimer(totalSeconds, remaining => {
-    document.querySelector("#timerBar").innerHTML =
-      `Transfer time — <span>${fmtTime(remaining)}</span> remaining`;
-    if (remaining <= 60) document.querySelector("#timerBar").classList.add("warning");
-  }, () => submitListening(attemptId, mockId, testName, true));
-}
+/* ---------------- shared submit for reading/listening ---------------- */
 
-async function submitListening(attemptId, mockId, testName, autoSubmitted) {
+async function submitSection({ attemptId, mockId, testName, section, prefix, label, auto, groups }) {
   clearTimer();
-  const answers = collectAnswers("lans");
+  examInProgress = false;
+  const answers = collectAnswers(prefix); // must run before loading() replaces the DOM
+  loading("Marking your answers…");
   const result = await api(`/api/attempts/${attemptId}/submit`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "listening", answers, auto_submitted: autoSubmitted })
+    body: JSON.stringify({ mock_id: mockId, test_name: testName, section, answers, auto_submitted: auto })
   });
-  renderResults("Listening", result, autoSubmitted, mockId);
+  renderResults(label, result, auto, mockId, groups);
 }
 
-// ---------------- WRITING ----------------
+/* ---------------- WRITING ---------------- */
 
 async function startWriting(mockId, testName) {
   const cfg = await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}`);
@@ -223,112 +536,254 @@ async function startWriting(mockId, testName) {
 }
 
 async function startWritingTask(mockId, testName, taskKey, taskCfg, onDone) {
+  loading("Preparing writing task…");
   const totalSeconds = taskCfg.duration_minutes * 60;
   const attempt = await api("/api/attempts/start", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "writing", time_allowed_seconds: totalSeconds })
   });
 
-  const imgSrc = `/api/mocks/${encodeURIComponent(mockId)}/page?page=${taskCfg.page}`;
-
+  const label = taskKey === "task1" ? "Writing · Task 1" : "Writing · Task 2";
   app.innerHTML = `
-    <div class="timer-bar" id="timerBar">${taskKey.toUpperCase()} — <span id="timerLabel"></span> remaining</div>
+    ${examBarHtml(label, { mockId })}
     <div class="exam-shell">
-      <div class="exam-material"><img src="${imgSrc}"></div>
-      <div class="exam-answers">
-        <textarea class="essay" id="essayBox" placeholder="Write your response here..."></textarea>
-        <div class="word-count" id="wc">0 words</div>
-        <button class="submit-btn" onclick="submitWriting(${attempt.attempt_id}, '${mockId}', '${testName}', '${taskKey}', false)">Submit ${taskKey}</button>
+      <div class="exam-material">
+        <img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${taskCfg.page}" alt="${esc(label)} prompt">
       </div>
-    </div>
-  `;
+      <div class="exam-answers">
+        <h3>Your response</h3>
+        <textarea class="essay" id="essayBox" placeholder="Write your response here…"></textarea>
+        <div class="word-count" id="wc">0 words</div>
+        <div class="submit-area">
+          <button class="btn btn-primary" id="submitBtn">Submit ${taskKey === "task1" ? "Task 1" : "Task 2"}</button>
+        </div>
+      </div>
+    </div>`;
 
-  document.getElementById("essayBox").addEventListener("input", e => {
-    const words = e.target.value.trim().split(/\s+/).filter(Boolean).length;
+  examInProgress = true;
+  const box = document.getElementById("essayBox");
+  box.addEventListener("input", () => {
+    const words = box.value.trim().split(/\s+/).filter(Boolean).length;
     document.getElementById("wc").textContent = `${words} words`;
   });
 
-  startTimer(totalSeconds, remaining => {
-    document.getElementById("timerLabel").textContent = fmtTime(remaining);
-    if (remaining <= 120) document.getElementById("timerBar").classList.add("warning");
-  }, () => submitWriting(attempt.attempt_id, mockId, testName, taskKey, true));
+  const doSubmit = auto => submitWriting(attempt.attempt_id, mockId, testName, taskKey, taskCfg, auto, onDone);
+  document.getElementById("submitBtn").addEventListener("click", () => {
+    const words = box.value.trim().split(/\s+/).filter(Boolean).length;
+    const minWords = taskKey === "task1" ? 150 : 250;
+    if (words < minWords) {
+      confirmModal({
+        title: "Under the word minimum",
+        body: `You've written ${words} words; the exam expects at least ${minWords}. Short responses lose marks.`,
+        confirmLabel: "Submit anyway",
+        onConfirm: () => doSubmit(false),
+      });
+    } else doSubmit(false);
+  });
 
-  window._writingOnDone = onDone;
+  startTimer(totalSeconds, r => tickTimer(r, 120), () => doSubmit(true));
 }
 
-async function submitWriting(attemptId, mockId, testName, taskKey, autoSubmitted) {
+async function submitWriting(attemptId, mockId, testName, taskKey, taskCfg, auto, onDone) {
   clearTimer();
+  examInProgress = false;
   const essay = document.getElementById("essayBox").value;
+  loading("Submitting your response…");
   await api(`/api/attempts/${attemptId}/submit`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "writing", answers: { essay }, auto_submitted: autoSubmitted })
+    body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "writing", answers: { essay }, auto_submitted: auto })
   });
 
-  app.innerHTML = `<div class="results-box"><p>Getting AI feedback on your ${taskKey}...</p></div>`;
-  const feedback = await api("/api/writing/feedback", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task_type: taskKey, prompt_description: `${taskKey} for ${testName}`, essay_text: essay })
-  });
+  loading("Getting examiner feedback on your writing…");
+  let feedback;
+  try {
+    feedback = await api("/api/writing/feedback", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task_type: taskKey, prompt_description: `${taskKey} for ${testName}`, essay_text: essay })
+    });
+  } catch (err) {
+    feedback = { error: err.message };
+  }
 
+  window._writingOnDone = onDone;
+  const taskLabel = taskKey === "task1" ? "Task 1" : "Task 2";
   app.innerHTML = `
     <div class="results-box">
-      <h2>${taskKey.toUpperCase()} submitted</h2>
+      <h2>${taskLabel} submitted${auto ? " <span class='auto-note'>(time expired)</span>" : ""}</h2>
       ${feedback.error
-        ? `<p><em>${feedback.error}</em></p>`
+        ? `<p class="feedback-text">Feedback isn't available: ${esc(feedback.error)}</p>`
         : `
-          <p class="score">Overall Band: ${feedback.overall_band}</p>
-          <p>Task Achievement: ${feedback.task_achievement} · Coherence & Cohesion: ${feedback.coherence_cohesion} ·
-             Lexical Resource: ${feedback.lexical_resource} · Grammar: ${feedback.grammar_accuracy}</p>
-          <p>${feedback.feedback}</p>
+          <div class="score-line"><span class="band-chip">Band ${esc(String(feedback.overall_band))}</span></div>
+          ${bandRibbonHtml(feedback.overall_band)}
+          <div class="criteria-grid">
+            <div class="criterion"><div class="label">Task achievement</div><div class="value">${esc(String(feedback.task_achievement))}</div></div>
+            <div class="criterion"><div class="label">Coherence &amp; cohesion</div><div class="value">${esc(String(feedback.coherence_cohesion))}</div></div>
+            <div class="criterion"><div class="label">Lexical resource</div><div class="value">${esc(String(feedback.lexical_resource))}</div></div>
+            <div class="criterion"><div class="label">Grammar accuracy</div><div class="value">${esc(String(feedback.grammar_accuracy))}</div></div>
+          </div>
+          <p class="feedback-text">${esc(feedback.feedback)}</p>
         `}
-      <button class="submit-btn" onclick="(${window._writingOnDone ? "window._writingOnDone" : "renderHome"})()">Continue</button>
-    </div>
-  `;
+      ${(taskCfg.sample_pages || []).length ? `
+        <h3 class="results-subhead">Sample answers from your book</h3>
+        <p class="sample-note">Real candidate responses to this task with the examiner's band score and comments — compare them with what you wrote.</p>
+        <div class="sample-pages">
+          ${taskCfg.sample_pages.map(pg => `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pg}" alt="Sample answer page ${pg}" loading="lazy">`).join("")}
+        </div>` : ""}
+      <div class="submit-area"><button class="btn btn-primary" data-action="writingContinue">Continue</button></div>
+    </div>`;
+}
+routes.writingContinue = () => (window._writingOnDone || renderHome)();
+
+/* ---------------- RESULTS ---------------- */
+
+function bandRibbonHtml(band) {
+  const pct = Math.max(0, Math.min(9, Number(band))) / 9 * 100;
+  return `
+    <div class="band-ribbon">
+      <div class="track"><div class="marker" style="left:${pct}%"></div></div>
+      <div class="scale">${[0,1,2,3,4,5,6,7,8,9].map(n => `<span>${n}</span>`).join("")}</div>
+    </div>`;
 }
 
-// ---------------- RESULTS ----------------
+function renderResults(sectionLabel, result, autoSubmitted, mockId, groups) {
+  // Classify each question: correct / incorrect / skipped (blank)
+  const entries = Object.entries(result.results).map(([q, r]) => ({
+    q: Number(q),
+    given: r.given || "",
+    correct: Array.isArray(r.correct_answer) ? r.correct_answer.join(" / ") : String(r.correct_answer),
+    status: r.is_correct ? "correct" : (String(r.given || "").trim() === "" ? "skipped" : "incorrect"),
+  })).sort((a, b) => a.q - b.q);
 
-function renderResults(sectionLabel, result, autoSubmitted, mockId) {
-  const rows = Object.entries(result.results).map(([q, r]) => `
-    <div class="q-result ${r.is_correct ? "correct" : "incorrect"}">
-      <span>${q}.</span>
-      <span>Your answer: ${r.given || "—"}</span>
-      <span>Correct: ${Array.isArray(r.correct_answer) ? r.correct_answer.join(" / ") : r.correct_answer}</span>
-    </div>`).join("");
+  const counts = {
+    correct: entries.filter(e => e.status === "correct").length,
+    incorrect: entries.filter(e => e.status === "incorrect").length,
+    skipped: entries.filter(e => e.status === "skipped").length,
+  };
+  const accuracy = entries.length ? Math.round(counts.correct / entries.length * 100) : 0;
+
+  // Per-part / per-passage breakdown
+  const groupRows = (groups || []).map(g => {
+    const inGroup = entries.filter(e => e.q >= g.from && e.q <= g.to);
+    const ok = inGroup.filter(e => e.status === "correct").length;
+    const pct = inGroup.length ? Math.round(ok / inGroup.length * 100) : 0;
+    return { ...g, ok, total: inGroup.length, pct };
+  });
+  const weakest = groupRows.length > 1
+    ? groupRows.reduce((a, b) => (b.pct < a.pct ? b : a))
+    : null;
+
+  const reviewRow = e => `
+    <div class="q-result ${e.status}" data-status="${e.status}">
+      <span class="qn">${e.status === "correct" ? "✓" : e.status === "incorrect" ? "✗" : "—"} ${e.q}</span>
+      <span class="given">${e.status === "skipped" ? "<em>not answered</em>" : esc(e.given)}</span>
+      <span class="expected">${esc(e.correct)}</span>
+    </div>`;
 
   app.innerHTML = `
-    <div class="results-box">
-      <h2>${sectionLabel} Results ${autoSubmitted ? "(auto-submitted — time expired)" : ""}</h2>
-      <p class="score">${result.correct_count} / ${result.total} correct — Band ${result.band_estimate}</p>
-      <p>Time taken: ${fmtTime(result.time_taken_seconds)}</p>
-      ${rows}
-      <button class="submit-btn" onclick="renderMockTests('${mockId}')">Back to tests</button>
-    </div>
-  `;
+    <div class="results-box results-wide">
+      <h2>${esc(sectionLabel)} results ${autoSubmitted ? "<span class='auto-note'>(auto-submitted — time expired)</span>" : ""}</h2>
+      <div class="score-line">
+        <span class="score-frac">${result.correct_count} / ${result.total}</span>
+        <span class="band-chip">Band ${esc(String(result.band_estimate))}</span>
+        <span class="time-taken">${fmtTime(result.time_taken_seconds)} taken</span>
+      </div>
+      ${bandRibbonHtml(result.band_estimate)}
+
+      <div class="summary-tiles">
+        <div class="tile good"><div class="tile-num">${counts.correct}</div><div class="tile-label">Correct</div></div>
+        <div class="tile bad"><div class="tile-num">${counts.incorrect}</div><div class="tile-label">Incorrect</div></div>
+        <div class="tile skip"><div class="tile-num">${counts.skipped}</div><div class="tile-label">Skipped</div></div>
+        <div class="tile"><div class="tile-num">${accuracy}%</div><div class="tile-label">Accuracy</div></div>
+      </div>
+
+      ${groupRows.length ? `
+        <h3 class="results-subhead">Where you gained and lost marks</h3>
+        <div class="group-breakdown">
+          ${groupRows.map(g => `
+            <div class="group-row">
+              <span class="group-label">${esc(g.label)} <span class="group-range">Q${g.from}–${g.to}</span></span>
+              <div class="group-bar"><div class="group-fill ${g.pct >= 70 ? "good" : g.pct >= 40 ? "mid" : "low"}" style="width:${g.pct}%"></div></div>
+              <span class="group-score">${g.ok}/${g.total}</span>
+            </div>`).join("")}
+        </div>
+        ${weakest && weakest.pct < 70 ? `<p class="weak-note">Weakest area: <strong>${esc(weakest.label)}</strong> (${weakest.pct}% correct) — review those questions first.</p>` : ""}
+      ` : ""}
+
+      <h3 class="results-subhead">Answer review</h3>
+      <div class="filter-tabs" id="filterTabs">
+        <button class="ftab active" data-filter="all">All <span class="fcount">${entries.length}</span></button>
+        <button class="ftab" data-filter="incorrect">Incorrect <span class="fcount">${counts.incorrect}</span></button>
+        <button class="ftab" data-filter="skipped">Skipped <span class="fcount">${counts.skipped}</span></button>
+        <button class="ftab" data-filter="correct">Correct <span class="fcount">${counts.correct}</span></button>
+      </div>
+      <div class="q-result q-result-head">
+        <span class="qn">Q</span><span>Your answer</span><span>Correct answer</span>
+      </div>
+      <div class="review-list" id="reviewList">${entries.map(reviewRow).join("")}</div>
+
+      <div class="submit-area">
+        <button class="btn btn-primary" data-action="openMock" data-mock="${esc(mockId)}">Back to tests</button>
+      </div>
+    </div>`;
+
+  // Filter tab behavior
+  const tabs = document.getElementById("filterTabs");
+  tabs.addEventListener("click", e => {
+    const tab = e.target.closest(".ftab");
+    if (!tab) return;
+    tabs.querySelectorAll(".ftab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    const f = tab.dataset.filter;
+    document.querySelectorAll("#reviewList .q-result").forEach(row => {
+      row.style.display = (f === "all" || row.dataset.status === f) ? "" : "none";
+    });
+  });
 }
 
-// ---------------- DASHBOARD ----------------
+/* ---------------- DASHBOARD ---------------- */
 
 async function renderDashboard() {
   clearTimer();
+  loading("Loading your progress…");
   const history = await api("/api/history");
+
+  if (history.length === 0) {
+    app.innerHTML = `
+      <div class="page-head"><h2>Progress</h2></div>
+      <div class="empty-state">
+        <h3>No attempts yet</h3>
+        <p>Sit any section of a mock test and your scores will show up here.</p>
+      </div>`;
+    return;
+  }
+
+  const scored = history.filter(h => h.band_estimate != null);
+  const best = scored.length ? Math.max(...scored.map(h => h.band_estimate)) : null;
+  const avg = scored.length ? (scored.reduce((a, h) => a + h.band_estimate, 0) / scored.length).toFixed(1) : null;
+
   app.innerHTML = `
-    <h2>Progress History</h2>
-    ${history.length === 0 ? "<p>No attempts yet.</p>" : `
-      <table class="history">
-        <tr><th>Date</th><th>Mock / Test</th><th>Section</th><th>Score</th><th>Band</th><th>Time</th></tr>
-        ${history.map(h => `
-          <tr>
-            <td>${new Date(h.submitted_at * 1000).toLocaleString()}</td>
-            <td>${h.test_id.replace("::", " — ")}</td>
-            <td>${h.section}</td>
-            <td>${h.correct_count !== null ? `${h.correct_count}/${h.total}` : "—"}</td>
-            <td>${h.band_estimate ?? "—"}</td>
-            <td>${fmtTime(h.time_taken_seconds)}</td>
-          </tr>`).join("")}
-      </table>
-    `}
-  `;
+    <div class="page-head">
+      <h2>Progress</h2>
+      <p class="sub">Every attempt you've made, most recent first.</p>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="label">Attempts</div><div class="value">${history.length}</div></div>
+      <div class="stat-card"><div class="label">Best band</div><div class="value band">${best ?? "—"}</div></div>
+      <div class="stat-card"><div class="label">Average band</div><div class="value band">${avg ?? "—"}</div></div>
+    </div>
+    <table class="history">
+      <tr><th>Date</th><th>Mock / test</th><th>Section</th><th>Score</th><th>Band</th><th>Time</th></tr>
+      ${history.map(h => `
+        <tr>
+          <td class="mono">${new Date(h.submitted_at * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</td>
+          <td>${esc(h.test_id.replace("::", " — "))}</td>
+          <td><span class="section-tag">${esc(h.section)}</span></td>
+          <td class="mono">${h.correct_count !== null ? `${h.correct_count}/${h.total}` : "—"}</td>
+          <td>${h.band_estimate != null ? `<span class="band-chip">${h.band_estimate}</span>` : "—"}</td>
+          <td class="mono">${fmtTime(h.time_taken_seconds)}</td>
+        </tr>`).join("")}
+    </table>`;
 }
 
+/* ---------------- boot ---------------- */
 renderHome();

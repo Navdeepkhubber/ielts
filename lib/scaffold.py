@@ -34,7 +34,7 @@ import json
 import os
 import re
 
-from lib import pdf_render, pdf_structure
+from lib import answer_key, content_extract, pdf_render, pdf_structure
 
 TESTS_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tests")
 
@@ -103,10 +103,14 @@ def _build_reading_block(detected_passages):
 def _build_writing_block(detected_writing):
     if not detected_writing or "task1" not in detected_writing or "task2" not in detected_writing:
         return None
-    return {
+    out = {
         "task1": {"page": detected_writing["task1"]["page"], "duration_minutes": WRITING_TASK1_DEFAULT_MINUTES},
         "task2": {"page": detected_writing["task2"]["page"], "duration_minutes": WRITING_TASK2_DEFAULT_MINUTES},
     }
+    for k in ("task1", "task2"):
+        if detected_writing[k].get("sample_pages"):
+            out[k]["sample_pages"] = detected_writing[k]["sample_pages"]
+    return out
 
 
 def _placeholder_answers(question_ranges):
@@ -116,6 +120,20 @@ def _placeholder_answers(question_ranges):
         for q in range(start, end + 1):
             out[str(q)] = ""
     return out
+
+
+def _match_detected_test(test_dir_name, detected_tests):
+    """
+    Map an audio folder name to a detected PDF test. Exact match first,
+    then by test number: 'Test 1 Audios' or 'Test 1- original exams'
+    matches the PDF's 'Test 1'.
+    """
+    if test_dir_name in detected_tests:
+        return detected_tests[test_dir_name]
+    m = re.search(r"test\s*(\d+)", test_dir_name, re.IGNORECASE)
+    if m:
+        return detected_tests.get(f"Test {int(m.group(1))}", {})
+    return {}
 
 
 def _find_pdf(mock_dir):
@@ -165,6 +183,32 @@ def scan_and_scaffold(tests_root=None, verbose=True):
         manifest_path = os.path.join(mock_dir, "manifest.json")
         test_dirs = _discover_test_dirs(audio_root)
 
+        # FAST PATH: skip the (potentially slow, OCR-heavy) PDF scan entirely
+        # when there's nothing left to backfill for this mock -- i.e. a
+        # manifest already exists, covers every audio test folder on disk,
+        # every test has reading+writing blocks, and every listening part
+        # already has its pages filled in. Answer-file scaffolding below is
+        # cheap, so that still runs.
+        existing_manifest = None
+        if os.path.isfile(manifest_path):
+            try:
+                with open(manifest_path) as f:
+                    existing_manifest = json.load(f)
+            except ValueError as e:
+                log.append(f"[{mock_name}] WARNING: manifest.json is not valid JSON ({e}) -- skipping this mock.")
+                continue
+            m_tests = existing_manifest.get("tests", {})
+            complete = all(t in m_tests for t in test_dirs) and all(
+                "reading" in cfg and "writing" in cfg
+                and all(p.get("pages") for p in cfg.get("listening", {}).get("parts", []))
+                for cfg in m_tests.values()
+            ) if m_tests else False
+            if complete and not _answers_need_filling(mock_dir, existing_manifest) \
+                    and not _content_files_missing(mock_dir, existing_manifest):
+                manifest = existing_manifest
+                _scaffold_answer_files(mock_dir, mock_name, manifest, log, None)
+                continue
+
         try:
             total_pages = pdf_render.page_count(pdf_path)
         except Exception as e:
@@ -178,6 +222,17 @@ def scan_and_scaffold(tests_root=None, verbose=True):
             structure = pdf_structure.detect_structure(pdf_path, ocr_progress=_ocr_progress)
         except Exception as e:
             structure = {"tests": {}, "warnings": [f"PDF structure scan failed: {e}"], "ocr_pages_used": 0, "ocr_available": False}
+
+        # Also parse the printed answer keys at the back of the book, so
+        # answers/*.json can be filled automatically (best-effort).
+        pages_text = []
+        try:
+            pages_text, _ = pdf_structure._page_texts(pdf_path)
+            extracted_keys, key_warnings = answer_key.extract_answer_keys(pages_text)
+            structure["warnings"].extend(key_warnings)
+        except Exception as e:
+            extracted_keys = {}
+            structure["warnings"].append(f"Answer-key extraction failed: {e}")
         for w in structure["warnings"]:
             log.append(f"[{mock_name}] {w}")
         if structure.get("ocr_pages_used"):
@@ -191,7 +246,7 @@ def scan_and_scaffold(tests_root=None, verbose=True):
         if not os.path.isfile(manifest_path):
             manifest = {"mock_name": mock_name, "pdf_file": pdf_filename, "tests": {}}
             for test_name in test_dirs:
-                det = detected_tests.get(test_name, {})
+                det = _match_detected_test(test_name, detected_tests)
                 reading = _build_reading_block(det.get("reading_passages"))
                 writing = _build_writing_block(det.get("writing"))
                 cfg = {"listening": _build_listening_block(test_name, audio_root, det.get("listening_parts"))}
@@ -212,12 +267,11 @@ def scan_and_scaffold(tests_root=None, verbose=True):
                 + " Double-check the generated page numbers against your actual PDF before relying on it."
             )
         else:
-            with open(manifest_path) as f:
-                manifest = json.load(f)
+            manifest = existing_manifest
             changed = False
 
             for test_name in test_dirs:
-                det = detected_tests.get(test_name, {})
+                det = _match_detected_test(test_name, detected_tests)
                 if test_name not in manifest.get("tests", {}):
                     reading = _build_reading_block(det.get("reading_passages"))
                     writing = _build_writing_block(det.get("writing"))
@@ -271,30 +325,114 @@ def scan_and_scaffold(tests_root=None, verbose=True):
                     json.dump(manifest, f, indent=2)
 
         # --- answers/<Test N>/{reading,listening}.json ---
-        for test_name, cfg in manifest.get("tests", {}).items():
-            answers_dir = os.path.join(mock_dir, "answers", test_name)
-            for section in ("reading", "listening"):
-                if section not in cfg:
-                    continue
-                answers_path = os.path.join(answers_dir, f"{section}.json")
-                if os.path.isfile(answers_path):
-                    continue
-                if section == "reading":
-                    ranges = [p["questions"] for p in cfg["reading"].get("passages", [])]
-                else:
-                    ranges = [p["questions"] for p in cfg["listening"].get("parts", [])]
-                if not ranges:
-                    continue
-                os.makedirs(answers_dir, exist_ok=True)
-                with open(answers_path, "w") as f:
-                    json.dump(_placeholder_answers(ranges), f, indent=2)
-                log.append(
-                    f"[{mock_name}/{test_name}] created answers/{test_name}/{section}.json "
-                    f"with {sum(e - s + 1 for s, e in ranges)} blank placeholder answers -- "
-                    f"fill in the real answer key."
-                )
+        _scaffold_answer_files(mock_dir, mock_name, manifest, log, extracted_keys)
+
+        # --- content/<Test N>.json: extracted section text for the text view ---
+        try:
+            content_extract.scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name)
+        except Exception as e:
+            log.append(f"[{mock_name}] content extraction failed: {e}")
 
     if verbose:
         for line in log:
             print("[scaffold]", line)
     return log
+
+
+def _content_files_missing(mock_dir, manifest):
+    for test_name, cfg in manifest.get("tests", {}).items():
+        has_pages = any(p.get("pages") for p in cfg.get("listening", {}).get("parts", [])) \
+            or any(p.get("pages") for p in cfg.get("reading", {}).get("passages", []))
+        if has_pages and not os.path.isfile(os.path.join(mock_dir, "content", f"{test_name}.json")):
+            return True
+    return False
+
+
+def _answers_need_filling(mock_dir, manifest):
+    """True if any answers/*.json is missing or contains blank entries --
+    in which case the PDF scan is worth running to extract the printed key."""
+    for test_name, cfg in manifest.get("tests", {}).items():
+        for section in ("reading", "listening"):
+            if section not in cfg:
+                continue
+            path = os.path.join(mock_dir, "answers", test_name, f"{section}.json")
+            if not os.path.isfile(path):
+                return True
+            try:
+                with open(path) as f:
+                    data = json.load(f)
+            except ValueError:
+                continue
+            if any(v == "" or v == [] for v in data.values()):
+                return True
+    return False
+
+
+def _extracted_key_for(test_name, section, extracted_keys):
+    if not extracted_keys:
+        return None
+    m = re.search(r"test\s*(\d+)", test_name, re.IGNORECASE)
+    if not m:
+        return None
+    return extracted_keys.get(int(m.group(1)), {}).get(section)
+
+
+def _scaffold_answer_files(mock_dir, mock_name, manifest, log, extracted_keys=None):
+    for test_name, cfg in manifest.get("tests", {}).items():
+        answers_dir = os.path.join(mock_dir, "answers", test_name)
+        for section in ("reading", "listening"):
+            if section not in cfg:
+                continue
+            answers_path = os.path.join(answers_dir, f"{section}.json")
+            if section == "reading":
+                ranges = [p["questions"] for p in cfg["reading"].get("passages", [])]
+            else:
+                ranges = [p["questions"] for p in cfg["listening"].get("parts", [])]
+            if not ranges:
+                continue
+            key = _extracted_key_for(test_name, section, extracted_keys)
+
+            if os.path.isfile(answers_path):
+                # Backfill: fill BLANK entries in an existing file from the
+                # extracted key; never touch answers already typed in.
+                if not key:
+                    continue
+                with open(answers_path) as f:
+                    current = json.load(f)
+                filled = 0
+                for q, v in current.items():
+                    if (v == "" or v == []) and q in key:
+                        current[q] = key[q]
+                        filled += 1
+                if filled:
+                    with open(answers_path, "w") as f:
+                        json.dump(current, f, indent=2)
+                    log.append(
+                        f"[{mock_name}/{test_name}] filled {filled} blank answer(s) in "
+                        f"answers/{test_name}/{section}.json from the book's printed answer key "
+                        f"-- spot-check them against the PDF once."
+                    )
+                continue
+
+            os.makedirs(answers_dir, exist_ok=True)
+            blank = _placeholder_answers(ranges)
+            filled = 0
+            if key:
+                for q in blank:
+                    if q in key:
+                        blank[q] = key[q]
+                        filled += 1
+            with open(answers_path, "w") as f:
+                json.dump(blank, f, indent=2)
+            if filled:
+                log.append(
+                    f"[{mock_name}/{test_name}] created answers/{test_name}/{section}.json with "
+                    f"{filled}/{len(blank)} answers auto-filled from the book's printed answer key "
+                    f"-- spot-check them against the PDF once."
+                )
+            else:
+                log.append(
+                    f"[{mock_name}/{test_name}] created answers/{test_name}/{section}.json "
+                    f"with {sum(e - s + 1 for s, e in ranges)} blank placeholder answers -- "
+                    f"fill in the real answer key."
+                )

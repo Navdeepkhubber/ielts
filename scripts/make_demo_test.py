@@ -92,10 +92,17 @@ def main():
         "Describe the trend shown in a placeholder chart (imagine a line graph "
         "here). Synthetic prompt for pipeline testing only.",
     ])
-    # Page 5: Writing Task 2 prompt
+    # Page 5: Writing Task 2 prompt (sample answer demo page appended later)
     add_text_page(c, "Writing Task 2 (demo) — page 5", [
         "Some people believe placeholder text is useful for testing software. "
         "Others disagree. Discuss both views and give your own opinion.",
+    ])
+
+    # Page 6: sample answer with examiner comment (demo)
+    add_text_page(c, "Sample Writing answers — TEST 1, WRITING TASK 1 — page 6", [
+        "This is a placeholder sample answer written by an imaginary candidate who "
+        "achieved a Band 6.5 score. Examiner comment: this demo page stands in for "
+        "the real book's sample answers with band comments.",
     ])
 
     c.save()
@@ -131,7 +138,7 @@ def main():
                     ],
                 },
                 "writing": {
-                    "task1": {"page": 4, "duration_minutes": 2},
+                    "task1": {"page": 4, "duration_minutes": 2, "sample_pages": [6]},
                     "task2": {"page": 5, "duration_minutes": 2},
                 },
             }

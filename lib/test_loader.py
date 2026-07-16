@@ -34,6 +34,8 @@ manifest.json shape:
   "pdf_file": "main.pdf",
   "tests": {
     "Test 1": {
+      "variant": "academic",   // optional: "academic" (default) or "general".
+                               // GT uses a stricter Reading band table.
       "reading": {
         "duration_minutes": 60,
         "passages": [
