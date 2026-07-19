@@ -964,3 +964,147 @@ table.history .mono { font-family: var(--font-mono); font-variant-numeric: tabul
   border-bottom-color: var(--focus);
   background: #fff;
 }
+
+/* ---------- Content block hierarchy (reading/listening text view) ---------- */
+.q-range-head {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--navy-btn);
+  margin: 18px 0 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.content-text > .q-range-head:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+.q-instruction {
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  margin: 0 0 12px;
+}
+
+.para-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--navy-btn);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  margin: 10px 0 6px;
+}
+
+.unmarked-note {
+  background: var(--band-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.unmarked-note code { font-family: var(--font-mono); font-size: 0.82em; }
+
+/* ---------- Answer-key page viewer (manual comparison) ---------- */
+.key-page-toggle { margin: 18px 0; }
+.btn-key-page {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-key-page:hover { background: var(--surface); border-color: var(--navy-btn); }
+.key-page-viewer {
+  margin: 12px 0 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.key-page-viewer img { width: 100%; display: block; }
+
+/* ---------- Band explanation modal ---------- */
+.modal-wide { max-width: 520px; width: 92%; }
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.modal-x {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.modal-x:hover { color: var(--ink); }
+.band-calc-note { font-size: 0.9rem; color: var(--ink-soft); margin: 0 0 10px; }
+.band-calc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-top: 8px;
+}
+.band-calc-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.band-calc-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.band-calc-table tr.matched-row { background: var(--band-soft); font-weight: 700; }
+.band-calc-table .match-tag { color: var(--brand); font-size: 0.8rem; white-space: nowrap; }
+
+.band-chip-clickable { cursor: pointer; }
+.band-chip-clickable:hover { filter: brightness(0.95); text-decoration: underline; }
+
+/* ---------- Manual score entry ---------- */
+.manual-score-box {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin: 18px 0;
+  background: var(--paper);
+}
+.manual-score-box h4 { margin: 0 0 4px; font-size: 0.95rem; }
+.manual-score-box p { margin: 0 0 12px; font-size: 0.86rem; color: var(--ink-soft); }
+.manual-score-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.manual-score-row input {
+  width: 70px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  text-align: center;
+}
+.manual-score-row span { font-size: 0.88rem; color: var(--ink-soft); }
+.manual-score-error { color: var(--bad); font-size: 0.85rem; margin: 10px 0 0; }
+.manual-score-done { font-size: 0.9rem; margin: 12px 0 0; }
+
+.btn-enter-score {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-enter-score:hover { border-color: var(--navy-btn); }

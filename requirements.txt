@@ -1,9 +1,32 @@
 Flask==3.0.3
 PyMuPDF==1.24.9
 
+# Fixes "CERTIFICATE_VERIFY_FAILED" downloading the high-accuracy OCR
+# model on macOS -- python.org's installer doesn't link the system CA
+# store, so this bundles known-good certificates instead. Tiny package,
+# no compilation.
+certifi
+
 # Optional -- only needed for auto-scaffolding reading/writing/listening page
 # numbers from a scanned PDF that has no text layer (see lib/pdf_structure.py).
 # Also requires the Tesseract binary itself:
 #   macOS:          brew install tesseract
 #   Ubuntu/Debian:  apt install tesseract-ocr
 pytesseract==0.3.13
+
+# Optional -- only used as a second opinion on the small number of
+# individual answer-key entries Tesseract couldn't read confidently (see
+# lib/answer_key.py). Never the primary OCR engine. Safe to skip
+# installing this; those specific answers just stay blank instead of
+# being auto-recovered. First use downloads a ~65MB model.
+easyocr==1.7.2
+
+# Optional -- GNU Ocrad, a lightweight classical OCR engine used only to
+# cross-check EasyOCR's recovery of answers Tesseract never found at all
+# (see lib/answer_key.py). No per-answer confidence score of its own, so
+# it's never trusted alone -- an answer is only auto-recovered when Ocrad
+# and EasyOCR independently agree. Safe to skip installing; those
+# specific answers just stay blank instead of being cross-validated.
+# This is a system binary, not a pip package:
+#   macOS:          brew install ocrad
+#   Ubuntu/Debian:  apt install ocrad

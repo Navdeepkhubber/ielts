@@ -74,6 +74,56 @@ function confirmModal({ title, body, confirmLabel, onConfirm }) {
   });
 }
 
+function infoModal({ title, bodyHtml }) {
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" data-close="1">
+      <div class="modal modal-wide" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <h3>${esc(title)}</h3>
+          <button class="modal-x" data-close="1" aria-label="Close">&times;</button>
+        </div>
+        ${bodyHtml}
+      </div>
+    </div>`;
+  modalRoot.querySelector(".modal-overlay").addEventListener("click", e => {
+    if (e.target.dataset.close) modalRoot.innerHTML = "";
+  });
+}
+
+async function showBandExplanation(attemptId) {
+  if (!attemptId) return;
+  let info;
+  try {
+    info = await api(`/api/attempts/${attemptId}/band-explanation`);
+  } catch {
+    return; // no score recorded yet -- nothing to explain
+  }
+  const rows = info.table.map(row => `
+    <tr class="${row.threshold === info.matched_threshold ? 'matched-row' : ''}">
+      <td>${row.threshold}+ correct</td>
+      <td>Band ${row.band}</td>
+      ${row.threshold === info.matched_threshold ? '<td class="match-tag">← your score</td>' : '<td></td>'}
+    </tr>`).join("");
+  const scaleNote = info.was_scaled
+    ? `<p class="band-calc-note">Your score was ${info.correct_count}/${info.total}, scaled to a
+       40-question equivalent: <strong>${info.scaled_score}/40</strong>.</p>`
+    : `<p class="band-calc-note">Your score: <strong>${info.correct_count}/${info.total}</strong>.</p>`;
+  infoModal({
+    title: `How Band ${info.band} was calculated`,
+    bodyHtml: `
+      <div class="band-calc-body">
+        ${scaleNote}
+        <p class="band-calc-note">Matched against the <strong>${esc(info.table_name)}</strong> table
+        (the standard published approximation — IELTS doesn't release an official conversion,
+        so treat this as a close estimate, not a certified score):</p>
+        <table class="band-calc-table">
+          <tr><th>Threshold</th><th>Band</th><th></th></tr>
+          ${rows}
+        </table>
+      </div>`
+  });
+}
+
 /* ---------------- navigation (event delegation) ---------------- */
 
 const routes = {};
@@ -155,6 +205,18 @@ async function renderHome() {
     </div>`;
 }
 routes.openMock = d => renderMockTests(d.mock);
+routes.showBand = d => showBandExplanation(d.attempt);
+routes.enterScore = d => {
+  const total = Number(d.total);
+  infoModal({
+    title: "Enter your score",
+    bodyHtml: `<div class="band-calc-body">${manualScoreFormHtml(total)}</div>`,
+  });
+  wireManualScoreForm(modalRoot, d.attempt, total, () => {
+    modalRoot.innerHTML = "";
+    renderDashboard();
+  });
+};
 
 /* ---------------- MOCK: tests within ---------------- */
 
@@ -278,18 +340,37 @@ async function fetchContent(mockId, testName) {
   } catch { return null; }
 }
 
+const _BLOCK_PATTERNS = {
+  qrange: /^(?:[QO]uestions?\s+\d|READING PASSAGE\s+\d|(?:SECTION|PART)\s+\d+$)/i,
+  instruction: /^(Complete|Choose|Write|Circle|Label)\b.{0,70}$/i,
+  letterMark: /^[A-H]$/,
+  allCaps: /^[A-Z][A-Z\s'.,\-]{3,60}$/,
+};
+
+function classifyBlock(text) {
+  if (_BLOCK_PATTERNS.letterMark.test(text)) return "letter-mark";
+  if (_BLOCK_PATTERNS.qrange.test(text)) return "q-range";
+  if (_BLOCK_PATTERNS.instruction.test(text) || _BLOCK_PATTERNS.allCaps.test(text)) return "instruction";
+  return "prose";
+}
+
 function textWithInlineInputs(text, prefix, qFrom, qTo) {
-  // Escape, then turn numbered gaps ("7 ........" / "7 ____") into inline
-  // inputs synced with the answer sheet. Only numbers in this section's
-  // range become inputs, so years/quantities in prose are left alone.
-  let html = esc(text);
-  html = html.replace(/\b(\d{1,2})\s*(?:[.…·]{3,}|_{3,})/g, (m, num) => {
+  // Turn numbered gaps ("7 ........" / "7 ____") into inline inputs
+  // synced with the answer sheet. Only numbers in this section's range
+  // become inputs, so years/quantities in prose are left alone.
+  const addGaps = raw => esc(raw).replace(/\b(\d{1,2})\s*(?:[.…·]{3,}|_{3,})/g, (m, num) => {
     const q = Number(num);
     if (q < qFrom || q > qTo) return m;
     return `<span class="inline-q"><span class="inline-qnum">${q}</span><input class="inline-input" data-inline-q="${q}" data-prefix="${prefix}" autocomplete="off" spellcheck="false" aria-label="Answer for question ${q}"></span>`;
   });
-  // simple typography: blank-line separated paragraphs
-  return html.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+
+  return text.split(/\n{2,}/).filter(b => b.trim()).map(block => {
+    const kind = classifyBlock(block.trim());
+    if (kind === "letter-mark") return `<div class="para-letter">${esc(block.trim())}</div>`;
+    if (kind === "q-range") return `<div class="q-range-head">${esc(block.trim())}</div>`;
+    if (kind === "instruction") return `<div class="q-instruction">${addGaps(block.trim())}</div>`;
+    return `<p>${addGaps(block)}</p>`;
+  }).join("");
 }
 
 function wireInlineInputs(container) {
@@ -523,7 +604,7 @@ async function submitSection({ attemptId, mockId, testName, section, prefix, lab
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mock_id: mockId, test_name: testName, section, answers, auto_submitted: auto })
   });
-  renderResults(label, result, auto, mockId, groups);
+  await renderResults(label, result, auto, mockId, groups, { testName, section, attemptId });
 }
 
 /* ---------------- WRITING ---------------- */
@@ -645,13 +726,130 @@ function bandRibbonHtml(band) {
     </div>`;
 }
 
-function renderResults(sectionLabel, result, autoSubmitted, mockId, groups) {
+/* ---------------- answer-key page viewer (for manual comparison) ---------------- */
+
+async function answerKeyPageHtml(mockId, testInfo) {
+  if (!testInfo) return "";
+  try {
+    const { page } = await api(
+      `/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testInfo.testName)}/answer-key-page?section=${encodeURIComponent(testInfo.section)}`
+    );
+    return `
+      <div class="key-page-toggle">
+        <button class="btn-key-page" data-action="toggleKeyPage">📖 View answer key page ${page} (compare manually)</button>
+      </div>
+      <div class="key-page-viewer" id="keyPageViewer" style="display:none">
+        <img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${page}" alt="Answer key page ${page}" loading="lazy">
+      </div>`;
+  } catch {
+    return ""; // no known answer-key page for this section -- omit the button entirely
+  }
+}
+
+function wireKeyPageToggle(container) {
+  const btn = container.querySelector("[data-action='toggleKeyPage']");
+  const viewer = container.querySelector("#keyPageViewer");
+  if (!btn || !viewer) return;
+  btn.addEventListener("click", () => {
+    const showing = viewer.style.display !== "none";
+    viewer.style.display = showing ? "none" : "";
+    btn.textContent = showing
+      ? btn.textContent.replace("Hide", "View")
+      : btn.textContent.replace("View", "Hide");
+  });
+}
+
+/* ---------------- manual score entry ---------------- */
+
+function manualScoreFormHtml(total) {
+  return `
+    <div class="manual-score-box" id="manualScoreBox">
+      <h4>Tally your own answers?</h4>
+      <p>If you've checked your answers against the key page above, enter how many you got
+      right and the band will be calculated automatically.</p>
+      <div class="manual-score-row">
+        <input type="number" id="manualScoreInput" min="0" max="${total}" placeholder="0" aria-label="Correct answers">
+        <span>/ ${total} correct</span>
+        <button class="btn btn-primary" id="manualScoreSave">Save score</button>
+      </div>
+      <div id="manualScoreResult"></div>
+    </div>`;
+}
+
+function wireManualScoreForm(container, attemptId, total, onSaved) {
+  const box = container.querySelector("#manualScoreBox");
+  if (!box || !attemptId) return;
+  const input = box.querySelector("#manualScoreInput");
+  const btn = box.querySelector("#manualScoreSave");
+  const resultEl = box.querySelector("#manualScoreResult");
+  btn.addEventListener("click", async () => {
+    const n = Number(input.value);
+    if (!Number.isInteger(n) || n < 0 || n > total) {
+      resultEl.innerHTML = `<p class="manual-score-error">Enter a whole number from 0 to ${total}.</p>`;
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const saved = await api(`/api/attempts/${attemptId}/manual-score`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ correct_count: n }),
+      });
+      resultEl.innerHTML = `
+        <p class="manual-score-done">Saved: ${saved.correct_count}/${saved.total} —
+        <span class="band-chip band-chip-clickable" data-action="showBand" data-attempt="${attemptId}"
+          title="Click to see how this was calculated">Band ${saved.band_estimate}</span></p>`;
+      if (onSaved) onSaved(saved);
+    } catch {
+      resultEl.innerHTML = `<p class="manual-score-error">Couldn't save that — try again.</p>`;
+    }
+    btn.disabled = false;
+  });
+}
+
+async function renderUnmarkedResults(sectionLabel, result, mockId, testInfo) {
+  const rows = Object.entries(result.results)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([q, r]) => `
+      <div class="q-result skipped">
+        <span class="qn">${q}</span>
+        <span class="given">${r.given ? esc(r.given) : "<em>not answered</em>"}</span>
+        <span class="expected"><em>key not entered</em></span>
+      </div>`).join("");
+  const keyPageHtml = await answerKeyPageHtml(mockId, testInfo);
+  app.innerHTML = `
+    <div class="results-box results-wide">
+      <h2>${esc(sectionLabel)} — answers recorded (unmarked)</h2>
+      <p class="unmarked-note">This test's answer key hasn't been filled in yet, so no score
+      can be calculated — but your answers below are saved, and you can mark them yourself
+      against the key in your book. To get auto-marking next time, fill in
+      <code>answers/&lt;Test&gt;/${sectionLabel.toLowerCase()}.json</code> — see
+      <strong>ANSWER_KEYS.md</strong> and <strong>NEEDS_ATTENTION.md</strong> for exactly
+      what's missing and where to find it in the PDF.</p>
+      ${keyPageHtml}
+      ${testInfo?.attemptId ? manualScoreFormHtml(result.total) : ""}
+      <div class="q-result q-result-head"><span class="qn">Q</span><span>Your answer</span><span></span></div>
+      <div class="review-list">${rows}</div>
+      <div class="submit-area">
+        <button class="btn btn-primary" data-action="openMock" data-mock="${esc(mockId)}">Back to tests</button>
+      </div>
+    </div>`;
+  wireKeyPageToggle(app);
+  wireManualScoreForm(app, testInfo?.attemptId, result.total);
+}
+
+async function renderResults(sectionLabel, result, autoSubmitted, mockId, groups, testInfo) {
+  if (result.unmarked) {
+    await renderUnmarkedResults(sectionLabel, result, mockId, testInfo);
+    return;
+  }
   // Classify each question: correct / incorrect / skipped (blank)
   const entries = Object.entries(result.results).map(([q, r]) => ({
     q: Number(q),
     given: r.given || "",
     correct: Array.isArray(r.correct_answer) ? r.correct_answer.join(" / ") : String(r.correct_answer),
-    status: r.is_correct ? "correct" : (String(r.given || "").trim() === "" ? "skipped" : "incorrect"),
+    status: r.is_correct === null ? "unmarkable"
+      : r.is_correct ? "correct"
+      : (String(r.given || "").trim() === "" ? "skipped" : "incorrect"),
   })).sort((a, b) => a.q - b.q);
 
   const counts = {
@@ -673,10 +871,10 @@ function renderResults(sectionLabel, result, autoSubmitted, mockId, groups) {
     : null;
 
   const reviewRow = e => `
-    <div class="q-result ${e.status}" data-status="${e.status}">
+    <div class="q-result ${e.status === "unmarkable" ? "skipped" : e.status}" data-status="${e.status}">
       <span class="qn">${e.status === "correct" ? "✓" : e.status === "incorrect" ? "✗" : "—"} ${e.q}</span>
-      <span class="given">${e.status === "skipped" ? "<em>not answered</em>" : esc(e.given)}</span>
-      <span class="expected">${esc(e.correct)}</span>
+      <span class="given">${e.given ? esc(e.given) : "<em>not answered</em>"}</span>
+      <span class="expected">${e.status === "unmarkable" ? "<em>key not entered</em>" : esc(e.correct)}</span>
     </div>`;
 
   app.innerHTML = `
@@ -684,7 +882,7 @@ function renderResults(sectionLabel, result, autoSubmitted, mockId, groups) {
       <h2>${esc(sectionLabel)} results ${autoSubmitted ? "<span class='auto-note'>(auto-submitted — time expired)</span>" : ""}</h2>
       <div class="score-line">
         <span class="score-frac">${result.correct_count} / ${result.total}</span>
-        <span class="band-chip">Band ${esc(String(result.band_estimate))}</span>
+        <span class="band-chip band-chip-clickable" data-action="showBand" data-attempt="${testInfo?.attemptId ?? ''}" title="Click to see how this was calculated">Band ${esc(String(result.band_estimate))}</span>
         <span class="time-taken">${fmtTime(result.time_taken_seconds)} taken</span>
       </div>
       ${bandRibbonHtml(result.band_estimate)}
@@ -721,10 +919,14 @@ function renderResults(sectionLabel, result, autoSubmitted, mockId, groups) {
       </div>
       <div class="review-list" id="reviewList">${entries.map(reviewRow).join("")}</div>
 
+      ${await answerKeyPageHtml(mockId, testInfo)}
+
       <div class="submit-area">
         <button class="btn btn-primary" data-action="openMock" data-mock="${esc(mockId)}">Back to tests</button>
       </div>
     </div>`;
+
+  wireKeyPageToggle(app);
 
   // Filter tab behavior
   const tabs = document.getElementById("filterTabs");
@@ -778,8 +980,11 @@ async function renderDashboard() {
           <td class="mono">${new Date(h.submitted_at * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</td>
           <td>${esc(h.test_id.replace("::", " — "))}</td>
           <td><span class="section-tag">${esc(h.section)}</span></td>
-          <td class="mono">${h.correct_count !== null ? `${h.correct_count}/${h.total}` : "—"}</td>
-          <td>${h.band_estimate != null ? `<span class="band-chip">${h.band_estimate}</span>` : "—"}</td>
+          <td class="mono">${h.correct_count !== null ? `${h.correct_count}/${h.total}`
+            : (["reading", "listening"].includes(h.section) && h.total)
+              ? `<button class="btn-enter-score" data-action="enterScore" data-attempt="${h.id}" data-total="${h.total}">Enter score</button>`
+              : "—"}</td>
+          <td>${h.band_estimate != null ? `<span class="band-chip band-chip-clickable" data-action="showBand" data-attempt="${h.id}" title="Click to see how this was calculated">${h.band_estimate}</span>` : "—"}</td>
           <td class="mono">${fmtTime(h.time_taken_seconds)}</td>
         </tr>`).join("")}
     </table>`;

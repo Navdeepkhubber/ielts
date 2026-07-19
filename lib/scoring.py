@@ -68,11 +68,38 @@ def mark_section(user_answers: dict, answer_key: dict, section="reading", varian
     variant: "academic" (default) or "general" -- GT uses a stricter
              reading table; listening is identical across variants.
     Returns per-question results + a total score.
+
+    If the answer key is entirely blank (auto-extraction couldn't read it
+    and it hasn't been filled by hand yet), the attempt is returned as
+    "unmarked": the person's answers are still recorded per question so
+    they can self-mark against the book, but no misleading 0/40 score or
+    band is produced.
     """
+    key_is_blank = all(v == "" or v == [] for v in answer_key.values()) if answer_key else True
+    if key_is_blank:
+        return {
+            "unmarked": True,
+            "results": {
+                q: {"given": user_answers.get(q, ""), "correct_answer": "", "is_correct": None}
+                for q in answer_key
+            },
+            "correct_count": None,
+            "total": len(answer_key),
+            "band_estimate": None,
+        }
+
     results = {}
     correct_count = 0
+    markable_total = 0
     for qnum, key_value in answer_key.items():
         given = user_answers.get(qnum, "")
+        if key_value == "" or key_value == []:
+            # Key not filled in for this question yet: record the answer
+            # but don't mark it right or wrong, and exclude it from the
+            # score denominator -- fairer than counting it as a miss.
+            results[qnum] = {"given": given, "correct_answer": "", "is_correct": None}
+            continue
+        markable_total += 1
         accepted = _accepted_set(key_value)
         is_correct = _normalize(given) in accepted and _normalize(given) != ""
         if is_correct:
@@ -82,12 +109,48 @@ def mark_section(user_answers: dict, answer_key: dict, section="reading", varian
             "correct_answer": key_value,
             "is_correct": is_correct,
         }
-    total = len(answer_key)
     return {
         "results": results,
         "correct_count": correct_count,
+        "total": markable_total,
+        "unmarkable_count": len(answer_key) - markable_total,
+        "band_estimate": raw_score_to_band(correct_count, markable_total, section, variant),
+    }
+
+
+def band_explanation(correct_count, total=40, section="reading", variant="academic"):
+    """
+    Same lookup as raw_score_to_band, but returns the full working instead
+    of just the final number -- which table was used, the raw and scaled
+    score, and every threshold in that table with the matched one marked --
+    so a "how was this calculated" UI can show its work rather than just
+    asserting a band.
+    """
+    if section == "listening":
+        table, table_name = _LISTENING_BANDS, "Listening"
+    elif variant == "general":
+        table, table_name = _READING_GENERAL_BANDS, "General Training Reading"
+    else:
+        table, table_name = _READING_ACADEMIC_BANDS, "Academic Reading"
+
+    scaled = correct_count if total == 40 else (
+        round(correct_count / total * 40) if total else 0
+    )
+    matched_threshold, band = 0, 0.0
+    for threshold, b in table:
+        if scaled >= threshold:
+            matched_threshold, band = threshold, b
+            break
+
+    return {
+        "correct_count": correct_count,
         "total": total,
-        "band_estimate": raw_score_to_band(correct_count, total, section, variant),
+        "scaled_score": scaled,
+        "was_scaled": total != 40,
+        "table_name": table_name,
+        "table": [{"threshold": t, "band": b} for t, b in table],
+        "matched_threshold": matched_threshold,
+        "band": band,
     }
 
 

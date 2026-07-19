@@ -226,13 +226,32 @@ def scan_and_scaffold(tests_root=None, verbose=True):
         # Also parse the printed answer keys at the back of the book, so
         # answers/*.json can be filled automatically (best-effort).
         pages_text = []
+        answer_key_meta = {}
         try:
             pages_text, _ = pdf_structure._page_texts(pdf_path)
-            extracted_keys, key_warnings = answer_key.extract_answer_keys(pages_text)
+            extracted_keys, key_warnings, page_meta = answer_key.extract_answer_keys(pages_text, pdf_path=pdf_path)
             structure["warnings"].extend(key_warnings)
+            # page_meta keys are (test_num, section) tuples -- map back to
+            # this mock's actual test folder names (which may not literally
+            # be "Test N") so the report generator can look this up later.
+            for test_name in test_dirs:
+                m = re.search(r"test\s*(\d+)", test_name, re.IGNORECASE)
+                if not m:
+                    continue
+                tn = int(m.group(1))
+                for sec in ("listening", "reading"):
+                    if (tn, sec) in page_meta:
+                        answer_key_meta.setdefault(test_name, {})[sec] = page_meta[(tn, sec)]
         except Exception as e:
             extracted_keys = {}
             structure["warnings"].append(f"Answer-key extraction failed: {e}")
+        if answer_key_meta:
+            meta_path = os.path.join(mock_dir, ".answer_key_meta.json")
+            try:
+                with open(meta_path, "w") as f:
+                    json.dump(answer_key_meta, f, indent=2)
+            except OSError:
+                pass  # best-effort -- report generator just won't have page hints without it
         for w in structure["warnings"]:
             log.append(f"[{mock_name}] {w}")
         if structure.get("ocr_pages_used"):

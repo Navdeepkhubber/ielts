@@ -3,7 +3,7 @@ import json
 import os
 from flask import Flask, jsonify, request, send_file, render_template, abort
 
-from lib import test_loader, pdf_render, scoring, storage, scaffold
+from lib import test_loader, pdf_render, scoring, storage, scaffold, report
 
 app = Flask(__name__)
 
@@ -27,6 +27,10 @@ def _run_scaffold_in_background():
         try:
             scaffold.scan_and_scaffold(verbose=True)
             print("[scaffold] scan complete.")
+            root = os.path.dirname(os.path.abspath(__file__))
+            with open(os.path.join(root, "NEEDS_ATTENTION.md"), "w") as f:
+                f.write(report.generate_report())
+            print("[scaffold] wrote NEEDS_ATTENTION.md")
         except Exception as e:
             print(f"[scaffold] scan failed: {e}")
 
@@ -78,6 +82,28 @@ def api_test_content(mock_id, test_name):
         abort(404)
     with open(path) as f:
         return jsonify(json.load(f))
+
+
+@app.route("/api/mocks/<mock_id>/tests/<test_name>/answer-key-page")
+def api_answer_key_page(mock_id, test_name):
+    """
+    ?section=reading|listening -- returns {"page": N} for the PDF page
+    holding that section's printed answer key, so the results view can
+    show it for manual comparison regardless of whether auto-extraction
+    succeeded. Uses the .answer_key_meta.json breadcrumb the scaffolder
+    leaves behind; 404 if that page was never identified (e.g. a book
+    whose answer-key layout wasn't recognised at all).
+    """
+    section = request.args.get("section", "")
+    meta_path = os.path.join(test_loader.mock_folder(mock_id), ".answer_key_meta.json")
+    if not os.path.isfile(meta_path):
+        abort(404)
+    with open(meta_path) as f:
+        meta = json.load(f)
+    entry = meta.get(test_name, {}).get(section)
+    if not entry or not entry.get("page"):
+        abort(404)
+    return jsonify({"page": entry["page"]})
 
 
 # ---------- main.pdf page images (reading & writing both live here) ----------
@@ -177,6 +203,58 @@ def api_history():
     test_id = request.args.get("test_id")
     section = request.args.get("section")
     return jsonify(storage.history(test_id=test_id, section=section))
+
+
+def _variant_for_test_id(test_id):
+    """Best-effort lookup of a test's variant from its manifest; falls
+    back to "academic" if the mock/test no longer exists on disk."""
+    try:
+        mock_id, test_name = test_id.split("::", 1)
+        _, test_cfg = test_loader.load_test_config(mock_id, test_name)
+        return test_cfg.get("variant", "academic")
+    except Exception:
+        return "academic"
+
+
+@app.route("/api/attempts/<int:attempt_id>/manual-score", methods=["POST"])
+def api_manual_score(attempt_id):
+    """
+    Fills in (or corrects) a score by hand -- for an attempt that was
+    recorded as unmarked because the answer key wasn't available at the
+    time, or simply to self-tally against the answer-key page instead of
+    typing every individual answer. Band is calculated automatically from
+    the entered raw score using the same tables as auto-marking.
+    """
+    attempt = storage.get_attempt(attempt_id)
+    if attempt is None:
+        abort(404, "No such attempt")
+    if attempt["section"] not in ("reading", "listening"):
+        abort(400, "Only reading/listening sections have a numeric score")
+
+    data = request.json or {}
+    correct_count = data.get("correct_count")
+    total = attempt["total"] or 40
+    if not isinstance(correct_count, int) or not (0 <= correct_count <= total):
+        abort(400, f"correct_count must be an integer between 0 and {total}")
+
+    variant = _variant_for_test_id(attempt["test_id"])
+    band = scoring.raw_score_to_band(correct_count, total, attempt["section"], variant)
+    storage.update_manual_score(attempt_id, correct_count, band)
+    return jsonify({"correct_count": correct_count, "total": total, "band_estimate": band})
+
+
+@app.route("/api/attempts/<int:attempt_id>/band-explanation")
+def api_band_explanation(attempt_id):
+    """Full working behind an attempt's band estimate, for the 'how was
+    this calculated' popup -- works whether the score was auto-marked or
+    entered by hand."""
+    attempt = storage.get_attempt(attempt_id)
+    if attempt is None or attempt["correct_count"] is None:
+        abort(404, "No score recorded for this attempt yet")
+    variant = _variant_for_test_id(attempt["test_id"])
+    return jsonify(scoring.band_explanation(
+        attempt["correct_count"], attempt["total"] or 40, attempt["section"], variant
+    ))
 
 
 if __name__ == "__main__":

@@ -68,6 +68,41 @@ def submit_attempt(attempt_id, correct_count=None, total=None, band_estimate=Non
     return time_taken
 
 
+def get_attempt(attempt_id):
+    conn = _connect()
+    cur = conn.execute("SELECT * FROM attempts WHERE id=?", (attempt_id,))
+    row = cur.fetchone()
+    if row is None:
+        conn.close()
+        return None
+    cols = [d[0] for d in cur.description]
+    result = dict(zip(cols, row))
+    conn.close()
+    return result
+
+
+def update_manual_score(attempt_id, correct_count, band_estimate):
+    """
+    Fills in (or corrects) correct_count/band_estimate for an attempt that
+    was recorded as unmarked (e.g. the answer key wasn't available yet at
+    the time), or that the person is re-tallying by hand against the
+    answer-key page. Deliberately does NOT touch started_at/submitted_at/
+    time_taken_seconds -- those describe when the test was actually taken,
+    which shouldn't change just because the score was entered later.
+    """
+    conn = _connect()
+    row = conn.execute("SELECT id FROM attempts WHERE id=?", (attempt_id,)).fetchone()
+    if row is None:
+        conn.close()
+        raise ValueError(f"No attempt with id {attempt_id}")
+    conn.execute(
+        "UPDATE attempts SET correct_count=?, band_estimate=? WHERE id=?",
+        (correct_count, band_estimate, attempt_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 def history(test_id=None, section=None, limit=100):
     conn = _connect()
     query = "SELECT * FROM attempts WHERE submitted_at IS NOT NULL"

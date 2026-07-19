@@ -29,25 +29,94 @@ _NOISE_RES = [
     re.compile(r"^\s*IELTS\s+\d+\s*$", re.IGNORECASE),
 ]
 
+# Lines that are structural on their own (never merged into flowing prose):
+_HEADING_LIKE_RES = [
+    re.compile(r"^\s*[QO]uestions?\s+\d+.*$", re.IGNORECASE),               # "Questions 1-10"
+    re.compile(r"^\s*READING PASSAGE\s+\d+.*$", re.IGNORECASE),
+    re.compile(r"^\s*(?:SECTION|PART)\s+\d+\s*$", re.IGNORECASE),
+    re.compile(r"^\s*[A-H]\s*$"),                                            # lone paragraph-letter marker (A, B, C...)
+    re.compile(r"^\s*[A-Z][A-Z\s'.,\-]{3,60}$"),                             # short ALL-CAPS instruction line
+    re.compile(r"^\s*Complete the .{3,60}$", re.IGNORECASE),
+    re.compile(r"^\s*Choose .{3,60}$", re.IGNORECASE),
+    re.compile(r"^\s*Write (?:ONE|NO MORE|TRUE|FALSE) .{0,60}$", re.IGNORECASE),
+    re.compile(r"^\s*\d{1,2}[.)]\s+\S.*$"),                                  # numbered list item "1. ..." / "1) ..."
+]
 
-def _clean_page_text(text):
+
+_GAP_RE = re.compile(r"\d{1,2}\s*(?:[.…·]{3,}|_{3,})")
+
+
+def _is_heading_like(line):
+    return any(rx.match(line) for rx in _HEADING_LIKE_RES)
+
+
+def _reflow_paragraphs(lines, mode):
+    """
+    mode="prose": merges printed-line-wrap fragments into flowing
+    paragraphs (reading passages) -- everything not heading-like or
+    gapped gets joined, since real prose has no reason to break lines
+    except where the PDF happened to wrap them.
+
+    mode="list": listening question sheets (notes/table/summary
+    completion, matching, multiple choice) are inherently structured --
+    each printed line is already a complete bullet/field, not a wrapped
+    sentence fragment. Merging them produces an unreadable wall of text,
+    so list mode keeps one line per block and only strips noise.
+
+    Both modes handle hyphenated line-end word breaks when merging
+    ("environ-" + "ment" -> "environment").
+    """
+    if mode == "list":
+        return [ln.strip() for ln in lines if ln.strip()]
+
+    blocks = []
+    buf = []
+
+    def flush():
+        if not buf:
+            return
+        text = ""
+        for ln in buf:
+            if text.endswith("-") and text[:-1] and text[-2:-1].isalpha():
+                text = text[:-1] + ln
+            elif text:
+                text += " " + ln
+            else:
+                text = ln
+        blocks.append(text.strip())
+        buf.clear()
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            flush()
+            continue
+        if _is_heading_like(line) or _GAP_RE.search(line):
+            flush()
+            blocks.append(line)
+            continue
+        buf.append(line)
+    flush()
+    return [b for b in blocks if b]
+
+
+def _clean_page_text(text, mode="prose"):
     lines = []
     for raw in text.splitlines():
         line = raw.rstrip()
         if any(rx.match(line) for rx in _NOISE_RES):
             continue
         lines.append(line)
-    cleaned = "\n".join(lines)
-    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-    return cleaned.strip()
+    paragraphs = _reflow_paragraphs(lines, mode)
+    return "\n\n".join(paragraphs)
 
 
-def _pages_to_text(pages_text, page_numbers):
-    """page_numbers are 1-indexed."""
+def _pages_to_text(pages_text, page_numbers, mode="prose"):
+    """page_numbers are 1-indexed. mode: "prose" (reading) or "list" (listening)."""
     chunks = []
     for p in page_numbers:
         if 1 <= p <= len(pages_text):
-            t = _clean_page_text(pages_text[p - 1])
+            t = _clean_page_text(pages_text[p - 1], mode=mode)
             if t:
                 chunks.append(t)
     return "\n\n".join(chunks)
@@ -66,7 +135,7 @@ def build_content_for_test(pages_text, test_cfg):
     any_listening_pages = False
     for part in listening.get("parts", []):
         pages = part.get("pages") or []
-        text = _pages_to_text(pages_text, pages) if pages else ""
+        text = _pages_to_text(pages_text, pages, mode="list") if pages else ""
         if text:
             any_listening_pages = True
         parts.append({"text": text})
@@ -78,7 +147,7 @@ def build_content_for_test(pages_text, test_cfg):
     any_reading = False
     for passage in reading.get("passages", []):
         pages = passage.get("pages") or []
-        text = _pages_to_text(pages_text, pages) if pages else ""
+        text = _pages_to_text(pages_text, pages, mode="prose") if pages else ""
         if text:
             any_reading = True
         passages.append({"text": text})

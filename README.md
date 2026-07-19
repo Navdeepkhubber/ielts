@@ -1,45 +1,88 @@
 # IELTS Practice Platform
 
-A self-hosted practice platform for Reading, Listening, and Writing — timed,
-auto-marked, with progress tracking over time. It works with **any** test
-material laid out in the folder convention below, so you can point it at
-your own non-copyrighted PDFs/audio and reuse the exact same structure for
-every mock you add.
+A self-hosted practice platform for Reading, Listening, and Writing — timed
+under real exam conditions, auto-marked, with progress tracking over time.
+Point it at your own book PDFs + audio and it does the rest: detects the
+structure, extracts the answer key, generates a readable text view, and
+scores your attempts — all locally, nothing leaves your machine.
 
-## Why it works this way (a note on copyright)
-
-Rather than extracting and re-typing passages/questions into a database
-(which would mean duplicating a book's actual content), the platform
-**renders your original PDF pages as images** and **streams your original
-audio files** directly — like a page/audio viewer with a timer and
-answer-sheet wrapped around it. The only data it stores per test is:
-
-- page numbers (a "map" of where things are in the book)
-- the answer key (short factual answers, e.g. `"1": "TRUE"`)
-
-This is a deliberate design choice: it keeps the tool source-material-agnostic
-and avoids reproducing anyone's copyrighted book content — you supply the
-material, in whatever legal form you have it, and the app just adds the
-exam experience around it.
-
-## Setup
+## Quickstart
 
 ```bash
 pip install -r requirements.txt
-# Optional, for AI-graded writing feedback:
-pip install anthropic
-export ANTHROPIC_API_KEY=sk-ant-...   # get one at console.anthropic.com
-
 python3 app.py
 # -> open http://localhost:5050
 ```
 
 A demo mock with synthetic placeholder content is included so you can try
-the flow immediately. Regenerate it any time with:
+the flow immediately (regenerate it anytime with
+`python3 scripts/make_demo_test.py`).
+
+**To add your own book:** drop it into `tests/<Mock Name>/` as `main.pdf`
+plus an `audio/<Test N>/part1.mp3...` folder per test, then run:
 
 ```bash
-python3 scripts/make_demo_test.py
+python3 scripts/scaffold_mocks.py
 ```
+
+This scans the PDF, detects each test's reading passages / listening parts /
+writing tasks, extracts the printed answer key, generates a readable text
+view, and writes everything into the exact folder shape below — you don't
+create any of it by hand. It also writes `NEEDS_ATTENTION.md`, a live
+checklist of anything it couldn't confidently fill in (with the exact PDF
+page number to check). Re-run it anytime; it only ever fills in what's
+missing and never overwrites anything you've edited by hand.
+
+**You can start practicing before the answer key is filled in.** A test with
+a blank or partial key still runs normally (timer, audio, everything) —
+submitting shows your recorded answers as **unmarked** instead of a fake
+score, with a button to view the actual answer-key page from the PDF right
+there for manual comparison. Nothing blocks you from practicing.
+
+## Why it works this way (a note on copyright)
+
+The platform renders your PDF pages as images and streams your audio files
+directly, rather than reproducing a book's content in some other database
+or format. For your own convenience as a private local user, it does also
+extract some of your book's actual text to local files next to the PDF it
+came from — cleaned, readable passage/question text (`content/*.json`) and
+a raw OCR text cache (`.pdf_text_cache.json`) — since re-typing everything
+by hand or reading only page-scan images defeats the purpose of a fast
+practice tool. This is a deliberate tradeoff appropriate for a **personal,
+local, single-user tool working from your own legally-owned copy** — none
+of this is served to anyone else, uploaded anywhere, or intended for
+redistribution.
+
+## Setup details
+
+```bash
+pip install -r requirements.txt
+
+# Optional, for AI-graded writing feedback:
+pip install anthropic
+export ANTHROPIC_API_KEY=sk-ant-...   # get one at console.anthropic.com
+
+python3 app.py
+```
+
+`requirements.txt` includes:
+- **Flask, PyMuPDF** — required.
+- **certifi** — required; fixes a common macOS `CERTIFICATE_VERIFY_FAILED`
+  error when downloading the high-accuracy OCR model (see below).
+- **pytesseract** — optional, only needed to auto-scaffold a *scanned* PDF
+  (no text layer). Also requires the Tesseract binary itself:
+  `brew install tesseract` (macOS) / `apt install tesseract-ocr` (Linux).
+- **easyocr** — optional, used only as a second opinion on the handful of
+  individual answer-key entries Tesseract couldn't read confidently. Safe
+  to skip; those specific answers just stay blank instead of being
+  recovered. First use downloads a ~65MB model.
+- **GNU Ocrad** (system binary, not pip) — optional, cross-checks EasyOCR's
+  guesses for answers Tesseract never found at all (the biggest leap of
+  faith in the pipeline). `brew install ocrad` / `apt install ocrad`. Safe
+  to skip.
+
+None of the optional dependencies are required for the app to run — they
+only improve how much of the answer key gets auto-filled.
 
 ## Folder convention
 
@@ -47,47 +90,39 @@ Each **mock** (book) is one folder with a single `main.pdf` covering
 everything in that book, plus audio split out per individual test:
 
 ```
-tests/                              <- primary root
-  Mock 19/
-    main.pdf                         <- the WHOLE book: every reading passage,
-                                         question sheet, listening question
-                                         sheet, and writing prompt, for all
-                                         4 tests, exactly as printed.
+tests/
+  Cam 19/
+    main.pdf                    <- the whole book: every reading passage,
+                                    question sheet, listening question
+                                    sheet, and writing prompt, for all
+                                    tests, exactly as printed
     audio/
       Test 1/
         part1.mp3
         part2.mp3
         part3.mp3
         part4.mp3
-      Test 2/
-        part1.mp3
-        ...
-      Test 3/
-      Test 4/
+      Test 2/ ...
     answers/
       Test 1/
-        reading.json                 <- {"1": "TRUE", ...}
+        reading.json           <- {"1": "TRUE", ...}
         listening.json
-      Test 2/
-        reading.json
-        listening.json
-      Test 3/
-      Test 4/
-    manifest.json                    <- maps each Test N to page/audio refs
-  Mock 20/
-    main.pdf
-    audio/...
-    answers/...
-    manifest.json
+      Test 2/ ...
+    content/
+      Test 1.json               <- extracted, cleaned text for the text view
+      Test 2.json
+    manifest.json                <- maps each test to page/audio refs
+    .pdf_text_cache.json          <- raw OCR cache (safe to delete; just slower next scan)
+    .answer_key_meta.json          <- which PDF page holds each section's key
 ```
 
-You can have as many `Mock N` folders as you like under `tests/` — each one
-shows up as its own card on the home screen, and opening it lists whichever
-of Test 1-4 it defines.
+You can have as many mock folders as you like under `tests/`; each shows up
+as its own card on the home screen.
 
 ### manifest.json
 
-One manifest per mock, describing every test inside that book:
+Auto-generated by the scaffolder, but you can hand-edit it (e.g. to fix a
+wrong page number, or add a section it couldn't detect):
 
 ```json
 {
@@ -95,121 +130,218 @@ One manifest per mock, describing every test inside that book:
   "pdf_file": "main.pdf",
   "tests": {
     "Test 1": {
+      "variant": "academic",
       "reading": {
         "duration_minutes": 60,
         "passages": [
-          {"pages": [5, 6, 7], "questions": [1, 13]},
-          {"pages": [8, 9, 10], "questions": [14, 26]},
-          {"pages": [11, 12, 13, 14], "questions": [27, 40]}
+          {"pages": [15, 16, 17], "questions": [1, 13]},
+          {"pages": [18, 19], "questions": [14, 26]},
+          {"pages": [20, 21], "questions": [27, 40]}
         ]
       },
       "listening": {
         "audio_folder": "Test 1",
+        "duration_minutes": 40,
         "parts": [
-          {"file": "part1.mp3", "questions": [1, 10]},
-          {"file": "part2.mp3", "questions": [11, 20]},
-          {"file": "part3.mp3", "questions": [21, 30]},
-          {"file": "part4.mp3", "questions": [31, 40]}
+          {"file": "part1.mp3", "questions": [1, 10], "pages": [9]},
+          {"file": "part2.mp3", "questions": [11, 20], "pages": [10, 11]},
+          {"file": "part3.mp3", "questions": [21, 30], "pages": [12]},
+          {"file": "part4.mp3", "questions": [31, 40], "pages": [14]}
         ]
       },
       "writing": {
-        "task1": {"page": 20, "duration_minutes": 20},
-        "task2": {"page": 21, "duration_minutes": 40}
+        "task1": {"page": 22, "duration_minutes": 20, "sample_pages": [121]},
+        "task2": {"page": 23, "duration_minutes": 40, "sample_pages": [122, 123]}
       }
-    },
-    "Test 2": { "...": "same shape" },
-    "Test 3": { "...": "same shape" },
-    "Test 4": { "...": "same shape" }
+    }
   }
 }
 ```
 
-- `pages` / `page` are 1-indexed page numbers **within the single shared
-  `main.pdf`** — so as you move from Test 1 to Test 2 to Test 3 etc. within
-  the same book, the page numbers just keep climbing (e.g. Test 1 might be
-  pages 5-22, Test 2 pages 23-40, and so on) rather than resetting.
-- `questions` is `[first_question_number, last_question_number]` (inclusive)
-  for that passage/part, used to generate the right number of answer boxes.
-- `audio_folder` names the subfolder under `audio/` for that test (so audio
-  files for different tests never clash even if they're all named
-  `part1.mp3`, `part2.mp3`, etc.).
-- Any section (`reading` / `listening` / `writing`) can be omitted from a
-  test if you don't have material for it — the buttons on the test card
-  only show up for sections that exist.
+- `pages`/`page` are 1-indexed pages within the shared `main.pdf`.
+- `questions` is `[first, last]` inclusive.
+- `variant`: `"academic"` (default) or `"general"` — General Training uses a
+  meaningfully stricter reading band table.
+- Listening `duration_minutes` defaults to 40 (the real exam allocation:
+  ~30 min audio + 10 min transfer). Any section can be omitted if you have
+  no material for it.
+- `sample_pages` on a writing task (if the book has them): candidate sample
+  answers with examiner band comments, shown after you submit that task.
 
 ### answers/&lt;Test N&gt;/reading.json and listening.json
 
 ```json
 {
   "1": "TRUE",
-  "2": "C",
-  "3": "cotton",
-  "4": ["colour", "color"]
+  "5": "cotton",
+  "9": ["colour", "color"],
+  "15": ["B", "E"],
+  "16": ["B", "E"],
+  "30": ""
 }
 ```
 
-Plain string = single accepted answer. Array = multiple accepted spellings/
-variants. Matching is case-insensitive and ignores a trailing full stop, but
-otherwise exact — spelling mistakes are marked wrong unless you list the
-variant explicitly.
+- Plain string = single accepted answer.
+- Array = multiple accepted variants (spelling alternatives, or an
+  "IN EITHER ORDER" pair — both question numbers get the same list).
+- Matching is case-insensitive and ignores a trailing full stop/whitespace,
+  but not spelling — list variants explicitly if the book accepts more than
+  one.
+- `""` (blank) means not filled in yet — see **ANSWER_KEYS.md** for the full
+  format reference, and **NEEDS_ATTENTION.md** (regenerated by the
+  scaffolder) for exactly which blanks remain and which PDF page to check.
+- A section with any blanks still scores normally for the questions that
+  *are* keyed; blank ones are excluded from the score rather than counted
+  wrong. A section that's **entirely** blank runs as an **unmarked**
+  practice attempt instead of a fake 0/40.
 
-Writing has no answer key — instead it's graded by an AI feedback pass (if
-`ANTHROPIC_API_KEY` is set) giving indicative band scores across the four
-official criteria, or you can self/teacher-mark from your stored submission.
+Writing has no answer key — it's graded by an AI feedback pass (if
+`ANTHROPIC_API_KEY` is set) against the four official band criteria, shown
+alongside the book's own sample answers when available.
 
-## Timing behaviour
+## How auto-scaffolding works
 
-- **Reading**: hard 60-minute (or whatever you set) countdown, auto-submits
-  on expiry.
-- **Listening**: audio-paced with unlimited replay of each part (adjust in
-  `static/js/app.js` if you want stricter single-play enforcement), then a
-  10-minute transfer-time countdown before final auto-submit — matching real
-  exam conditions.
-- **Writing**: per-task countdown (20 / 40 min defaults), auto-submits on
-  expiry.
+Running `python3 scripts/scaffold_mocks.py` (also runs automatically, once,
+in the background when you start the app) does, per mock folder:
+
+1. **Structure detection** (`lib/pdf_structure.py`) — scans for `Test N`,
+   `READING PASSAGE N`, `SECTION/PART N`, `WRITING TASK N`, and
+   `Questions X-Y` headings. Handles books with a native PDF text layer
+   instantly; for scanned books with no text layer, falls back to Tesseract
+   OCR (parallelized, cached to `.pdf_text_cache.json` so repeat scans are
+   instant). Hardened against common book quirks: running headers repeated
+   on every page, tapescript/answer-key back-matter containing decoy
+   headings, and both `SECTION N` (pre-2020 books) and `PART N` (2020+)
+   listening naming.
+2. **Answer-key extraction** (`lib/answer_key.py`) — finds the printed
+   answer key pages and parses them, including `IN EITHER ORDER` pairs and
+   `/`-separated spelling alternatives. For scanned books, this uses a
+   layered approach:
+   - Column-split OCR at Tesseract's high-accuracy "best" model
+     (auto-downloaded once, ~15MB) instead of its default fast model —
+     answer-key pages are dense 2-column tables, a much harder OCR target
+     than prose.
+   - Per-answer confidence gating: an individual answer is only accepted if
+     Tesseract's own confidence for that specific line clears a threshold —
+     a page can be "good enough overall" while still containing an
+     individual misread, so this is checked per-answer, not just per-page.
+   - For answers flagged low-confidence or missing entirely, a second
+     opinion from EasyOCR (only where its full-page weakness doesn't
+     apply, i.e. tight single-line crops) — accepted only if EasyOCR itself
+     is confident. For guesses on answers Tesseract never found at all
+     (the biggest leap of faith — geometric position is estimated, not
+     read), that guess additionally needs to agree with GNU Ocrad's
+     independent reading before being trusted.
+   - Never overwrites answers you've already typed in; only fills blanks.
+3. **Content extraction** (`lib/content_extract.py`) — pulls cleaned,
+   reflowed text for the text view (see below) into `content/<Test N>.json`.
+4. **`NEEDS_ATTENTION.md`** — regenerated with exactly what's left: blank
+   answers (with page numbers and whether they were "never found" vs
+   "found but rejected for low confidence" vs "recovered via second-opinion
+   OCR"), missing sections, unconfigured listening pages.
+
+If a book's layout isn't detected at all, run
+`python3 scripts/diagnose_mock.py "Mock Name"` — it dumps every heading-like
+line per page (instant, reuses the OCR cache) so the detection patterns can
+be tuned to that book's actual format.
+
+## Exam experience
+
+- **Reading**: hard countdown (default 60 min), auto-submits on expiry.
+  Text view (see below) or original page images, your choice.
+- **Listening**: real 40-minute countdown (~30 min audio + 10 min
+  transfer). Audio plays **exactly once** — no pause, no seek, no
+  replay — matching real exam conditions, via a custom player rather than
+  the browser's native controls.
+- **Writing**: per-task countdown (20/40 min defaults), word count, AI
+  feedback plus the book's own sample answers with examiner band comments
+  when available.
+- **Text view**: reading passages and listening question sheets render as
+  selectable, properly typeset text with inline answer boxes sewn directly
+  into the numbered gaps — synced live with the answer sheet — instead of
+  just page-scan images. A "Book view" toggle falls back to the original
+  images anytime (needed for diagrams/maps, or if OCR text has errors).
+- Exit button + confirmation, and a navigation guard so you can't
+  accidentally lose an in-progress attempt by clicking elsewhere.
+
+## Results
+
+- Summary tiles (correct/incorrect/skipped/accuracy), per-part or
+  per-passage accuracy breakdown with a weakest-area callout, and a
+  filterable question-by-question review (All/Incorrect/Skipped/Correct).
+- **View answer key page** button — shows the actual scanned answer-key
+  page from your PDF inline, for manual comparison. Works whether the
+  attempt was auto-marked, partially marked, or fully unmarked.
+- Separate official-approximation band tables for Listening, Academic
+  Reading, and General Training Reading (GT is meaningfully stricter) —
+  see `lib/scoring.py` for the exact thresholds and caveats. IELTS doesn't
+  publish an official conversion, so treat any band shown as a close
+  estimate, not a certified score.
 
 ## Progress tracking
 
 Every attempt is logged to a local SQLite database at `data/progress.db`
-(created automatically) — mock, test, section, score, band estimate, and
-time taken. View it under the "Progress" tab in the app, or query it
-directly:
+(created automatically) — mock, test, section, score, band estimate, time
+taken. View it under the "Progress" tab, or query directly:
 
 ```python
 from lib import storage
 storage.history()                            # everything
-storage.history(test_id="Mock 19::Test 1")    # one specific test
+storage.history(test_id="Cam 19::Test 1")     # one specific test
+```
+
+## Commands reference
+
+```bash
+python3 app.py                                # run the server
+python3 scripts/scaffold_mocks.py             # scan tests/, fill in what's missing, update NEEDS_ATTENTION.md
+python3 scripts/generate_report.py            # regenerate NEEDS_ATTENTION.md only (fast, no PDF scan)
+python3 scripts/diagnose_mock.py "Mock Name"  # dump heading-like lines to debug an undetected book
+python3 scripts/make_demo_test.py             # regenerate the synthetic demo mock
+python3 benchmark_paddleocr.py <pdf> <page>   # compare Tesseract vs PaddleOCR on one answer-key page
 ```
 
 ## Project structure
 
 ```
-app.py                  Flask server + API routes
+app.py                     Flask server + API routes
 lib/
-  test_loader.py         scans tests/ folder, reads manifest/answer keys
-  pdf_render.py           renders main.pdf pages to PNG on demand (no text extraction/caching to disk)
-  scoring.py               auto-marking + rough band conversion
-  storage.py                SQLite progress history
-  writing_feedback.py        optional AI feedback via Anthropic API
-templates/index.html    page shell
-static/js/app.js         all frontend logic (mock list, test list, exam flow, timer, results, dashboard)
+  test_loader.py             reads manifest.json / answers / mock folder layout
+  scaffold.py                 orchestrates auto-scaffolding (calls the modules below)
+  pdf_structure.py              detects reading/listening/writing structure from the PDF
+  answer_key.py                   extracts + confidence-gates + cross-validates the printed answer key
+  content_extract.py                extracts + reflows readable text for the text view
+  report.py                           generates NEEDS_ATTENTION.md
+  pdf_render.py                         renders a PDF page to PNG on demand (no disk cache)
+  scoring.py                              auto-marking + IELTS band conversion tables
+  storage.py                                SQLite progress history
+  writing_feedback.py                         optional AI writing feedback via Anthropic API
+templates/index.html        page shell
+static/js/app.js             all frontend logic (exam flow, timer, text view, results, dashboard)
 static/css/style.css
-scripts/make_demo_test.py  generates the synthetic demo mock
-tests/                    your mock folders go here
+scripts/
+  scaffold_mocks.py            CLI: run auto-scaffolding + regenerate NEEDS_ATTENTION.md
+  generate_report.py            CLI: regenerate NEEDS_ATTENTION.md only
+  diagnose_mock.py                CLI: dump heading structure for an undetected book
+  make_demo_test.py                 generates the synthetic demo mock
+benchmark_paddleocr.py       standalone: compare OCR engines on one page
+ANSWER_KEYS.md               reference: exact answer-key JSON format and matching rules
+NEEDS_ATTENTION.md           generated: live checklist of what's left to fill in
+tests/                       your mock folders go here
 ```
 
 ## Extending
 
-- **Question types**: the current answer sheet is a single text input per
-  question, which covers TFNG/YNNG, matching, fill-in-blank, and short
-  answer. For multiple choice you can type the letter; if you want native
-  radio buttons/dropdowns, extend `startReading`/`startListening` in
-  `app.js` to branch on a `type` field you add per question in the manifest.
-- **Single-play listening**: real exams only play listening audio once.
-  To enforce that, disable the `controls` attribute and drive play/pause
-  from a single "Play Part N" button instead, in the listening section of
-  `app.js`.
-- **Multi-user**: storage is currently a single local SQLite file (single
-  user, local machine). For multiple users, swap in a per-user key in
-  `storage.py` or point it at a shared database.
-
+- **Question types**: the answer sheet is a text input per question, which
+  covers TFNG/YNNG, matching, fill-in-blank, short answer, and (typed
+  letter) multiple choice. For native radio buttons/dropdowns, extend the
+  reading/listening render functions in `app.js` to branch on a `type`
+  field you'd add per question in the manifest.
+- **Multi-user**: `storage.py` is currently a single local SQLite file
+  (single user, local machine). For multiple users, key it per-user or
+  point it at a shared database.
+- **Other OCR engines**: `lib/answer_key.py` documents why Tesseract (with
+  the high-accuracy model) is primary and EasyOCR/Ocrad are narrow
+  second-opinions only — both PaddleOCR and a full-page EasyOCR pass were
+  benchmarked and lost on this specific dense-table task. See the module
+  docstrings before swapping anything.
