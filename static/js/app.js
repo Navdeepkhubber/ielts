@@ -137,10 +137,26 @@ document.addEventListener("click", e => {
 });
 
 let examInProgress = false; // set while a timed section is running
+let activeListeningAudio = null;  // the single Audio object currently playing, if any
+let activeListeningReset = null;  // resets the UI of whichever button's audio just got force-stopped
+
+function stopActiveListeningAudio() {
+  if (activeListeningAudio) {
+    activeListeningAudio.pause();
+    activeListeningAudio = null;
+  }
+  if (activeListeningReset) {
+    activeListeningReset();
+    activeListeningReset = null;
+  }
+}
+window.addEventListener("beforeunload", stopActiveListeningAudio);
+window.addEventListener("pagehide", stopActiveListeningAudio);
 
 function navigateTo(view) {
   const doNav = () => {
     examInProgress = false;
+    stopActiveListeningAudio();
     document.querySelectorAll(".topnav .nav-link").forEach(b =>
       b.classList.toggle("active", b.dataset.view === view));
     if (view === "home") renderHome();
@@ -321,7 +337,7 @@ routes.exitExam = d => {
     title: "Exit this test?",
     body: "Your answers for this section will be lost and the attempt won't be scored.",
     confirmLabel: "Exit test",
-    onConfirm: () => { examInProgress = false; clearTimer(); d.mock ? renderMockTests(d.mock) : renderHome(); },
+    onConfirm: () => { examInProgress = false; stopActiveListeningAudio(); clearTimer(); d.mock ? renderMockTests(d.mock) : renderHome(); },
   });
 };
 
@@ -497,7 +513,7 @@ async function startListening(mockId, testName) {
     body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "listening", time_allowed_seconds: totalSeconds })
   });
 
-  const groups = lcfg.parts.map((p, i) => ({ label: `Part ${i + 1}`, from: p.questions[0], to: p.questions[1] }));
+  const groups = lcfg.parts.map((p, i) => ({ label: `Part ${p.part_number || i + 1}`, from: p.questions[0], to: p.questions[1] }));
   const totalQ = groups.reduce((a, g) => a + g.to - g.from + 1, 0);
 
   const content = await fetchContent(mockId, testName);
@@ -513,15 +529,18 @@ async function startListening(mockId, testName) {
       ? `<div class="content-text">${textWithInlineInputs(txt, "lans", p.questions[0], p.questions[1])}</div>
          <div class="content-book" style="display:none">${imgs}</div>`
       : imgs;
-    const src = `/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/audio?file=${encodeURIComponent(p.file)}`;
+    // A part can be split across multiple audio files (e.g. two halves of
+    // one recording) -- these must play back-to-back as ONE continuous
+    // "once only" listen, not as separate parts. Old manifests may still
+    // have a singular "file" instead of "files"; support both.
+    const partFiles = p.files || (p.file ? [p.file] : []);
     materialHtml += `
       <div class="listening-part">
         <div class="audio-bar">
-          <span class="part-label">Part ${i + 1} · Q${p.questions[0]}–${p.questions[1]}</span>
-          <button class="btn btn-primary btn-play" data-part="${i}">▶ Play (once only)</button>
+          <span class="part-label">Part ${p.part_number || i + 1} · Q${p.questions[0]}–${p.questions[1]}</span>
+          <button class="btn btn-primary btn-play" data-part="${i}" data-files='${esc(JSON.stringify(partFiles))}'>▶ Play (once only)</button>
           <div class="audio-progress"><div class="audio-progress-fill" id="audioFill-${i}"></div></div>
           <span class="audio-time" id="audioTime-${i}">not started</span>
-          <audio id="audioEl-${i}" preload="none" src="${src}"></audio>
         </div>
         <div class="question-sheet">${sheetHtml}</div>
       </div>`;
@@ -548,28 +567,59 @@ async function startListening(mockId, testName) {
   wireViewToggle(app);
   document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
 
-  // Exam-condition audio: plays exactly once, no pause, no seeking, no replay.
+  // Exam-condition audio: plays exactly once, no pause, no seeking, no
+  // replay. A part's files play back-to-back as ONE continuous listen, and
+  // starting any part always stops whatever else was playing first --
+  // only one part can ever be audible at a time.
   document.querySelectorAll(".btn-play").forEach(btn => {
     btn.addEventListener("click", () => {
+      stopActiveListeningAudio(); // kill whatever else was playing
+
       const i = btn.dataset.part;
-      const el = document.getElementById(`audioEl-${i}`);
+      const files = JSON.parse(btn.dataset.files);
+      const fillEl = document.getElementById(`audioFill-${i}`);
+      const timeEl = document.getElementById(`audioTime-${i}`);
+
       btn.disabled = true;
       btn.textContent = "Playing…";
-      el.play();
-      el.addEventListener("timeupdate", () => {
-        if (el.duration) {
-          document.getElementById(`audioFill-${i}`).style.width = `${el.currentTime / el.duration * 100}%`;
-          document.getElementById(`audioTime-${i}`).textContent =
-            `${fmtTime(Math.floor(el.currentTime))} / ${fmtTime(Math.floor(el.duration))}`;
+
+      const audio = new Audio();
+      activeListeningAudio = audio;
+      activeListeningReset = () => {
+        btn.disabled = false;
+        btn.textContent = "▶ Play (once only)";
+        timeEl.textContent = "stopped";
+      };
+
+      let fileIdx = 0;
+      const playNext = () => {
+        if (fileIdx >= files.length) {
+          btn.textContent = "✓ Played";
+          timeEl.textContent = "finished";
+          if (activeListeningAudio === audio) activeListeningAudio = null;
+          activeListeningReset = null;
+          return;
+        }
+        audio.src = `/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/audio?file=${encodeURIComponent(files[fileIdx])}`;
+        fileIdx++;
+        audio.play();
+      };
+
+      audio.addEventListener("timeupdate", () => {
+        if (audio.duration) {
+          fillEl.style.width = `${audio.currentTime / audio.duration * 100}%`;
+          timeEl.textContent = `${fmtTime(Math.floor(audio.currentTime))} / ${fmtTime(Math.floor(audio.duration))}`;
         }
       });
-      el.addEventListener("ended", () => {
-        btn.textContent = "✓ Played";
-        document.getElementById(`audioTime-${i}`).textContent = "finished";
+      audio.addEventListener("ended", playNext);
+      // if the browser pauses it for any reason mid-play (not our own
+      // stopActiveListeningAudio call), resume -- heard once, straight
+      // through, like the real exam
+      audio.addEventListener("pause", () => {
+        if (!audio.ended && activeListeningAudio === audio) audio.play();
       });
-      // if the browser pauses it for any reason mid-play, resume -- the
-      // recording is heard once, straight through, like the real exam
-      el.addEventListener("pause", () => { if (!el.ended) el.play(); });
+
+      playNext();
     });
   });
 

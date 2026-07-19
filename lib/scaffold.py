@@ -68,24 +68,97 @@ def _discover_audio_files(test_audio_dir):
     )
 
 
-def _build_listening_block(test_name, audio_root, detected_parts=None):
+# Matches common listening-audio naming conventions, e.g.:
+#   "C21T1P1.1.mp3"      -> part 1, segment 1   (Cambridge-style "P")
+#   "C21T1P4.mp3"        -> part 4, no segment
+#   "Test2_Section3.mp3" -> part 3, no segment   (full word "Section")
+#   "track3-2.mp3"       -> part 3, segment 2    (full word "track")
+# A lookbehind stops "T1" (Test 1) or similar from being misread as the
+# part indicator -- only P/S/part/section/track immediately before the
+# (optional segment +) extension counts.
+_PART_FILE_RE = re.compile(
+    r"(?<![a-zA-Z])(?:part|section|track|p|s)[\s_-]*(\d{1,2})(?:[._-](\d{1,2}))?\.\w+$",
+    re.IGNORECASE,
+)
+
+
+def _group_audio_files_by_part(files):
+    """
+    Groups audio filenames into real IELTS parts, keyed by the ACTUAL part
+    number found in the filename (not by position in the list -- this
+    matters when parts are missing, e.g. only Part 3 and Part 4 exist on
+    disk). A single part is often split across multiple files (two halves
+    of one recording); those must share ONE question range, not get a
+    fresh 10-question block each.
+
+    Returns a list of (part_number_or_None, [files...]) tuples, sorted by
+    part number. part_number is None when the naming convention couldn't
+    be parsed at all, in which case every file falls back to being its own
+    part (position-based, old behaviour) -- safer than guessing wrong.
+    """
+    by_num = {}
+    unmatched = []
+    for f in files:
+        m = _PART_FILE_RE.search(f)
+        if not m:
+            unmatched.append(f)
+            continue
+        part_num = int(m.group(1))
+        seg = int(m.group(2)) if m.group(2) else 0
+        by_num.setdefault(part_num, []).append((seg, f))
+
+    if unmatched or not by_num:
+        # Naming didn't match cleanly for at least one file -- safer to
+        # fall back to the old one-file-per-part behaviour for ALL files
+        # in this test than to guess groupings from a partial match.
+        return [(None, [f]) for f in files]
+
+    return [
+        (n, [f for _, f in sorted(by_num[n], key=lambda t: t[0])])
+        for n in sorted(by_num)
+    ]
+
+
+def _build_listening_block(test_name, audio_root, detected_parts=None, warn=None):
     """
     detected_parts, if given, is pdf_structure's per-test "listening_parts"
     list: [{"pages": [...], "questions": [s, e] or None}, ...], matched to
-    audio files in order. Falls back to a naive 10-question-per-part split
-    for any part beyond what was detected, or if nothing was detected.
+    real IELTS parts (NOT individual audio files -- one part can be split
+    across several files). Falls back to a naive 10-question-per-part
+    range for any part beyond what was detected -- using the part's REAL
+    number (from its filename) rather than its position in the list, so
+    missing parts don't shift everything after them onto the wrong
+    question range. `warn`, if given, is called with a message string for
+    anything worth flagging (missing/non-contiguous parts).
     """
     files = _discover_audio_files(os.path.join(audio_root, test_name))
+    grouped = _group_audio_files_by_part(files)
     parts = []
-    for i, filename in enumerate(files):
+    for i, (part_num, file_group) in enumerate(grouped):
         detected = detected_parts[i] if detected_parts and i < len(detected_parts) else None
         if detected and detected.get("questions"):
             start, end = detected["questions"]
+        elif part_num is not None:
+            start = (part_num - 1) * QUESTIONS_PER_PART + 1
+            end = start + QUESTIONS_PER_PART - 1
         else:
             start = i * QUESTIONS_PER_PART + 1
             end = start + QUESTIONS_PER_PART - 1
         pages = detected["pages"] if detected else []
-        parts.append({"file": filename, "questions": [start, end], "pages": pages})
+        entry = {"files": file_group, "questions": [start, end], "pages": pages}
+        if part_num is not None:
+            entry["part_number"] = part_num
+        parts.append(entry)
+
+    nums = [p["part_number"] for p in parts if "part_number" in p]
+    if warn and nums:
+        if nums != list(range(nums[0], nums[0] + len(nums))):
+            warn(f"listening part numbers {nums} aren't contiguous -- "
+                 f"check audio/{test_name}/ for a missing or mis-named file.")
+        elif nums[0] != 1:
+            warn(f"listening starts at Part {nums[0]} -- Part(s) "
+                 f"1-{nums[0] - 1} appear to be missing from audio/{test_name}/ "
+                 f"(add them if you have them, or ignore if intentional).")
     return {"audio_folder": test_name, "parts": parts}
 
 
@@ -268,7 +341,10 @@ def scan_and_scaffold(tests_root=None, verbose=True):
                 det = _match_detected_test(test_name, detected_tests)
                 reading = _build_reading_block(det.get("reading_passages"))
                 writing = _build_writing_block(det.get("writing"))
-                cfg = {"listening": _build_listening_block(test_name, audio_root, det.get("listening_parts"))}
+                cfg = {"listening": _build_listening_block(
+                    test_name, audio_root, det.get("listening_parts"),
+                    warn=lambda msg, tn=test_name: log.append(f"[{mock_name}/{tn}] {msg}"),
+                )}
                 if reading:
                     cfg["reading"] = reading
                 if writing:
@@ -294,7 +370,10 @@ def scan_and_scaffold(tests_root=None, verbose=True):
                 if test_name not in manifest.get("tests", {}):
                     reading = _build_reading_block(det.get("reading_passages"))
                     writing = _build_writing_block(det.get("writing"))
-                    cfg = {"listening": _build_listening_block(test_name, audio_root, det.get("listening_parts"))}
+                    cfg = {"listening": _build_listening_block(
+                        test_name, audio_root, det.get("listening_parts"),
+                        warn=lambda msg, tn=test_name: log.append(f"[{mock_name}/{tn}] {msg}"),
+                    )}
                     if reading:
                         cfg["reading"] = reading
                     if writing:
