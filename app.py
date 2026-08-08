@@ -7,6 +7,9 @@ from lib import test_loader, pdf_render, scoring, storage, scaffold, report, aut
 from lib.auth import login_required
 
 app = Flask(__name__)
+@app.route("/health")
+def health():
+    return "OK", 200
 
 _is_debug = os.environ.get("FLASK_DEBUG", "1") == "1"
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
