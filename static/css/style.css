@@ -92,6 +92,19 @@ button { font-family: inherit; }
   letter-spacing: -0.01em;
 }
 .topnav { display: flex; gap: 4px; }
+.topbar-account { display: flex; align-items: center; gap: 12px; }
+.account-name { font-size: 0.85rem; color: var(--ink-soft); font-weight: 500; }
+.account-logout {
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.account-logout:hover { background: var(--paper); color: var(--ink); }
 .nav-link {
   background: none;
   border: none;

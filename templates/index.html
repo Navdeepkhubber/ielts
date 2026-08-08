@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IELTS Practice — Exam Portal</title>
+<title>IELTSBand — Exam Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -12,19 +12,37 @@
 <body>
   <header class="topbar">
     <div class="wordmark">
-      <span class="wordmark-badge">IELTS</span>
-      <span class="wordmark-text">Practice Portal</span>
+      <span class="wordmark-badge">IB</span>
+      <span class="wordmark-text">IELTSBand</span>
     </div>
     <nav class="topnav">
       <button data-view="home" class="nav-link active">Tests</button>
       <button data-view="dashboard" class="nav-link">Progress</button>
     </nav>
+    <div class="topbar-account">
+      {% if user %}<span class="account-name">{{ user.name }}</span>{% endif %}
+      <form method="POST" action="/logout" id="logout-form" style="display:inline">
+        <button type="submit" class="account-logout">Log out</button>
+      </form>
+    </div>
   </header>
 
   <main id="app"></main>
 
   <div id="modal-root"></div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="/static/js/firebase-config.js"></script>
+  <script>
+    // Clear the Firebase client session before the server-side one, so a
+    // logged-out visitor who returns to /login doesn't get silently
+    // signed back in via Firebase's own persisted session.
+    document.getElementById('logout-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      firebase.auth().signOut().finally(() => e.target.submit());
+    });
+  </script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>

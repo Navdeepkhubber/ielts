@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log in — IELTSBand</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/landing.css">
+</head>
+<body class="lp-body">
+  <div class="lp-auth-wrap">
+    <div class="lp-auth-card">
+      <div class="wordmark">
+        <span class="wordmark-badge">IB</span>
+        <span class="wordmark-text">IELTSBand</span>
+      </div>
+      <h1>Welcome back</h1>
+      <p class="lp-auth-sub">Log in to reach your mock tests and progress.</p>
+
+      <div id="notice"></div>
+
+      <button type="button" id="google-btn" class="lp-btn-google">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.9v2.33A9 9 0 0 0 9 18z"/>
+          <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.17.29-1.7V4.97H.9A9 9 0 0 0 0 9c0 1.45.35 2.83.9 4.03l3.05-2.33z"/>
+          <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .9 4.97l3.05 2.33C4.66 5.17 6.65 3.58 9 3.58z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="lp-divider">or</div>
+
+      <form id="login-form">
+        <div class="lp-field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autofocus autocomplete="email">
+        </div>
+        <div class="lp-field">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <label for="password">Password</label>
+            <button type="button" id="forgot-link" class="linklike">Forgot password?</button>
+          </div>
+          <input type="password" id="password" name="password" required autocomplete="current-password">
+        </div>
+        <button type="submit" id="submit-btn" class="lp-btn lp-btn-primary">Log in</button>
+      </form>
+
+      <p class="lp-auth-switch">New here? <a href="/signup">Create an account</a></p>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="/static/js/firebase-config.js"></script>
+  <script>
+    if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) {
+      document.getElementById('notice').innerHTML =
+        '<div class="lp-auth-notice info">Firebase isn\'t configured yet. Open the browser console ' +
+        'for the real error (usually a syntax mistake in static/js/firebase-config.js), fix it, ' +
+        'then reload this page. See SETUP.md.</div>';
+      document.getElementById('google-btn').disabled = true;
+    }
+  </script>
+  <script>
+    const nextPath = {{ next|tojson }};
+    const noticeEl = document.getElementById('notice');
+    const googleBtn = document.getElementById('google-btn');
+    const form = document.getElementById('login-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const forgotLink = document.getElementById('forgot-link');
+
+    forgotLink.addEventListener('click', async () => {
+      clearNotice();
+      const email = document.getElementById('email').value.trim();
+      if (!email) {
+        showNotice('info', 'Enter your email above first, then click "Forgot password?" again.');
+        return;
+      }
+      forgotLink.disabled = true;
+      try {
+        await firebase.auth().sendPasswordResetEmail(email);
+        showNotice('success', `Password reset email sent to ${email} — check your inbox.`);
+      } catch (err) {
+        // Firebase deliberately won't say "no account with that email" here in
+        // newer SDK versions (email enumeration protection) -- same message either way.
+        showNotice('info', err.message || 'Could not send a reset email. Please try again.');
+      } finally {
+        forgotLink.disabled = false;
+      }
+    });
+
+    function showNotice(kind, html) {
+      noticeEl.innerHTML = `<div class="lp-auth-notice ${kind}">${html}</div>`;
+    }
+    function clearNotice() { noticeEl.innerHTML = ''; }
+
+    function safeNext() {
+      // Only ever redirect within our own site.
+      if (typeof nextPath === 'string' && nextPath.startsWith('/') && !nextPath.startsWith('//')) {
+        return nextPath;
+      }
+      return '/app';
+    }
+
+    async function postSession(idToken) {
+      const res = await fetch('/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+      if (res.ok) {
+        window.location.href = safeNext();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      showNotice('info', data.error || "Something went wrong logging you in. Please try again.");
+    }
+
+    googleBtn.addEventListener('click', async () => {
+      clearNotice();
+      googleBtn.disabled = true;
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await firebase.auth().signInWithPopup(provider);
+        const idToken = await result.user.getIdToken();
+        await postSession(idToken);
+      } catch (err) {
+        showNotice('info', err.message || 'Google sign-in failed.');
+      } finally {
+        googleBtn.disabled = false;
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearNotice();
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Logging in…';
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      try {
+        const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
+        if (!cred.user.emailVerified) {
+          await firebase.auth().signOut();
+          showNotice('info',
+            "Your email isn't verified yet. Check your inbox for the link, or " +
+            '<button type="button" class="linklike" id="resend-btn">resend it</button>.');
+          document.getElementById('resend-btn').addEventListener('click', async (ev) => {
+            ev.preventDefault();
+            try {
+              // Sign in again briefly just to get a user object to resend from --
+              // Firebase requires an authenticated user to call sendEmailVerification.
+              const cred2 = await firebase.auth().signInWithEmailAndPassword(email, password);
+              await cred2.user.sendEmailVerification();
+              await firebase.auth().signOut();
+              showNotice('success', 'Verification email sent — check your inbox.');
+            } catch (err2) {
+              showNotice('info', err2.message || 'Could not resend the email. Try again shortly.');
+            }
+          });
+          return;
+        }
+        const idToken = await cred.user.getIdToken();
+        await postSession(idToken);
+      } catch (err) {
+        showNotice('info', 'Incorrect email or password.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log in';
+      }
+    });
+  </script>
+</body>
+</html>

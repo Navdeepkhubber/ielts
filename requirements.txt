@@ -1,6 +1,16 @@
 Flask==3.0.3
 PyMuPDF==1.24.9
 
+# Production WSGI server -- the Flask dev server used by `python3 app.py`
+# is single-threaded and explicitly unsafe for real traffic.
+gunicorn==22.0.0
+
+# Verifies Firebase ID tokens server-side (login/signup) and provides the
+# Firestore client used for user profiles and attempt/progress history --
+# see lib/firebase_admin_setup.py, lib/auth.py, lib/storage.py, and
+# SETUP.md for the one-time Firebase project setup this needs.
+firebase-admin==6.5.0
+
 # Fixes "CERTIFICATE_VERIFY_FAILED" downloading the high-accuracy OCR
 # model on macOS -- python.org's installer doesn't link the system CA
 # store, so this bundles known-good certificates instead. Tiny package,

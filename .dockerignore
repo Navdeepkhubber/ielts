@@ -1,0 +1,13 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+venv/
+.env
+.env.*
+serviceAccountKey.json
+data/
+*.db
+.DS_Store
+NEEDS_ATTENTION.md
+scaffold_log.txt

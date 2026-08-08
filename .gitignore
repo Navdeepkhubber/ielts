@@ -15,3 +15,7 @@ __pycache__/
 # Virtual environments
 venv/
 .env
+.env.*
+
+# Firebase Admin service account credentials -- never commit this
+serviceAccountKey.json

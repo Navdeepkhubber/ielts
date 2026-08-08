@@ -1,0 +1,27 @@
+# Render Blueprint. Optional, but lets you spin this whole service up
+# from one file (New > Blueprint in the Render dashboard, pointed at this
+# repo) instead of clicking through the dashboard by hand -- and gives
+# you a record of the config a year from now when you've forgotten it.
+#
+# FLASK_SECRET_KEY and the Firebase service account are intentionally
+# NOT set here (Render will prompt for them as "sync: false" values, or
+# you set them once in the dashboard after the first deploy) -- secrets
+# don't belong committed to a repo, blueprint or not.
+
+services:
+  - type: web
+    name: ieltsband
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: FLASK_SECRET_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        value: /etc/secrets/serviceAccountKey.json
+    # Upload your downloaded service account key as a Secret File in the
+    # Render dashboard (Environment > Secret Files) named
+    # serviceAccountKey.json -- Render mounts it at exactly the path
+    # referenced above, and it's never stored in the repo.

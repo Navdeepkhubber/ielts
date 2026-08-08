@@ -1,11 +1,29 @@
 import io
 import json
 import os
-from flask import Flask, jsonify, request, send_file, render_template, abort
+from flask import Flask, jsonify, request, send_file, render_template, abort, session, redirect, url_for
 
-from lib import test_loader, pdf_render, scoring, storage, scaffold, report
+from lib import test_loader, pdf_render, scoring, storage, scaffold, report, auth, firebase_admin_setup
+from lib.auth import login_required
 
 app = Flask(__name__)
+
+_is_debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY")
+if not app.secret_key:
+    if _is_debug:
+        # Local dev only -- fine as a single process; restarting just logs
+        # everyone out, which is harmless for local testing.
+        app.secret_key = os.urandom(24)
+    else:
+        raise RuntimeError(
+            "FLASK_SECRET_KEY must be set outside local development. A "
+            "random per-process key breaks sessions the moment more than "
+            "one worker process exists (which gunicorn does by default) "
+            "-- one worker signs a cookie, a different worker can't "
+            "verify it, and logins fail unpredictably. Generate one with: "
+            "python3 -c \"import secrets; print(secrets.token_hex(32))\""
+        )
 
 
 def _run_scaffold_in_background():
@@ -41,21 +59,104 @@ def _combined_id(mock_id, test_name):
     return f"{mock_id}::{test_name}"
 
 
+def _own_attempt_or_404(attempt_id):
+    """Fetches an attempt and 404s (not 403, to avoid confirming which
+    attempt ids exist) if it isn't the logged-in user's -- old pre-account
+    attempts (user_id NULL) are treated as belonging to no one."""
+    attempt = storage.get_attempt(attempt_id)
+    if attempt is None or attempt.get("user_id") != session.get("user_id"):
+        abort(404, "No such attempt")
+    return attempt
+
+
 # ---------- Pages ----------
 
 @app.route("/")
-def index():
-    return render_template("index.html")
+def landing():
+    """Public marketing/welcome page. Logged-in visitors are sent straight
+    to the app instead of seeing the pitch for something they already use."""
+    if session.get("user_id"):
+        return redirect(url_for("app_shell"))
+    return render_template("landing.html")
+
+
+@app.route("/signup")
+def signup():
+    """Rendering only -- the actual account creation happens client-side
+    via the Firebase SDK (Google popup, or createUserWithEmailAndPassword
+    + a verification email), which then calls POST /auth/session below."""
+    if session.get("user_id"):
+        return redirect(url_for("app_shell"))
+    return render_template("signup.html")
+
+
+@app.route("/login")
+def login():
+    if session.get("user_id"):
+        return redirect(url_for("app_shell"))
+    next_path = request.args.get("next") or url_for("app_shell")
+    return render_template("login.html", next=next_path)
+
+
+@app.route("/auth/session", methods=["POST"])
+def auth_session():
+    """
+    Called by login.html/signup.html once Firebase has authenticated the
+    person in the browser. Verifies the ID token server-side (never trust
+    a client-asserted uid/email) before creating our own session cookie.
+
+    Google sign-ins are accepted immediately -- Google has already done
+    the verifying. Email/password sign-ins are only accepted once
+    Firebase reports the address as verified, so a stolen or mistyped
+    email can't be used to create/access an account.
+    """
+    data = request.get_json(silent=True) or {}
+    id_token = data.get("idToken")
+    if not id_token:
+        return jsonify({"error": "Missing idToken."}), 400
+
+    try:
+        decoded = firebase_admin_setup.verify_id_token(id_token)
+    except Exception:
+        return jsonify({"error": "That sign-in couldn't be verified. Please try again."}), 401
+
+    provider = decoded.get("firebase", {}).get("sign_in_provider")
+    if provider != "google.com" and not decoded.get("email_verified"):
+        return jsonify({"error": "Please verify your email address first, then log in."}), 403
+
+    user = auth.get_or_create_user(
+        firebase_uid=decoded["uid"],
+        email=decoded.get("email", ""),
+        name=decoded.get("name", ""),
+    )
+    session["user_id"] = user["id"]
+    return jsonify({"ok": True})
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("landing"))
+
+
+@app.route("/app")
+@login_required
+def app_shell():
+    """The actual exam portal (mock tests + progress) -- everything that
+    used to live at '/'. Only reachable once logged in."""
+    return render_template("index.html", user=auth.current_user())
 
 
 # ---------- Mock / test discovery ----------
 
 @app.route("/api/mocks")
+@login_required
 def api_mocks():
     return jsonify(test_loader.list_mocks())
 
 
 @app.route("/api/mocks/<mock_id>")
+@login_required
 def api_mock_manifest(mock_id):
     try:
         manifest = test_loader.load_manifest(mock_id)
@@ -65,6 +166,7 @@ def api_mock_manifest(mock_id):
 
 
 @app.route("/api/mocks/<mock_id>/tests/<test_name>")
+@login_required
 def api_test_config(mock_id, test_name):
     try:
         _, cfg = test_loader.load_test_config(mock_id, test_name)
@@ -74,6 +176,7 @@ def api_test_config(mock_id, test_name):
 
 
 @app.route("/api/mocks/<mock_id>/tests/<test_name>/content")
+@login_required
 def api_test_content(mock_id, test_name):
     """Extracted section text (content/<Test N>.json) for the text view.
     404 when not extracted -- the frontend falls back to page images."""
@@ -85,6 +188,7 @@ def api_test_content(mock_id, test_name):
 
 
 @app.route("/api/mocks/<mock_id>/tests/<test_name>/answer-key-page")
+@login_required
 def api_answer_key_page(mock_id, test_name):
     """
     ?section=reading|listening -- returns {"page": N} for the PDF page
@@ -109,6 +213,7 @@ def api_answer_key_page(mock_id, test_name):
 # ---------- main.pdf page images (reading & writing both live here) ----------
 
 @app.route("/api/mocks/<mock_id>/page")
+@login_required
 def api_pdf_page(mock_id):
     """?page=7"""
     page = int(request.args.get("page", 1))
@@ -123,6 +228,7 @@ def api_pdf_page(mock_id):
 # ---------- Listening audio ----------
 
 @app.route("/api/mocks/<mock_id>/tests/<test_name>/audio")
+@login_required
 def api_listening_audio(mock_id, test_name):
     """?file=part1.mp3"""
     file = request.args.get("file")
@@ -138,17 +244,20 @@ def api_listening_audio(mock_id, test_name):
 # ---------- Attempt lifecycle ----------
 
 @app.route("/api/attempts/start", methods=["POST"])
+@login_required
 def api_start_attempt():
     data = request.json
     attempt_id = storage.start_attempt(
         test_id=_combined_id(data["mock_id"], data["test_name"]),
         section=data["section"],
         time_allowed_seconds=data["time_allowed_seconds"],
+        user_id=session["user_id"],
     )
     return jsonify({"attempt_id": attempt_id})
 
 
-@app.route("/api/attempts/<int:attempt_id>/submit", methods=["POST"])
+@app.route("/api/attempts/<attempt_id>/submit", methods=["POST"])
+@login_required
 def api_submit_attempt(attempt_id):
     data = request.json
     mock_id = data["mock_id"]
@@ -185,6 +294,7 @@ def api_submit_attempt(attempt_id):
 
 
 @app.route("/api/writing/feedback", methods=["POST"])
+@login_required
 def api_writing_feedback():
     from lib import writing_feedback
     data = request.json
@@ -199,10 +309,17 @@ def api_writing_feedback():
 # ---------- Progress dashboard ----------
 
 @app.route("/api/history")
+@login_required
 def api_history():
     test_id = request.args.get("test_id")
     section = request.args.get("section")
-    return jsonify(storage.history(test_id=test_id, section=section))
+    return jsonify(storage.history(test_id=test_id, section=section, user_id=session["user_id"]))
+
+
+@app.route("/api/me")
+@login_required
+def api_me():
+    return jsonify(auth.current_user())
 
 
 def _variant_for_test_id(test_id):
@@ -216,7 +333,8 @@ def _variant_for_test_id(test_id):
         return "academic"
 
 
-@app.route("/api/attempts/<int:attempt_id>/manual-score", methods=["POST"])
+@app.route("/api/attempts/<attempt_id>/manual-score", methods=["POST"])
+@login_required
 def api_manual_score(attempt_id):
     """
     Fills in (or corrects) a score by hand -- for an attempt that was
@@ -225,9 +343,7 @@ def api_manual_score(attempt_id):
     typing every individual answer. Band is calculated automatically from
     the entered raw score using the same tables as auto-marking.
     """
-    attempt = storage.get_attempt(attempt_id)
-    if attempt is None:
-        abort(404, "No such attempt")
+    attempt = _own_attempt_or_404(attempt_id)
     if attempt["section"] not in ("reading", "listening"):
         abort(400, "Only reading/listening sections have a numeric score")
 
@@ -243,7 +359,8 @@ def api_manual_score(attempt_id):
     return jsonify({"correct_count": correct_count, "total": total, "band_estimate": band})
 
 
-@app.route("/api/attempts/<int:attempt_id>/detail")
+@app.route("/api/attempts/<attempt_id>/detail")
+@login_required
 def api_attempt_detail(attempt_id):
     """
     Full reconstructed result for a past attempt -- same shape the results
@@ -253,16 +370,14 @@ def api_attempt_detail(attempt_id):
     (tiles, per-part breakdown, filterable review, answer-key page viewer)
     instead of just a bare band number.
     """
-    attempt = storage.get_attempt(attempt_id)
-    if attempt is None:
-        abort(404, "No such attempt")
+    attempt = _own_attempt_or_404(attempt_id)
     if attempt["section"] not in ("reading", "listening"):
         abort(400, "Only reading/listening sections have a full analysis view")
-    if not attempt["detail_json"]:
+    if not attempt.get("detail"):
         abort(404, "No per-question detail recorded for this attempt")
 
     mock_id, test_name = attempt["test_id"].split("::", 1)
-    results = json.loads(attempt["detail_json"])
+    results = attempt["detail"]
     unmarkable_count = sum(1 for r in results.values() if r.get("is_correct") is None)
     return jsonify({
         "mock_id": mock_id,
@@ -280,7 +395,8 @@ def api_attempt_detail(attempt_id):
     })
 
 
-@app.route("/api/attempts/<int:attempt_id>/remark", methods=["POST"])
+@app.route("/api/attempts/<attempt_id>/remark", methods=["POST"])
+@login_required
 def api_remark_attempt(attempt_id):
     """
     Re-marks a past attempt against the CURRENT answer key -- for when a
@@ -289,7 +405,7 @@ def api_remark_attempt(attempt_id):
     affects attempts taken from then on; the already-stored correct_count/
     band for earlier attempts stays frozen against the old, wrong key.
     Re-scores using the answers the person actually gave (from the stored
-    detail_json), never asks them to retype anything.
+    detail), never asks them to retype anything.
 
     Refuses (hard guard, not just a UI hide) to touch an attempt whose
     score was entered by hand (manually_scored=1) -- that count came from
@@ -299,20 +415,18 @@ def api_remark_attempt(attempt_id):
     real manual tally with nothing (or a wrong partial count), which is
     exactly the kind of silent data loss this endpoint must never cause.
     """
-    attempt = storage.get_attempt(attempt_id)
-    if attempt is None:
-        abort(404, "No such attempt")
+    attempt = _own_attempt_or_404(attempt_id)
     if attempt["section"] not in ("reading", "listening"):
         abort(400, "Only reading/listening sections can be re-marked")
     if attempt["manually_scored"]:
         abort(400, "This score was entered by hand, not derived from the answer key -- "
                     "re-checking would risk overwriting it with an incomplete auto-mark. "
                     "Edit the score directly with 'Enter score' instead if it needs correcting.")
-    if not attempt["detail_json"]:
+    if not attempt.get("detail"):
         abort(404, "No per-question detail recorded for this attempt -- nothing to re-mark")
 
     mock_id, test_name = attempt["test_id"].split("::", 1)
-    old_results = json.loads(attempt["detail_json"])
+    old_results = attempt["detail"]
     given_answers = {q: r.get("given", "") for q, r in old_results.items()}
 
     # Confirm the mock/test still genuinely exists BEFORE touching anything.
@@ -347,13 +461,14 @@ def api_remark_attempt(attempt_id):
     return jsonify(result)
 
 
-@app.route("/api/attempts/<int:attempt_id>/band-explanation")
+@app.route("/api/attempts/<attempt_id>/band-explanation")
+@login_required
 def api_band_explanation(attempt_id):
     """Full working behind an attempt's band estimate, for the 'how was
     this calculated' popup -- works whether the score was auto-marked or
     entered by hand."""
-    attempt = storage.get_attempt(attempt_id)
-    if attempt is None or attempt["correct_count"] is None:
+    attempt = _own_attempt_or_404(attempt_id)
+    if attempt["correct_count"] is None:
         abort(404, "No score recorded for this attempt yet")
     variant = _variant_for_test_id(attempt["test_id"])
     return jsonify(scoring.band_explanation(

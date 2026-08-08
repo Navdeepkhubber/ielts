@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IELTSBand — Full mocks, real timing, real bands</title>
+<meta name="description" content="Sit full-length IELTS mock tests under real exam timing, get instantly marked, and track your band score over time.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/landing.css">
+</head>
+<body class="lp-body">
+
+  <nav class="lp-nav">
+    <div class="wordmark">
+      <span class="wordmark-badge">IB</span>
+      <span class="wordmark-text">IELTSBand</span>
+    </div>
+    <div class="lp-nav-links">
+      <a href="#how-it-works">How it works</a>
+      <a href="#offerings">Offerings</a>
+      <a href="/login" class="lp-btn lp-btn-ghost">Log in</a>
+      <a href="/signup" class="lp-btn lp-btn-primary">Start free</a>
+    </div>
+  </nav>
+
+  <header class="lp-hero">
+    <div>
+      <p class="lp-eyebrow">Academic &amp; General Training</p>
+      <h1>Practice like it's <em>results day</em>, not homework.</h1>
+      <p class="lp-sub">
+        Full-length Reading, Listening and Writing mocks under the exact
+        exam clock, marked the moment you submit, with every attempt
+        logged so you can watch your band move over weeks, not guess at it.
+      </p>
+      <div class="lp-hero-ctas">
+        <a href="/signup" class="lp-btn lp-btn-primary">Create your free account</a>
+        <a href="/login" class="lp-btn lp-btn-ghost">I already have one</a>
+      </div>
+      <p class="lp-fineprint">No credit card. Your mock tests and progress history are private to your account.</p>
+    </div>
+
+    <div class="lp-ticket" aria-hidden="true">
+      <div class="lp-ticket-head">
+        <div>
+          <span class="lbl">Now sitting</span>
+          <span class="val">Cambridge IELTS 18 · Test 3 · Reading</span>
+        </div>
+        <div class="lp-timer">16:02</div>
+      </div>
+      <div class="lp-ticket-passage">
+        <span class="redact">The migration patterns observed</span> in the study
+        suggest that <span class="redact">seasonal shifts</span> are driven
+        primarily by <span class="redact">temperature</span> rather than
+        <span class="redact">daylight length alone, contradicting</span> earlier models&hellip;
+      </div>
+      <div class="lp-ticket-foot">
+        <div class="lp-seal">9<span>BAND</span></div>
+        <p class="caption">Auto-marked in seconds, saved to your progress history.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="lp-section" id="how-it-works">
+    <div class="lp-section-head">
+      <p class="lp-eyebrow">How it works</p>
+      <h2>Three steps, same order every time.</h2>
+      <p>No setup beyond picking a mock — the timing, marking and logging happen the same way a real exam session would.</p>
+    </div>
+    <div class="lp-steps">
+      <div class="lp-step">
+        <div class="step-num">01</div>
+        <h3>Pick a mock, sit it for real</h3>
+        <p>Choose any Reading, Listening or Writing test from your library and sit it under the same countdown and transfer-time rules as the actual exam.</p>
+      </div>
+      <div class="lp-step">
+        <div class="step-num">02</div>
+        <h3>Get marked on submit</h3>
+        <p>Reading and Listening are auto-marked instantly with a band estimate; Writing gets structured AI feedback against the four official criteria.</p>
+      </div>
+      <div class="lp-step">
+        <div class="step-num">03</div>
+        <h3>Watch your band move</h3>
+        <p>Every attempt is saved to your account. Your Progress tab shows score and band trends per section, so you know what to practice next.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-section" id="offerings">
+    <div class="lp-section-head">
+      <p class="lp-eyebrow">Offerings</p>
+      <h2>Everything a mock exam needs, nothing it doesn't.</h2>
+    </div>
+    <div class="lp-offerings">
+      <div class="lp-offer">
+        <span class="tag">Reading</span>
+        <h3>Timed, auto-marked</h3>
+        <p>60-minute countdown, instant scoring, and a band estimate the moment you submit.</p>
+      </div>
+      <div class="lp-offer">
+        <span class="tag">Listening</span>
+        <h3>Exam-paced audio</h3>
+        <p>Four parts plus a 10-minute transfer window, matching real test-day conditions.</p>
+      </div>
+      <div class="lp-offer">
+        <span class="tag">Writing</span>
+        <h3>AI-graded feedback</h3>
+        <p>Task 1 &amp; 2 countdowns with indicative band feedback across all four criteria.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="lp-cta">
+    <div>
+      <h2>Your next mock is one click away.</h2>
+      <p>Create a free account to unlock the test library and your progress dashboard.</p>
+    </div>
+    <a href="/signup" class="lp-btn lp-btn-primary">Start free</a>
+  </div>
+
+  <footer class="lp-footer">IELTSBand — self-hosted mock exam platform.</footer>
+
+  <script>
+    // Decorative countdown on the hero ticket -- purely cosmetic, no real attempt behind it.
+    (function () {
+      var el = document.querySelector('.lp-timer');
+      if (!el) return;
+      var seconds = 17 * 60 + 4;
+      setInterval(function () {
+        seconds = seconds > 0 ? seconds - 1 : 16 * 60 + 2;
+        var m = String(Math.floor(seconds / 60)).padStart(2, '0');
+        var s = String(seconds % 60).padStart(2, '0');
+        el.textContent = m + ':' + s;
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>
