@@ -264,7 +264,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
 }
 .lp-auth-card {
   background: var(--surface);
@@ -272,23 +272,23 @@
   width: 100%;
   max-width: 380px;
   border-radius: 14px;
-  padding: 32px 28px;
+  padding: 24px 26px;
   box-shadow: 0 30px 60px -20px rgba(0,0,0,0.5);
 }
-.lp-auth-card .wordmark { justify-content: center; margin-bottom: 20px; }
+.lp-auth-card .wordmark { justify-content: center; margin-bottom: 14px; }
 .lp-auth-card h1 {
   font-family: var(--font-display);
-  font-size: 21px;
+  font-size: 20px;
   text-align: center;
-  margin: 0 0 6px;
+  margin: 0 0 5px;
 }
 .lp-auth-card .lp-auth-sub {
   text-align: center;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--ink-soft);
-  margin: 0 0 24px;
+  margin: 0 0 16px;
 }
-.lp-field { margin-bottom: 14px; }
+.lp-field { margin-bottom: 11px; }
 .lp-field label {
   display: block;
   font-size: 13px;
@@ -319,7 +319,7 @@
 .lp-auth-switch {
   text-align: center;
   font-size: 13.5px;
-  margin-top: 18px;
+  margin-top: 12px;
   color: var(--ink-soft);
 }
 .lp-auth-switch a { color: var(--brand); font-weight: 600; text-decoration: none; }
@@ -348,7 +348,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 18px 0;
+  margin: 14px 0;
   color: var(--ink-faint);
   font-size: 12px;
   text-transform: uppercase;
@@ -419,11 +419,11 @@
 /* ---------- live password strength checklist ---------- */
 .lp-password-checks {
   list-style: none;
-  margin: 10px 0 0;
+  margin: 7px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 .lp-password-checks li {
   display: flex;
@@ -463,7 +463,7 @@
 /* ---------- footer contact line (auth pages) ---------- */
 .lp-auth-contact {
   text-align: center;
-  margin-top: 22px;
+  margin-top: 10px;
   font-size: 12.5px;
   color: var(--ink-faint);
 }
