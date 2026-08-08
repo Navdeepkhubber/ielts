@@ -22,6 +22,10 @@
   --bad: #c23a3a;
   --bad-soft: #faeeee;
   --focus: #2563eb;
+  --exam-bar-bg: #1d2f4e;
+  --exam-navbar-bg: #16233b;
+  --exam-current: #e0a72e;
+  --exam-flag: #d9455f;
   --radius: 10px;
   --radius-sm: 6px;
   --shadow-1: 0 1px 2px rgba(22, 35, 59, 0.06), 0 1px 3px rgba(22, 35, 59, 0.08);
@@ -226,48 +230,190 @@ main {
 .btn-brand { background: var(--brand); color: #fff; }
 .btn-brand:hover { filter: brightness(0.94); }
 
-/* ---------- Exam shell ---------- */
+/* ---------- Exam shell : IELTS-style top bar ---------- */
 .exam-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 18px;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--exam-bar-bg, #1d2f4e);
+  border: 1px solid var(--exam-bar-bg, #1d2f4e);
   border-radius: var(--radius);
-  padding: 12px 18px;
+  padding: 10px 16px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-1);
   position: sticky;
   top: 68px;
   z-index: 40;
+  color: #fff;
 }
-.exam-bar .section-name {
+.exam-bar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.exam-bar-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.25); }
+.exam-bar-brand {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.55);
+}
+.exam-bar-section {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.02rem;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.exam-bar .divider { width: 1px; height: 22px; background: var(--line); }
-.exam-bar .answered-count { color: var(--ink-soft); font-size: 0.85rem; }
-.exam-bar .spacer { flex: 1; }
-.timer-pill {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  color: var(--ink);
+.exam-bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.exam-bar .answered-count {
+  color: rgba(255,255,255,0.75);
+  font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.timer-pill.warning {
-  background: var(--bad-soft);
+.exam-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.exam-tool-btn:hover { background: rgba(255,255,255,0.2); }
+
+.exam-timer-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  min-width: 108px;
+}
+.exam-timer-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+}
+.exam-timer-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+.exam-timer-box.warning {
+  background: var(--bad);
   border-color: var(--bad);
-  color: var(--bad);
   animation: pulse 1.2s infinite;
 }
+.exam-timer-box.warning .exam-timer-label,
+.exam-timer-box.warning .exam-timer-value { color: #fff; }
 @keyframes pulse { 50% { opacity: 0.55; } }
+
+/* ---------- Settings popover ---------- */
+.settings-wrap { position: relative; }
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-2);
+  padding: 12px;
+  z-index: 60;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding: 6px 0;
+}
+.settings-btns { display: flex; gap: 4px; }
+.settings-btns button {
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 5px;
+  width: 26px;
+  height: 26px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+.settings-btns button:nth-child(2) { font-size: 0.9rem; }
+.settings-btns button:nth-child(3) { font-size: 1.05rem; }
+.settings-btns button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.settings-toggle {
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Text-size scaling applied to the exam material + answer sheet */
+.exam-shell.text-lg .content-text,
+.exam-shell.text-lg .sheet-cell input,
+.exam-shell.text-lg .inline-input,
+.exam-shell.text-lg textarea.essay { font-size: 1.14em; }
+.exam-shell.text-xl .content-text,
+.exam-shell.text-xl .sheet-cell input,
+.exam-shell.text-xl .inline-input,
+.exam-shell.text-xl textarea.essay { font-size: 1.3em; }
+
+/* "Hide" — simulates the real exam's break/hide-test feature */
+.exam-shell.is-hidden { position: relative; min-height: 240px; }
+.exam-shell.is-hidden > * { visibility: hidden; }
+.exam-shell.is-hidden::after {
+  content: "Test hidden. Click \"Resume test\" above to continue.";
+  visibility: visible;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 40px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+/* High-contrast accessibility mode (mirrors the real exam's Settings) */
+body.high-contrast { background: #000; color: #ffe066; }
+body.high-contrast .topbar,
+body.high-contrast .exam-material,
+body.high-contrast .exam-answers,
+body.high-contrast .settings-panel,
+body.high-contrast .mock-card,
+body.high-contrast .test-row { background: #000 !important; color: #ffe066 !important; border-color: #444 !important; }
+body.high-contrast .sheet-cell,
+body.high-contrast .inline-input,
+body.high-contrast textarea.essay { background: #111 !important; color: #ffe066 !important; border-color: #555 !important; }
+body.high-contrast .exam-navbar { background: #000; border-top-color: #444; }
+body.high-contrast .navq-num { background: #111; color: #ffe066; border-color: #555; }
 
 .exam-shell {
   display: flex;
@@ -385,6 +531,94 @@ main {
   border-top: 1px solid var(--line);
 }
 .submit-area .btn { width: 100%; padding: 12px; font-size: 0.95rem; }
+
+/* ---------- Bottom question navigator (real IELTS "review" bar) ---------- */
+body.has-exam-navbar { padding-bottom: 96px; }
+.exam-navbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  display: flex;
+  align-items: stretch;
+  background: var(--exam-navbar-bg);
+  border-top: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 -4px 14px rgba(0,0,0,0.18);
+}
+.navbar-arrow {
+  flex: 0 0 44px;
+  border: none;
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.navbar-arrow:hover { background: rgba(255,255,255,0.14); }
+.exam-navbar-scroll {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  overflow-x: auto;
+  padding: 8px 16px;
+  scrollbar-width: thin;
+}
+.navq-group { display: flex; align-items: center; gap: 8px; flex: none; }
+.navq-group-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.45);
+  white-space: nowrap;
+  margin-right: 2px;
+}
+.navq-row { display: flex; gap: 5px; flex: none; }
+.navq { position: relative; flex: none; }
+.navq-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.28);
+  background: transparent;
+  color: rgba(255,255,255,0.85);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.navq-num:hover { border-color: #fff; }
+.navq.is-answered .navq-num { background: #fff; color: var(--exam-navbar-bg); border-color: #fff; }
+.navq.is-current .navq-num { border-color: var(--exam-current); box-shadow: 0 0 0 2px var(--exam-current); }
+.navq-flag {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.navq-flag::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  transition: background 0.12s, transform 0.12s;
+}
+.navq-flag:hover::before { transform: scale(1.15); }
+.navq.is-flagged .navq-flag::before { background: var(--exam-flag); }
+@media (max-width: 900px) {
+  .exam-navbar-scroll { gap: 14px; padding: 8px 10px; }
+  body.has-exam-navbar { padding-bottom: 84px; }
+}
 
 /* ---------- Listening ---------- */
 .listening-part { margin-bottom: 26px; }
@@ -801,6 +1035,7 @@ table.history .mono { font-family: var(--font-mono); font-variant-numeric: tabul
   .exam-shell { flex-direction: column; }
   .exam-material, .exam-answers { max-height: none; width: 100%; }
   .exam-bar { top: 60px; flex-wrap: wrap; gap: 10px; }
+  .exam-bar-right { width: 100%; justify-content: space-between; }
   main { padding: 20px 16px 48px; }
 }
 

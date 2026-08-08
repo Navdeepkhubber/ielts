@@ -22,6 +22,7 @@ async function api(path, opts) {
 }
 
 function loading(label) {
+  document.body.classList.remove("has-exam-navbar");
   app.innerHTML = `<div class="loading"><div class="spinner"></div><span>${esc(label)}</span></div>`;
 }
 
@@ -298,10 +299,15 @@ function wireAnswerSheet(container) {
       const done = inputs.filter(i => i.value.trim() !== "").length;
       counter.textContent = `${done} / ${inputs.length} answered`;
     }
+    if (inputs.length) syncNavAnswered(inputs[0].id.split("-")[0]);
   };
 
   inputs.forEach((inp, idx) => {
     inp.addEventListener("input", refresh);
+    inp.addEventListener("focus", () => {
+      const [prefix, q] = inp.id.split("-");
+      syncNavCurrent(prefix, q);
+    });
     inp.addEventListener("keydown", e => {
       if (e.key === "Enter" && inputs[idx + 1]) { e.preventDefault(); inputs[idx + 1].focus(); }
     });
@@ -323,13 +329,40 @@ function unansweredCount(prefix) {
 function examBarHtml(sectionName, { mockId } = {}) {
   return `
     <div class="exam-bar">
-      <button class="btn-exit" data-action="exitExam" data-mock="${esc(mockId || "")}" title="Exit this test">&larr; Exit</button>
-      <span class="divider"></span>
-      <span class="section-name">${esc(sectionName)}</span>
-      <span class="divider"></span>
-      <span class="answered-count" id="answeredCount"></span>
-      <span class="spacer"></span>
-      <span class="timer-pill" id="timerPill">--:--</span>
+      <div class="exam-bar-left">
+        <button class="btn-exit" data-action="exitExam" data-mock="${esc(mockId || "")}" title="Exit this test">&larr; Exit</button>
+        <span class="exam-bar-divider"></span>
+        <span class="exam-bar-brand">IELTS</span>
+        <span class="exam-bar-section">${esc(sectionName)}</span>
+      </div>
+      <div class="exam-bar-right">
+        <span class="answered-count" id="answeredCount"></span>
+        <div class="settings-wrap">
+          <button class="exam-tool-btn" data-action="toggleSettings" id="settingsBtn" aria-haspopup="true" aria-label="Settings">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.4 4.6l-1.4 1.4M6 12.6l-1.4 1.4M15.4 15.4l-1.4-1.4M6 7.4 4.6 6"/></svg>
+            Settings
+          </button>
+          <div class="settings-panel" id="settingsPanel" hidden>
+            <div class="settings-row">
+              <span>Text size</span>
+              <div class="settings-btns">
+                <button data-action="setFontScale" data-scale="md" class="active" aria-label="Normal text size">A</button>
+                <button data-action="setFontScale" data-scale="lg" aria-label="Large text size">A</button>
+                <button data-action="setFontScale" data-scale="xl" aria-label="Extra large text size">A</button>
+              </div>
+            </div>
+            <div class="settings-row">
+              <span>High contrast</span>
+              <button class="settings-toggle" data-action="toggleContrast" id="contrastToggle">Off</button>
+            </div>
+          </div>
+        </div>
+        <button class="exam-tool-btn" data-action="toggleHide" id="hideBtn">Hide</button>
+        <div class="exam-timer-box" id="timerPill">
+          <span class="exam-timer-label">Time remaining</span>
+          <span class="exam-timer-value" id="timerValue">--:--</span>
+        </div>
+      </div>
     </div>`;
 }
 routes.exitExam = d => {
@@ -340,12 +373,102 @@ routes.exitExam = d => {
     onConfirm: () => { examInProgress = false; stopActiveListeningAudio(); clearTimer(); d.mock ? renderMockTests(d.mock) : renderHome(); },
   });
 };
+routes.toggleSettings = () => {
+  const p = document.getElementById("settingsPanel");
+  if (p) p.hidden = !p.hidden;
+};
+routes.setFontScale = d => {
+  const shell = document.querySelector(".exam-shell");
+  if (shell) {
+    shell.classList.remove("text-lg", "text-xl");
+    if (d.scale !== "md") shell.classList.add(`text-${d.scale}`);
+  }
+  document.querySelectorAll(".settings-btns button").forEach(b => b.classList.toggle("active", b.dataset.scale === d.scale));
+};
+routes.toggleHide = () => {
+  const shell = document.querySelector(".exam-shell");
+  const btn = document.getElementById("hideBtn");
+  if (!shell || !btn) return;
+  const hidden = shell.classList.toggle("is-hidden");
+  btn.textContent = hidden ? "Resume test" : "Hide";
+};
+routes.toggleContrast = () => {
+  const on = document.body.classList.toggle("high-contrast");
+  const btn = document.getElementById("contrastToggle");
+  if (btn) btn.textContent = on ? "On" : "Off";
+};
+routes.jumpTo = d => {
+  const input = document.getElementById(d.target);
+  if (input) { input.focus(); input.scrollIntoView({ behavior: "smooth", block: "center" }); }
+};
+routes.toggleFlag = d => {
+  const nav = document.getElementById(`navq-${d.target}`);
+  if (nav) nav.classList.toggle("is-flagged");
+};
+routes.navPrev = () => stepQuestion(window._navPrefix, -1);
+routes.navNext = () => stepQuestion(window._navPrefix, 1);
+
+document.addEventListener("click", e => {
+  const panel = document.getElementById("settingsPanel");
+  if (panel && !panel.hidden && !e.target.closest(".settings-wrap")) panel.hidden = true;
+});
 
 function tickTimer(remaining, warnAt) {
-  const pill = document.getElementById("timerPill");
-  if (!pill) return;
-  pill.textContent = fmtTime(remaining);
-  if (remaining <= warnAt) pill.classList.add("warning");
+  const box = document.getElementById("timerPill");
+  const val = document.getElementById("timerValue");
+  if (!box || !val) return;
+  val.textContent = fmtTime(remaining);
+  if (remaining <= warnAt) box.classList.add("warning");
+}
+
+/* ---------------- bottom question navigator ---------------- */
+
+function navBarHtml(groups, prefix) {
+  const groupsHtml = groups.map(g => {
+    let btns = "";
+    for (let q = g.from; q <= g.to; q++) {
+      const target = `${prefix}-${q}`;
+      btns += `
+        <div class="navq" id="navq-${target}">
+          <button class="navq-num" data-action="jumpTo" data-target="${target}" aria-label="Go to question ${q}">${q}</button>
+          <button class="navq-flag" data-action="toggleFlag" data-target="${target}" aria-label="Flag question ${q} for review"></button>
+        </div>`;
+    }
+    return `<div class="navq-group"><span class="navq-group-label">${esc(g.label)}</span><div class="navq-row">${btns}</div></div>`;
+  }).join("");
+  return `
+    <div class="exam-navbar">
+      <button class="navbar-arrow" data-action="navPrev" aria-label="Previous question">&#10094;</button>
+      <div class="exam-navbar-scroll">${groupsHtml}</div>
+      <button class="navbar-arrow" data-action="navNext" aria-label="Next question">&#10095;</button>
+    </div>`;
+}
+
+function syncNavAnswered(prefix) {
+  document.querySelectorAll(`.exam-answers [id^="${prefix}-"]`).forEach(inp => {
+    const q = inp.id.split("-")[1];
+    const nav = document.getElementById(`navq-${prefix}-${q}`);
+    if (nav) nav.classList.toggle("is-answered", inp.value.trim() !== "");
+  });
+}
+
+function syncNavCurrent(prefix, q) {
+  document.querySelectorAll(".navq.is-current").forEach(n => n.classList.remove("is-current"));
+  const nav = document.getElementById(`navq-${prefix}-${q}`);
+  if (nav) {
+    nav.classList.add("is-current");
+    nav.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }
+}
+
+function stepQuestion(prefix, dir) {
+  if (!prefix) return;
+  const inputs = [...document.querySelectorAll(`.exam-answers [id^="${prefix}-"]`)];
+  if (!inputs.length) return;
+  const activeIdx = inputs.findIndex(i => i.id === document.activeElement?.id);
+  const idx = activeIdx === -1 ? 0 : Math.min(inputs.length - 1, Math.max(0, activeIdx + dir));
+  inputs[idx].focus();
+  inputs[idx].scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 /* ---------------- text view (extracted content) ---------------- */
@@ -398,6 +521,7 @@ function wireInlineInputs(container) {
       sheet.value = inp.value;
       sheet.dispatchEvent(new Event("input"));
     });
+    inp.addEventListener("focus", () => syncNavCurrent(prefix, q));
     sheet.addEventListener("input", () => {
       if (document.activeElement !== inp) inp.value = sheet.value;
     });
@@ -473,12 +597,16 @@ async function startReading(mockId, testName) {
           <button class="btn btn-primary" id="submitBtn">Submit reading</button>
         </div>
       </div>
-    </div>`;
+    </div>
+    ${navBarHtml(groups, "ans")}`;
 
   examInProgress = true;
+  window._navPrefix = "ans";
+  document.body.classList.add("has-exam-navbar");
   wireAnswerSheet(app);
   wireInlineInputs(app);
   wireViewToggle(app);
+  syncNavAnswered("ans");
   document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
 
   const doSubmit = auto => submitSection({
@@ -559,12 +687,16 @@ async function startListening(mockId, testName) {
           <button class="btn btn-primary" id="submitBtn">Submit listening</button>
         </div>
       </div>
-    </div>`;
+    </div>
+    ${navBarHtml(groups, "lans")}`;
 
   examInProgress = true;
+  window._navPrefix = "lans";
+  document.body.classList.add("has-exam-navbar");
   wireAnswerSheet(app);
   wireInlineInputs(app);
   wireViewToggle(app);
+  syncNavAnswered("lans");
   document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
 
   // Exam-condition audio: plays exactly once, no pause, no seeking, no

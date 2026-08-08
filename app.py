@@ -243,6 +243,110 @@ def api_manual_score(attempt_id):
     return jsonify({"correct_count": correct_count, "total": total, "band_estimate": band})
 
 
+@app.route("/api/attempts/<int:attempt_id>/detail")
+def api_attempt_detail(attempt_id):
+    """
+    Full reconstructed result for a past attempt -- same shape the results
+    page uses right after submitting (results/correct_count/total/
+    band_estimate), plus mock_id/test_name/section, so a historical
+    attempt from Progress can be viewed with the exact same analysis UI
+    (tiles, per-part breakdown, filterable review, answer-key page viewer)
+    instead of just a bare band number.
+    """
+    attempt = storage.get_attempt(attempt_id)
+    if attempt is None:
+        abort(404, "No such attempt")
+    if attempt["section"] not in ("reading", "listening"):
+        abort(400, "Only reading/listening sections have a full analysis view")
+    if not attempt["detail_json"]:
+        abort(404, "No per-question detail recorded for this attempt")
+
+    mock_id, test_name = attempt["test_id"].split("::", 1)
+    results = json.loads(attempt["detail_json"])
+    unmarkable_count = sum(1 for r in results.values() if r.get("is_correct") is None)
+    return jsonify({
+        "mock_id": mock_id,
+        "test_name": test_name,
+        "section": attempt["section"],
+        "results": results,
+        "correct_count": attempt["correct_count"],
+        "total": attempt["total"],
+        "unmarkable_count": unmarkable_count,
+        "band_estimate": attempt["band_estimate"],
+        "time_taken_seconds": attempt["time_taken_seconds"],
+        "manually_scored": bool(attempt["manually_scored"]),
+        "unmarked": attempt["correct_count"] is None and attempt["total"] is not None
+                    and unmarkable_count == len(results),
+    })
+
+
+@app.route("/api/attempts/<int:attempt_id>/remark", methods=["POST"])
+def api_remark_attempt(attempt_id):
+    """
+    Re-marks a past attempt against the CURRENT answer key -- for when a
+    mistake in the answer key (a common occurrence with OCR-extracted
+    keys) gets fixed after the fact. Without this, a corrected key only
+    affects attempts taken from then on; the already-stored correct_count/
+    band for earlier attempts stays frozen against the old, wrong key.
+    Re-scores using the answers the person actually gave (from the stored
+    detail_json), never asks them to retype anything.
+
+    Refuses (hard guard, not just a UI hide) to touch an attempt whose
+    score was entered by hand (manually_scored=1) -- that count came from
+    the person checking their own answers against the physical book, which
+    the JSON answer key may still be entirely or partially blank for.
+    Re-deriving from that blank/partial key would silently overwrite a
+    real manual tally with nothing (or a wrong partial count), which is
+    exactly the kind of silent data loss this endpoint must never cause.
+    """
+    attempt = storage.get_attempt(attempt_id)
+    if attempt is None:
+        abort(404, "No such attempt")
+    if attempt["section"] not in ("reading", "listening"):
+        abort(400, "Only reading/listening sections can be re-marked")
+    if attempt["manually_scored"]:
+        abort(400, "This score was entered by hand, not derived from the answer key -- "
+                    "re-checking would risk overwriting it with an incomplete auto-mark. "
+                    "Edit the score directly with 'Enter score' instead if it needs correcting.")
+    if not attempt["detail_json"]:
+        abort(404, "No per-question detail recorded for this attempt -- nothing to re-mark")
+
+    mock_id, test_name = attempt["test_id"].split("::", 1)
+    old_results = json.loads(attempt["detail_json"])
+    given_answers = {q: r.get("given", "") for q, r in old_results.items()}
+
+    # Confirm the mock/test still genuinely exists BEFORE touching anything.
+    # load_answers() returns {} both when a mock/test is gone AND when the
+    # answers file just hasn't been created -- neither should be silently
+    # treated as "the key is blank, mark this unmarked", or a real existing
+    # score would get destroyed by a missing-file/missing-mock condition
+    # rather than an actual, legitimate blank key.
+    try:
+        test_loader.load_test_config(mock_id, test_name)
+    except FileNotFoundError:
+        abort(404, "This mock/test no longer exists on disk -- nothing was changed")
+
+    answers_path = os.path.join(test_loader.mock_folder(mock_id), "answers", test_name, f"{attempt['section']}.json")
+    if not os.path.isfile(answers_path):
+        abort(404, f"answers/{test_name}/{attempt['section']}.json is missing entirely -- nothing was changed")
+
+    answer_key = test_loader.load_answers(mock_id, test_name, attempt["section"])
+    variant = _variant_for_test_id(attempt["test_id"])
+    result = scoring.mark_section(given_answers, answer_key, section=attempt["section"], variant=variant)
+
+    if result.get("unmarked"):
+        storage.update_full_score(attempt_id, None, result["total"], None, result["results"])
+    else:
+        storage.update_full_score(
+            attempt_id, result["correct_count"], result["total"], result["band_estimate"], result["results"]
+        )
+    result["mock_id"] = mock_id
+    result["test_name"] = test_name
+    result["section"] = attempt["section"]
+    result["time_taken_seconds"] = attempt["time_taken_seconds"]
+    return jsonify(result)
+
+
 @app.route("/api/attempts/<int:attempt_id>/band-explanation")
 def api_band_explanation(attempt_id):
     """Full working behind an attempt's band estimate, for the 'how was
