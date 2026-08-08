@@ -17,15 +17,13 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-prd.txt .
+RUN pip install --no-cache-dir -r requirements-prd.txt
 
 COPY . .
 
 ENV FLASK_DEBUG=0
-ENV PORT=8080
-EXPOSE 8080
-
+EXPOSE 10000
 # 1 worker, 4 threads: fits Render's free-tier 0.1 CPU/512MB comfortably.
 # Raise --workers if you move to a paid tier with more CPU. --timeout is
 # generous for the first (uncached) render of a PDF page.
