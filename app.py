@@ -11,7 +11,7 @@ app = Flask(__name__)
 @app.route("/health")
 def health():
     return "OK", 200
-    
+
 _is_debug = os.environ.get("FLASK_DEBUG", "1") == "1"
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 if not app.secret_key:
@@ -245,7 +245,7 @@ def auth_session():
 @app.route("/logout", methods=["POST"])
 def logout():
     session.clear()
-    return redirect(url_for("landing"))
+    return redirect("https://ieltsband.com")
 
 
 @app.route("/app")
