@@ -259,18 +259,6 @@
 }
 
 /* ---------- auth pages ---------- */
-.lp-back-link {
-  position: fixed;
-  top: 22px;
-  left: 22px;
-  color: var(--paper);
-  opacity: 0.75;
-  font-size: 13.5px;
-  text-decoration: none;
-  z-index: 10;
-}
-.lp-back-link:hover { opacity: 1; text-decoration: underline; }
-
 .lp-auth-wrap {
   min-height: 100vh;
   display: flex;
@@ -335,6 +323,7 @@
   color: var(--ink-soft);
 }
 .lp-auth-switch a { color: var(--brand); font-weight: 600; text-decoration: none; }
+.lp-auth-switch a:hover { text-decoration: none; }
 
 .lp-btn-google {
   width: 100%;

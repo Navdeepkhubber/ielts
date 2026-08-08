@@ -11,7 +11,7 @@ app = Flask(__name__)
 @app.route("/health")
 def health():
     return "OK", 200
-
+    
 _is_debug = os.environ.get("FLASK_DEBUG", "1") == "1"
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 if not app.secret_key:
@@ -29,13 +29,20 @@ if not app.secret_key:
             "python3 -c \"import secrets; print(secrets.token_hex(32))\""
         )
 
-# ---------- Subdomains (auth.<domain> / dashboard.<domain>) ----------
+# ---------- Subdomain (app.<domain>) ----------
 #
 # Entirely inert -- and the rest of the app behaves exactly as before --
 # unless PUBLIC_BASE_DOMAIN is set. It's only set in production (see
-# SETUP.md), specifically so local dev never needs "dashboard.localhost"
-# or any DNS setup at all: every existing /login, /signup, /app URL keeps
+# SETUP.md), specifically so local dev never needs "app.localhost" or any
+# DNS setup at all: every existing /login, /signup, /app URL keeps
 # working unchanged locally.
+#
+# Login/signup and the dashboard share ONE subdomain (not two separate
+# ones) so the whole site needs only 2 custom domains total (apex +
+# this one) -- Render's free tier caps custom domains at 2, and a third
+# costs money for no functional benefit here. Sharing one host also
+# means login and the dashboard never need a cross-domain redirect at
+# all: every `next` value stays a same-host relative path.
 #
 # This deliberately does NOT use Flask's built-in subdomain_matching +
 # SERVER_NAME -- that requires the Host header to match SERVER_NAME
@@ -46,54 +53,38 @@ if not app.secret_key:
 PUBLIC_BASE_DOMAIN = os.environ.get("PUBLIC_BASE_DOMAIN", "").strip().lower() or None
 
 
-def _auth_host():
-    return f"auth.{PUBLIC_BASE_DOMAIN}" if PUBLIC_BASE_DOMAIN else None
+def _app_host():
+    return f"app.{PUBLIC_BASE_DOMAIN}" if PUBLIC_BASE_DOMAIN else None
 
 
-def _dashboard_host():
-    return f"dashboard.{PUBLIC_BASE_DOMAIN}" if PUBLIC_BASE_DOMAIN else None
-
-
-def _dashboard_origin():
-    return f"https://{_dashboard_host()}" if PUBLIC_BASE_DOMAIN else None
+def _app_origin():
+    return f"https://{_app_host()}" if PUBLIC_BASE_DOMAIN else None
 
 
 def _dashboard_url():
     """Where a logged-in visitor belongs. On the apex/local-dev path this
-    is unchanged ("/app"); once subdomains are configured, the dashboard
-    lives at its own subdomain root instead."""
+    is unchanged ("/app"); once the subdomain is configured, the
+    dashboard lives at its own subdomain root instead."""
     if PUBLIC_BASE_DOMAIN:
-        return f"{_dashboard_origin()}/"
+        return f"{_app_origin()}/"
     return url_for("app_shell")
 
 
 def _is_safe_next(value):
-    """Used for the `next` param on /login. Anything same-host-relative
-    is always fine (the existing, pre-subdomain behavior). An absolute
-    URL is only ever allowed if it points at one of our own known hosts
-    -- never arbitrary user-supplied absolute URLs, which would be an
-    open-redirect hole."""
-    if not value:
-        return False
-    if value.startswith("/") and not value.startswith("//"):
-        return True
-    if not PUBLIC_BASE_DOMAIN:
-        return False
-    from urllib.parse import urlparse
-    try:
-        parsed = urlparse(value)
-    except Exception:
-        return False
-    allowed_hosts = {PUBLIC_BASE_DOMAIN, f"www.{PUBLIC_BASE_DOMAIN}", _auth_host(), _dashboard_host()}
-    return parsed.scheme == "https" and parsed.netloc in allowed_hosts
+    """Used for the `next` param on /login. Same-host relative paths
+    only -- there's no cross-domain case to support now that login/
+    signup and the dashboard all live on the same app.<domain>
+    subdomain, so this stays a plain open-redirect guard rather than
+    needing an allowlist of external hosts."""
+    return bool(value) and value.startswith("/") and not value.startswith("//")
 
 
 if PUBLIC_BASE_DOMAIN:
-    # Share the session cookie across the apex domain and its auth./
-    # dashboard. subdomains -- by default Flask's session cookie is
-    # host-only (tied to the exact host that set it), which would mean
-    # logging in on auth.<domain> wouldn't be visible on
-    # dashboard.<domain> at all.
+    # Share the session cookie between the apex domain and app.<domain>
+    # -- by default Flask's session cookie is host-only (tied to the
+    # exact host that set it), which would otherwise mean a session
+    # started on one wouldn't be recognized on the other (e.g. an old
+    # bookmark to the bare apex /app).
     app.config["SESSION_COOKIE_DOMAIN"] = f".{PUBLIC_BASE_DOMAIN}"
     app.config["SESSION_COOKIE_SECURE"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -105,30 +96,25 @@ def _route_by_subdomain():
         return None
 
     host = request.host.split(":")[0].lower()
-    auth_host = _auth_host()
-    dashboard_host = _dashboard_host()
+    app_host = _app_host()
 
     if host in (PUBLIC_BASE_DOMAIN, f"www.{PUBLIC_BASE_DOMAIN}"):
-        # From the bare apex/www, send /login, /signup, /app to their
-        # dedicated subdomains -- one canonical URL per page in production.
+        # From the bare apex/www, send /login, /signup, /app to the
+        # subdomain -- one canonical URL per page in production.
         if request.path in ("/login", "/signup"):
             qs = f"?{request.query_string.decode()}" if request.query_string else ""
-            return redirect(f"https://{auth_host}{request.path}{qs}", code=301)
+            return redirect(f"{_app_origin()}{request.path}{qs}", code=301)
         if request.path == "/app" or request.path.startswith("/app/"):
             dest = request.path[len("/app"):] or "/"
-            return redirect(f"https://{dashboard_host}{dest}", code=301)
+            return redirect(f"{_app_origin()}{dest}", code=301)
         return None
 
-    if host == auth_host and request.path == "/":
-        qs = f"?{request.query_string.decode()}" if request.query_string else ""
-        return redirect(f"/login{qs}", code=302)
-
-    if host == dashboard_host and request.path == "/":
+    if host == app_host and request.path == "/":
         # Serve the app shell directly at the bare subdomain root (rather
         # than redirecting to .../app on the same host), so the address
-        # bar shows exactly "dashboard.<domain>" with no extra path.
+        # bar shows exactly "app.<domain>" with no extra path.
         if session.get("user_id") is None:
-            return redirect(f"https://{auth_host}/login?next={_dashboard_origin()}/", code=302)
+            return redirect("/login", code=302)
         return app_shell.__wrapped__()
 
     return None
@@ -204,8 +190,8 @@ def login():
         return redirect(_dashboard_url())
     next_path = request.args.get("next")
     if not _is_safe_next(next_path):
-        next_path = _dashboard_url()
-    return render_template("login.html", next=next_path, dashboard_origin=_dashboard_origin())
+        next_path = "/" if PUBLIC_BASE_DOMAIN else url_for("app_shell")
+    return render_template("login.html", next=next_path)
 
 
 @app.route("/auth/session", methods=["POST"])

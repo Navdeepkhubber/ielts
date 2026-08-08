@@ -11,9 +11,9 @@
 <link rel="stylesheet" href="/static/css/landing.css">
 </head>
 <body class="lp-body">
-  <a href="/" class="lp-back-link">&larr; Back to home</a>
   <div class="lp-auth-wrap">
     <div class="lp-auth-card">
+      <p class="lp-auth-switch" style="margin-top:0; margin-bottom:18px;"><a href="/">&larr; Back to home</a></p>
       <a href="/" class="wordmark" style="text-decoration:none;">
         <span class="wordmark-badge">IB</span>
         <span class="wordmark-text">IELTSBand</span>
@@ -81,7 +81,6 @@
   </script>
   <script>
     const nextPath = {{ next|tojson }};
-    const dashboardOrigin = {{ dashboard_origin|tojson }};
     const noticeEl = document.getElementById('notice');
     const googleBtn = document.getElementById('google-btn');
     const form = document.getElementById('login-form');
@@ -126,16 +125,10 @@
     function clearNotice() { noticeEl.innerHTML = ''; }
 
     function safeNext() {
-      // Same-host relative path -- the original, pre-subdomain behavior.
       if (typeof nextPath === 'string' && nextPath.startsWith('/') && !nextPath.startsWith('//')) {
         return nextPath;
       }
-      // Cross-domain to the dashboard subdomain -- only ever this one
-      // specific, server-provided origin, never an arbitrary absolute URL.
-      if (dashboardOrigin && typeof nextPath === 'string' && nextPath.startsWith(dashboardOrigin)) {
-        return nextPath;
-      }
-      return dashboardOrigin ? `${dashboardOrigin}/` : '/app';
+      return '/app';
     }
 
     async function postSession(idToken) {

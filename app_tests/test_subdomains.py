@@ -1,218 +1,131 @@
-def test_landing_page_loads(client):
-    assert client.get("/").status_code == 200
+"""
+Tests for the app.<domain> subdomain routing in app.py.
+
+Login/signup and the dashboard deliberately share ONE subdomain (not
+separate auth./dashboard. ones) so the whole site needs only 2 custom
+domains total (apex + this one) -- Render's free tier caps custom
+domains at 2, and a third costs money for no functional benefit here.
+
+Two things matter:
+1. With PUBLIC_BASE_DOMAIN unset (the default, and always true for local
+   dev and the rest of this test suite), none of this logic should ever
+   fire -- see test_smoke.py, which already exercises /, /login,
+   /signup, /app on the default host and passes unchanged.
+2. With PUBLIC_BASE_DOMAIN set, apex->subdomain redirects and the
+   subdomain root (serving the app shell directly when logged in, or
+   redirecting to /login on the SAME host when logged out) all need to
+   behave correctly.
+"""
+import importlib
+
+import pytest
 
 
-def test_login_and_signup_pages_render(client):
-    r_login = client.get("/login")
-    r_signup = client.get("/signup")
-    assert r_login.status_code == 200
-    assert r_signup.status_code == 200
+@pytest.fixture
+def subdomain_client(monkeypatch, fake_db):
+    """A test client for a *fresh* app module with PUBLIC_BASE_DOMAIN
+    configured -- reloaded so the module-level PUBLIC_BASE_DOMAIN/
+    SESSION_COOKIE_DOMAIN config actually picks up the env var."""
+    monkeypatch.setenv("PUBLIC_BASE_DOMAIN", "ieltsband.com")
+    monkeypatch.setenv("FLASK_SECRET_KEY", "test-secret-not-for-production")
+    monkeypatch.setenv("FLASK_DEBUG", "1")
 
-    signup_html = r_signup.data.decode()
-    assert "check-length" in signup_html
-    assert "check-number" in signup_html
-    assert "check-special" in signup_html
-    assert "password-toggle" in signup_html
-    assert "contact@ieltsband.com" in signup_html
-
-    login_html = r_login.data.decode()
-    assert "password-toggle" in login_html
-    assert "contact@ieltsband.com" in login_html
-
-
-def test_app_shell_requires_login(client):
-    r = client.get("/app")
-    assert r.status_code == 302
-
-
-def test_protected_api_requires_login(client):
-    r = client.get("/api/mocks")
-    assert r.status_code == 401
-    assert r.get_json()["error"] == "login required"
-
-
-def test_verified_email_login_creates_session(client, verified_token):
-    r = client.post("/auth/session", json={"idToken": "fake"})
-    assert r.status_code == 200
-    assert r.get_json() == {"ok": True}
-    assert client.get("/app").status_code == 200
-    assert client.get("/api/me").get_json()["email"] == "test@example.com"
-
-
-def test_unverified_email_password_is_rejected(client, monkeypatch):
-    import lib.firebase_admin_setup as fas
     import app as flaskapp
+    importlib.reload(flaskapp)
+    monkeypatch.setattr(flaskapp.firebase_admin_setup, "db", lambda: fake_db)
+
+    flaskapp.app.config.update(TESTING=True)
+    client = flaskapp.app.test_client()
+    yield client, flaskapp
+
+    # Reload back to the unconfigured state so later tests (which import
+    # `app` fresh via the `client` fixture) aren't affected by this
+    # module-level mutation leaking across tests.
+    monkeypatch.delenv("PUBLIC_BASE_DOMAIN", raising=False)
+    importlib.reload(flaskapp)
+
+
+def test_apex_login_redirects_to_app_subdomain(subdomain_client):
+    client, _ = subdomain_client
+    r = client.get("/login", base_url="https://ieltsband.com")
+    assert r.status_code == 301
+    assert r.headers["Location"] == "https://app.ieltsband.com/login"
+
+
+def test_apex_signup_redirects_to_app_subdomain(subdomain_client):
+    client, _ = subdomain_client
+    r = client.get("/signup", base_url="https://ieltsband.com")
+    assert r.status_code == 301
+    assert r.headers["Location"] == "https://app.ieltsband.com/signup"
+
+
+def test_apex_app_redirects_to_subdomain_root(subdomain_client):
+    client, _ = subdomain_client
+    r = client.get("/app", base_url="https://ieltsband.com")
+    assert r.status_code == 301
+    assert r.headers["Location"] == "https://app.ieltsband.com/"
+
+
+def test_apex_landing_page_unaffected(subdomain_client):
+    client, _ = subdomain_client
+    r = client.get("/", base_url="https://ieltsband.com")
+    assert r.status_code == 200
+
+
+def test_subdomain_root_redirects_to_login_when_logged_out(subdomain_client):
+    client, _ = subdomain_client
+    r = client.get("/", base_url="https://app.ieltsband.com")
+    assert r.status_code == 302
+    assert r.headers["Location"] == "/login"
+
+
+def test_subdomain_login_page_renders(subdomain_client):
+    client, _ = subdomain_client
+    r = client.get("/login", base_url="https://app.ieltsband.com")
+    assert r.status_code == 200
+
+
+def test_subdomain_root_serves_app_shell_when_logged_in(subdomain_client, monkeypatch):
+    client, flaskapp = subdomain_client
 
     def fake_verify(id_token):
         return {
-            "uid": "unverified-uid", "email": "unverified@example.com",
-            "email_verified": False, "name": "Unverified",
-            "firebase": {"sign_in_provider": "password"},
+            "uid": "sub-test-uid", "email": "sub@example.com", "email_verified": True,
+            "name": "Sub Test", "firebase": {"sign_in_provider": "password"},
         }
-
-    monkeypatch.setattr(fas, "verify_id_token", fake_verify)
     monkeypatch.setattr(flaskapp.firebase_admin_setup, "verify_id_token", fake_verify)
 
-    r = client.post("/auth/session", json={"idToken": "fake"})
-    assert r.status_code == 403
-    assert client.get("/app").status_code == 302
-
-
-def test_google_signin_bypasses_email_verification(client, monkeypatch):
-    import lib.firebase_admin_setup as fas
-    import app as flaskapp
-
-    def fake_verify(id_token):
-        return {
-            "uid": "google-uid", "email": "googleuser@example.com",
-            "email_verified": False,  # Firebase doesn't set this for Google, by design
-            "name": "Google User", "firebase": {"sign_in_provider": "google.com"},
-        }
-
-    monkeypatch.setattr(fas, "verify_id_token", fake_verify)
-    monkeypatch.setattr(flaskapp.firebase_admin_setup, "verify_id_token", fake_verify)
-
-    r = client.post("/auth/session", json={"idToken": "fake"})
+    # Log in and land on the app shell -- both on the SAME app.<domain>
+    # subdomain now, so this also exercises the ordinary same-host
+    # session flow, not a cross-domain cookie-sharing scenario.
+    r = client.post(
+        "/auth/session", json={"idToken": "fake"}, base_url="https://app.ieltsband.com"
+    )
     assert r.status_code == 200
 
-
-def test_missing_id_token_is_rejected(client):
-    r = client.post("/auth/session", json={})
-    assert r.status_code == 400
-
-
-def test_token_verification_failure_gives_diagnosable_error(client, monkeypatch):
-    """Regression test: a verification failure must not silently swallow
-    the real reason. In debug mode (as tests run), the response should
-    include the underlying exception detail rather than only the generic
-    user-facing message, so this failure mode is actually diagnosable."""
-    import lib.firebase_admin_setup as fas
-    import app as flaskapp
-
-    def fake_verify_raises(id_token):
-        raise ValueError("service account project does not match token audience")
-
-    monkeypatch.setattr(fas, "verify_id_token", fake_verify_raises)
-    monkeypatch.setattr(flaskapp.firebase_admin_setup, "verify_id_token", fake_verify_raises)
-
-    r = client.post("/auth/session", json={"idToken": "fake"})
-    assert r.status_code == 401
-    assert "debug detail" in r.get_json()["error"]
-    assert "does not match token audience" in r.get_json()["error"]
-
-
-def test_attempt_lifecycle_and_history(client, verified_token):
-    import lib.storage as storage_mod
-
-    client.post("/auth/session", json={"idToken": "fake"})
-
-    attempt_id = storage_mod.start_attempt(
-        "Mock 19::Test 1", "reading", 3600, user_id="test-uid"
-    )
-    assert isinstance(attempt_id, str)  # Firestore doc ids are strings, not ints
-
-    detail = {"1": {"given": "TRUE", "correct": "TRUE", "is_correct": True}}
-    storage_mod.submit_attempt(
-        attempt_id, correct_count=1, total=1, band_estimate=9.0, detail=detail
-    )
-
-    r = client.get(f"/api/attempts/{attempt_id}/detail")
+    r = client.get("/", base_url="https://app.ieltsband.com")
     assert r.status_code == 200
-    body = r.get_json()
-    assert body["correct_count"] == 1
-    assert body["results"] == detail
-
-    r = client.get("/api/history")
-    assert r.status_code == 200
-    assert len(r.get_json()) == 1
-
-    r = client.get(f"/api/attempts/{attempt_id}/band-explanation")
-    assert r.status_code == 200
+    assert b"IELTSBand" in r.data
 
 
-def test_history_filtered_by_test_id_supports_the_test_list_completion_badges(client, verified_token):
-    """renderMockTests() in app.js now calls GET /api/history?test_id=...
-    per test to show sectional-vs-complete-mock progress. This pins down
-    that the filter actually narrows results correctly, since that's the
-    whole basis for the badge logic being accurate."""
-    import lib.storage as storage_mod
-
-    client.post("/auth/session", json={"idToken": "fake"})
-
-    # Two different tests within the same mock, plus a different mock
-    # entirely -- the filter must isolate exactly the right test_id.
-    for section in ("listening", "reading", "writing"):
-        aid = storage_mod.start_attempt("Mock 19::Test 1", section, 3600, user_id="test-uid")
-        storage_mod.submit_attempt(aid, correct_count=30, total=40, band_estimate=7.0, detail={})
-
-    aid = storage_mod.start_attempt("Mock 19::Test 2", "listening", 2400, user_id="test-uid")
-    storage_mod.submit_attempt(aid, correct_count=20, total=40, band_estimate=6.0, detail={})
-
-    aid = storage_mod.start_attempt("Mock 20::Test 1", "reading", 3600, user_id="test-uid")
-    storage_mod.submit_attempt(aid, correct_count=35, total=40, band_estimate=8.0, detail={})
-
-    r = client.get("/api/history?test_id=Mock 19::Test 1")
-    sections = {row["section"] for row in r.get_json()}
-    assert sections == {"listening", "reading", "writing"}
-
-    r = client.get("/api/history?test_id=Mock 19::Test 2")
-    sections = {row["section"] for row in r.get_json()}
-    assert sections == {"listening"}
-
-
-def test_manual_score_then_remark_is_refused(client, verified_token):
-    import lib.storage as storage_mod
-
-    client.post("/auth/session", json={"idToken": "fake"})
-    attempt_id = storage_mod.start_attempt(
-        "Mock 19::Test 1", "reading", 3600, user_id="test-uid"
+def test_next_param_rejects_arbitrary_external_url(subdomain_client):
+    """The open-redirect guard: an attacker-supplied ?next= pointing at a
+    domain we don't own must never be honored."""
+    client, _ = subdomain_client
+    r = client.get(
+        "/login?next=https://evil.example.com/phish",
+        base_url="https://app.ieltsband.com",
     )
-    storage_mod.submit_attempt(
-        attempt_id, correct_count=None, total=40,
-        detail={str(i): {"given": "", "correct": "X", "is_correct": None} for i in range(1, 41)},
-    )
-
-    r = client.post(f"/api/attempts/{attempt_id}/manual-score", json={"correct_count": 30})
     assert r.status_code == 200
-    assert r.get_json()["correct_count"] == 30
-
-    # A hand-tallied score must never be silently overwritten by re-marking
-    # against the (possibly still-blank) JSON answer key.
-    r = client.post(f"/api/attempts/{attempt_id}/remark")
-    assert r.status_code == 400
+    body = r.data.decode()
+    assert "evil.example.com" not in body
 
 
-def test_cross_user_cannot_see_or_touch_others_attempt(client, verified_token, monkeypatch):
-    import app as flaskapp
-    import lib.firebase_admin_setup as fas
-    import lib.storage as storage_mod
-
-    client.post("/auth/session", json={"idToken": "fake"})
-    attempt_id = storage_mod.start_attempt(
-        "Mock 19::Test 1", "reading", 3600, user_id="test-uid"
+def test_next_param_accepts_relative_path(subdomain_client):
+    client, _ = subdomain_client
+    r = client.get(
+        "/login?next=/app",
+        base_url="https://app.ieltsband.com",
     )
-    storage_mod.submit_attempt(attempt_id, correct_count=1, total=1, band_estimate=9.0, detail={})
-
-    def fake_verify_bob(id_token):
-        return {
-            "uid": "bob-uid", "email": "bob@example.com", "email_verified": True,
-            "name": "Bob", "firebase": {"sign_in_provider": "google.com"},
-        }
-
-    monkeypatch.setattr(fas, "verify_id_token", fake_verify_bob)
-    monkeypatch.setattr(flaskapp.firebase_admin_setup, "verify_id_token", fake_verify_bob)
-
-    bob_client = flaskapp.app.test_client()
-    bob_client.post("/auth/session", json={"idToken": "fake-bob"})
-
-    assert bob_client.get(f"/api/attempts/{attempt_id}/detail").status_code == 404
-    assert bob_client.get("/api/history").get_json() == []
-
-
-def test_logout_clears_session(client, verified_token):
-    client.post("/auth/session", json={"idToken": "fake"})
-    assert client.get("/app").status_code == 200
-
-    r = client.post("/logout")
-    assert r.status_code == 302
-    assert client.get("/app").status_code == 302
+    assert r.status_code == 200
+    assert '"/app"' in r.data.decode()

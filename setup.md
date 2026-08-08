@@ -230,15 +230,23 @@ pip install -r requirements-prod.txt -r requirements-test.txt
 pytest app_tests -v
 ```
 
-## Subdomains: auth.ieltsband.com / dashboard.ieltsband.com
+## Subdomain: app.ieltsband.com
 
-Login/signup now live at `auth.ieltsband.com`, and the app itself lives
-at `dashboard.ieltsband.com` (as its own clean root URL, not
-`dashboard.ieltsband.com/app`). This is **entirely off by default** — it
-only activates once you set one environment variable, specifically so
-local development never needs any of this (no `/etc/hosts` tricks, no
-`dashboard.localhost`): every existing `/login`, `/signup`, `/app` URL
-keeps working exactly as before unless you opt in.
+Login, signup, and the app itself all live at `app.ieltsband.com` (the
+dashboard as its own clean root URL, not `app.ieltsband.com/app`). This
+is **entirely off by default** — it only activates once you set one
+environment variable, specifically so local development never needs any
+of this (no `/etc/hosts` tricks, no `app.localhost`): every existing
+`/login`, `/signup`, `/app` URL keeps working exactly as before unless
+you opt in.
+
+Login/signup and the dashboard deliberately share **one** subdomain
+rather than two separate ones (`auth.` + `dashboard.`, which an earlier
+version of this used) — Render's free tier caps custom domains at 2, and
+apex + two subdomains is 3. One subdomain keeps the whole setup inside
+the free allotment, with no functional downside: login and the
+dashboard never needed to be on different hosts, that was just an
+earlier design choice.
 
 ### 1. Add the environment variable
 
@@ -246,63 +254,49 @@ On Render (or wherever you deploy): **Environment → Environment
 Variables** → add `PUBLIC_BASE_DOMAIN` = `ieltsband.com` (no `https://`,
 no subdomain — just the bare domain).
 
-### 2. Add the two subdomains in Render
+### 2. Add the subdomain in Render
 
-**Settings → Custom Domains → Add Custom Domain**, once for each:
-- `auth.ieltsband.com`
-- `dashboard.ieltsband.com`
+**Settings → Custom Domains → Add Custom Domain** → `app.ieltsband.com`.
 
-Render shows the exact DNS record for each (typically a `CNAME` pointing
-at your `<something>.onrender.com` address) — add those at your domain
-registrar the same way you did for the apex domain. Each gets its own
-free managed TLS certificate once DNS verifies.
+That's domain #2 (apex is #1) — both fit inside Render's free 2 custom
+domains, no extra cost. Render shows the exact DNS record (typically a
+`CNAME` pointing at your `<something>.onrender.com` address) — add that
+at your domain registrar the same way you did for the apex domain. It
+gets its own free managed TLS certificate once DNS verifies.
 
-**Cost note**: Render's Hobby free tier includes 2 free custom domains.
-With the apex domain already using one, adding both `auth.` and
-`dashboard.` puts you at 3 total — the third costs $0.25/month. Still
-effectively free, just not literally $0 anymore if you want all three.
+### 3. Add the subdomain to Firebase's authorized domains
 
-### 3. Add both subdomains to Firebase's authorized domains
-
-**Firebase Console → Authentication → Settings → Authorized domains** —
-add:
-- `auth.ieltsband.com` (Firebase Auth actually runs here now — Google
-  sign-in and email/password both happen on this page)
-- `dashboard.ieltsband.com` (the app shell also loads the Firebase SDK,
-  just to sign out of the *client-side* Firebase session on logout)
-
-Sign-in silently fails on any domain not in that list.
+**Firebase Console → Authentication → Settings → Authorized domains** →
+add `app.ieltsband.com`. Sign-in silently fails on any domain not in
+that list.
 
 ### How it works (so `git commit` history explains itself later)
 
 There's deliberately no DNS-level content routing — Render doesn't offer
 that for custom domains; every domain you add just points at the same
-running service. All the actual "which page for which subdomain" logic
-lives in one `before_request` hook in `app.py`
-(`_route_by_subdomain`), which only runs at all when `PUBLIC_BASE_DOMAIN`
-is set:
+running service. All the actual "which page for which host" logic lives
+in one `before_request` hook in `app.py` (`_route_by_subdomain`), which
+only runs at all when `PUBLIC_BASE_DOMAIN` is set:
 
-- Visiting the apex `/login`, `/signup`, or `/app` redirects to the
-  matching subdomain (301 — permanent, since these are the new canonical
-  URLs).
-- `auth.ieltsband.com/` redirects to `/login` on the same subdomain.
-- `dashboard.ieltsband.com/` serves the app shell directly if logged in,
-  or bounces to `auth.ieltsband.com/login?next=...` if not — and that
-  `next` value is validated server-side against a fixed allowlist of our
-  own hosts before it's ever honored, so this can't become an
-  open-redirect hole via a crafted link.
+- Visiting the apex `/login`, `/signup`, or `/app` redirects to
+  `app.ieltsband.com` (301 — permanent, since these are the new
+  canonical URLs).
+- `app.ieltsband.com/` serves the app shell directly if logged in, or
+  redirects to `/login` (same host — a plain relative redirect, no
+  cross-domain handling needed at all now) if not.
 - The Flask session cookie is configured (only when `PUBLIC_BASE_DOMAIN`
-  is set) with `SESSION_COOKIE_DOMAIN=".ieltsband.com"`, so logging in on
-  `auth.ieltsband.com` is recognized on `dashboard.ieltsband.com` too —
-  by default Flask's session cookie is tied to the exact host that set
-  it, which would otherwise mean logging in on one subdomain wouldn't be
-  visible on another at all.
+  is set) with `SESSION_COOKIE_DOMAIN=".ieltsband.com"`, so a session is
+  recognized on both the apex and the subdomain — mostly relevant for an
+  old bookmark straight to the apex's `/app`.
+- The `next` param on `/login` only ever accepts same-host relative
+  paths now (no allowlist of external hosts needed, unlike the earlier
+  two-subdomain version) — a plain, simple open-redirect guard.
 
-I tested all of this (the apex→subdomain redirects, the auth-root
-redirect, the dashboard-root behavior both logged in and out, the
-shared-cookie-across-subdomains behavior specifically, and the
-open-redirect guard on `next`) against a version of the app with
-`PUBLIC_BASE_DOMAIN` set — see `app_tests/test_subdomains.py`.
+I tested all of this (the apex→subdomain redirects, the subdomain-root
+behavior both logged in and out, and the open-redirect guard on `next`)
+against a version of the app with `PUBLIC_BASE_DOMAIN` set — see
+`app_tests/test_subdomains.py`.
+
 
 ## What's still local (and why)
 
