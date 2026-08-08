@@ -19,8 +19,8 @@
       <span class="wordmark-text">IELTSBand</span>
     </div>
     <div class="lp-nav-links">
-      <a href="#how-it-works">How it works</a>
-      <a href="#offerings">Offerings</a>
+      <a href="#how-it-works" data-scroll-to="how-it-works">How it works</a>
+      <a href="#offerings" data-scroll-to="offerings">Offerings</a>
       <a href="/login" class="lp-btn lp-btn-ghost">Log in</a>
       <a href="/signup" class="lp-btn lp-btn-primary">Start free</a>
     </div>
@@ -48,7 +48,7 @@
           <span class="lbl">Now sitting</span>
           <span class="val">Cambridge IELTS 18 · Test 3 · Reading</span>
         </div>
-        <div class="lp-timer">16:02</div>
+        <div class="lp-timer">17:04</div>
       </div>
       <div class="lp-ticket-passage">
         <span class="redact">The migration patterns observed</span> in the study
@@ -126,13 +126,25 @@
   </footer>
 
   <script>
+    // Smooth-scroll to in-page sections without ever touching the URL bar
+    // (no #hash appended) -- a plain <a href="#id"> jump both looks abrupt
+    // and leaves a stray fragment in the address bar on click.
+    document.querySelectorAll('[data-scroll-to]').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        var target = document.getElementById(link.dataset.scrollTo);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  </script>
+  <script>
     // Decorative countdown on the hero ticket -- purely cosmetic, no real attempt behind it.
     (function () {
       var el = document.querySelector('.lp-timer');
       if (!el) return;
-      var seconds = 16 * 60 + 2;
+      var seconds = 17 * 60 + 4;
       setInterval(function () {
-        seconds = seconds > 0 ? seconds - 1 : 16 * 60 + 2;
+        seconds = seconds > 0 ? seconds - 1 : 17 * 60 + 4;
         var m = String(Math.floor(seconds / 60)).padStart(2, '0');
         var s = String(seconds % 60).padStart(2, '0');
         el.textContent = m + ':' + s;

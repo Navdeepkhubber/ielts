@@ -243,24 +243,59 @@ async function renderMockTests(mockId) {
   const mock = await api(`/api/mocks/${encodeURIComponent(mockId)}`);
   const tests = Object.entries(mock.tests);
 
+  // Pull each test's completion status once, so the list can distinguish
+  // sectional practice (any single section, any time) from a complete
+  // mock (all three sections configured for this test have at least one
+  // submitted attempt each). This is read-only against the existing
+  // /api/history endpoint -- the exam-taking flow itself is untouched.
+  const statusByTest = {};
+  await Promise.all(tests.map(async ([name]) => {
+    const testId = `${mockId}::${name}`;
+    let rows = [];
+    try { rows = await api(`/api/history?test_id=${encodeURIComponent(testId)}`); }
+    catch { rows = []; }
+    statusByTest[name] = new Set(rows.map(r => r.section));
+  }));
+
   app.innerHTML = `
     <button class="back-link" data-action="goHome">&larr; All mocks</button>
     <div class="page-head">
       <h2>${esc(mock.mock_name)}</h2>
-      <p class="sub">Choose a section to sit under timed, exam-day conditions.</p>
+      <p class="sub">Practice a single section on its own, or work through all three for a complete mock.</p>
     </div>
-    ${tests.map(([name, cfg]) => `
+    ${tests.map(([name, cfg]) => {
+      const done = statusByTest[name] || new Set();
+      const configuredSections = ["listening", "reading", "writing"].filter(s => cfg[s]);
+      const doneCount = configuredSections.filter(s => done.has(s)).length;
+      const isComplete = configuredSections.length > 0 && doneCount === configuredSections.length;
+      const badgeHtml = isComplete
+        ? `<span class="mock-complete-badge">&check; Complete mock finished</span>`
+        : configuredSections.length > 1
+          ? `<span class="mock-progress-badge">${doneCount}/${configuredSections.length} sections done</span>`
+          : "";
+      return `
       <div class="test-row">
-        <h3>${esc(name)}</h3>
+        <div class="test-row-head">
+          <h3>${esc(name)}</h3>
+          ${badgeHtml}
+        </div>
+        <p class="test-row-caption">Sectional practice — sit any section on its own, under timed conditions:</p>
         <div class="section-buttons">
           <button class="btn ${cfg.listening ? "btn-primary" : ""}" ${cfg.listening ? "" : "disabled title='Not configured in manifest.json yet'"}
-                  data-action="startListening" data-mock="${esc(mockId)}" data-test="${esc(name)}">Listening</button>
+                  data-action="startListening" data-mock="${esc(mockId)}" data-test="${esc(name)}">
+            Listening${done.has("listening") ? ' <span class="done-check">&check;</span>' : ""}
+          </button>
           <button class="btn ${cfg.reading ? "btn-primary" : ""}" ${cfg.reading ? "" : "disabled title='Not configured in manifest.json yet'"}
-                  data-action="startReading" data-mock="${esc(mockId)}" data-test="${esc(name)}">Reading</button>
+                  data-action="startReading" data-mock="${esc(mockId)}" data-test="${esc(name)}">
+            Reading${done.has("reading") ? ' <span class="done-check">&check;</span>' : ""}
+          </button>
           <button class="btn ${cfg.writing ? "btn-primary" : ""}" ${cfg.writing ? "" : "disabled title='Not configured in manifest.json yet'"}
-                  data-action="startWriting" data-mock="${esc(mockId)}" data-test="${esc(name)}">Writing</button>
+                  data-action="startWriting" data-mock="${esc(mockId)}" data-test="${esc(name)}">
+            Writing${done.has("writing") ? ' <span class="done-check">&check;</span>' : ""}
+          </button>
         </div>
-      </div>`).join("")}
+      </div>`;
+    }).join("")}
   `;
 }
 routes.goHome = () => renderHome();
@@ -1141,35 +1176,81 @@ async function renderDashboard() {
     return;
   }
 
-  const scored = history.filter(h => h.band_estimate != null);
-  const best = scored.length ? Math.max(...scored.map(h => h.band_estimate)) : null;
-  const avg = scored.length ? (scored.reduce((a, h) => a + h.band_estimate, 0) / scored.length).toFixed(1) : null;
+  const SECTION_ORDER = ["reading", "listening", "writing"];
+  const SECTION_LABELS = { reading: "Reading", listening: "Listening", writing: "Writing" };
+
+  const bySection = {};
+  for (const h of history) {
+    (bySection[h.section] ||= []).push(h);
+  }
+
+  const sectionStats = SECTION_ORDER
+    .filter(s => bySection[s]?.length)
+    .concat(Object.keys(bySection).filter(s => !SECTION_ORDER.includes(s))) // any unexpected section names still show up, just after the known three
+    .map(section => {
+      const rows = bySection[section];
+      const scored = rows.filter(h => h.band_estimate != null);
+      const avg = scored.length ? scored.reduce((a, h) => a + h.band_estimate, 0) / scored.length : null;
+      const best = scored.length ? Math.max(...scored.map(h => h.band_estimate)) : null;
+      return { section, label: SECTION_LABELS[section] || section, count: rows.length, avg, best };
+    });
+
+  // Overall average is the mean of each section's own average, not every
+  // attempt pooled together -- otherwise a section you've drilled 20
+  // times would drown out one you've only tried twice. This mirrors how
+  // a real IELTS Overall Band averages the separate skill bands rather
+  // than pooling raw scores across however many times each was attempted.
+  const sectionAverages = sectionStats.filter(s => s.avg != null).map(s => s.avg);
+  const overallAvg = sectionAverages.length
+    ? (sectionAverages.reduce((a, b) => a + b, 0) / sectionAverages.length).toFixed(1)
+    : null;
+  const sectionBests = sectionStats.filter(s => s.best != null).map(s => s.best);
+  const overallBest = sectionBests.length ? Math.max(...sectionBests) : null;
+
+  const sectionCardsHtml = sectionStats.map(s => `
+    <div class="stat-card">
+      <div class="label">${esc(s.label)} average</div>
+      <div class="value band">${s.avg != null ? s.avg.toFixed(1) : "—"}</div>
+      <div class="sub-note">${s.count} attempt${s.count === 1 ? "" : "s"}${s.best != null ? ` · best ${s.best}` : ""}</div>
+    </div>`).join("");
+
+  function rowHtml(h) {
+    return `
+      <tr>
+        <td class="mono">${new Date(h.submitted_at * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</td>
+        <td>${esc(h.test_id.replace("::", " — "))}</td>
+        <td class="mono">${h.correct_count !== null ? `${h.correct_count}/${h.total}`
+          : (["reading", "listening"].includes(h.section) && h.total)
+            ? `<button class="btn-enter-score" data-action="enterScore" data-attempt="${h.id}" data-total="${h.total}">Enter score</button>`
+            : "—"}</td>
+        <td>${h.band_estimate != null ? `<span class="band-chip band-chip-clickable" data-action="showBand" data-attempt="${h.id}" title="Click to see how this was calculated">${h.band_estimate}</span>` : "—"}</td>
+        <td class="mono">${fmtTime(h.time_taken_seconds)}</td>
+      </tr>`;
+  }
+
+  const groupedTablesHtml = sectionStats.map(s => `
+    <div class="history-group">
+      <h3 class="history-group-title">${esc(s.label)} <span class="section-tag">${s.count} attempt${s.count === 1 ? "" : "s"}</span></h3>
+      <table class="history">
+        <tr><th>Date</th><th>Mock / test</th><th>Score</th><th>Band</th><th>Time</th></tr>
+        ${bySection[s.section].map(rowHtml).join("")}
+      </table>
+    </div>`).join("");
 
   app.innerHTML = `
     <div class="page-head">
       <h2>Progress</h2>
-      <p class="sub">Every attempt you've made, most recent first.</p>
+      <p class="sub">Your average band, by section, and every attempt underneath.</p>
     </div>
     <div class="stat-row">
       <div class="stat-card"><div class="label">Attempts</div><div class="value">${history.length}</div></div>
-      <div class="stat-card"><div class="label">Best band</div><div class="value band">${best ?? "—"}</div></div>
-      <div class="stat-card"><div class="label">Average band</div><div class="value band">${avg ?? "—"}</div></div>
+      <div class="stat-card"><div class="label">Overall average band</div><div class="value band">${overallAvg ?? "—"}</div></div>
+      <div class="stat-card"><div class="label">Best band</div><div class="value band">${overallBest ?? "—"}</div></div>
     </div>
-    <table class="history">
-      <tr><th>Date</th><th>Mock / test</th><th>Section</th><th>Score</th><th>Band</th><th>Time</th></tr>
-      ${history.map(h => `
-        <tr>
-          <td class="mono">${new Date(h.submitted_at * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</td>
-          <td>${esc(h.test_id.replace("::", " — "))}</td>
-          <td><span class="section-tag">${esc(h.section)}</span></td>
-          <td class="mono">${h.correct_count !== null ? `${h.correct_count}/${h.total}`
-            : (["reading", "listening"].includes(h.section) && h.total)
-              ? `<button class="btn-enter-score" data-action="enterScore" data-attempt="${h.id}" data-total="${h.total}">Enter score</button>`
-              : "—"}</td>
-          <td>${h.band_estimate != null ? `<span class="band-chip band-chip-clickable" data-action="showBand" data-attempt="${h.id}" title="Click to see how this was calculated">${h.band_estimate}</span>` : "—"}</td>
-          <td class="mono">${fmtTime(h.time_taken_seconds)}</td>
-        </tr>`).join("")}
-    </table>`;
+    <div class="stat-row stat-row-sectional">
+      ${sectionCardsHtml}
+    </div>
+    ${groupedTablesHtml}`;
 }
 
 /* ---------------- boot ---------------- */

@@ -204,11 +204,17 @@ main {
   padding: 18px 22px;
   margin-bottom: 12px;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  box-shadow: var(--shadow-1);
+}
+.test-row-head {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
-  box-shadow: var(--shadow-1);
 }
 .test-row h3 {
   font-family: var(--font-display);
@@ -216,6 +222,29 @@ main {
   font-weight: 600;
   margin: 0;
 }
+.test-row-caption {
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  margin: 0;
+}
+.mock-complete-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--good-soft);
+  color: var(--good);
+}
+.mock-progress-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+}
+.done-check { color: var(--good); }
 .section-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn {
   border: none;
@@ -968,6 +997,23 @@ table.history .mono { font-family: var(--font-mono); font-variant-numeric: tabul
   border: 1px solid var(--line);
   color: var(--ink-soft);
   text-transform: capitalize;
+}
+
+.stat-row-sectional { margin-top: -10px; }
+.stat-card .sub-note {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  margin-top: 4px;
+}
+
+.history-group { margin-bottom: 22px; }
+.history-group-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 10px;
+  padding-left: 2px;
 }
 
 /* ---------- Empty & loading states ---------- */

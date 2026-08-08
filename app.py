@@ -7,9 +7,6 @@ from lib import test_loader, pdf_render, scoring, storage, scaffold, report, aut
 from lib.auth import login_required
 
 app = Flask(__name__)
-@app.route("/health")
-def health():
-    return "OK", 200
 
 _is_debug = os.environ.get("FLASK_DEBUG", "1") == "1"
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
@@ -27,6 +24,110 @@ if not app.secret_key:
             "verify it, and logins fail unpredictably. Generate one with: "
             "python3 -c \"import secrets; print(secrets.token_hex(32))\""
         )
+
+# ---------- Subdomains (auth.<domain> / dashboard.<domain>) ----------
+#
+# Entirely inert -- and the rest of the app behaves exactly as before --
+# unless PUBLIC_BASE_DOMAIN is set. It's only set in production (see
+# SETUP.md), specifically so local dev never needs "dashboard.localhost"
+# or any DNS setup at all: every existing /login, /signup, /app URL keeps
+# working unchanged locally.
+#
+# This deliberately does NOT use Flask's built-in subdomain_matching +
+# SERVER_NAME -- that requires the Host header to match SERVER_NAME
+# exactly (including port), which is a well-known footgun for local dev,
+# and by default makes every route that doesn't explicitly declare a
+# subdomain stop matching non-apex hosts at all. Plain host-based
+# redirects in a before_request hook (below) sidestep both problems.
+PUBLIC_BASE_DOMAIN = os.environ.get("PUBLIC_BASE_DOMAIN", "").strip().lower() or None
+
+
+def _auth_host():
+    return f"auth.{PUBLIC_BASE_DOMAIN}" if PUBLIC_BASE_DOMAIN else None
+
+
+def _dashboard_host():
+    return f"dashboard.{PUBLIC_BASE_DOMAIN}" if PUBLIC_BASE_DOMAIN else None
+
+
+def _dashboard_origin():
+    return f"https://{_dashboard_host()}" if PUBLIC_BASE_DOMAIN else None
+
+
+def _dashboard_url():
+    """Where a logged-in visitor belongs. On the apex/local-dev path this
+    is unchanged ("/app"); once subdomains are configured, the dashboard
+    lives at its own subdomain root instead."""
+    if PUBLIC_BASE_DOMAIN:
+        return f"{_dashboard_origin()}/"
+    return url_for("app_shell")
+
+
+def _is_safe_next(value):
+    """Used for the `next` param on /login. Anything same-host-relative
+    is always fine (the existing, pre-subdomain behavior). An absolute
+    URL is only ever allowed if it points at one of our own known hosts
+    -- never arbitrary user-supplied absolute URLs, which would be an
+    open-redirect hole."""
+    if not value:
+        return False
+    if value.startswith("/") and not value.startswith("//"):
+        return True
+    if not PUBLIC_BASE_DOMAIN:
+        return False
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return False
+    allowed_hosts = {PUBLIC_BASE_DOMAIN, f"www.{PUBLIC_BASE_DOMAIN}", _auth_host(), _dashboard_host()}
+    return parsed.scheme == "https" and parsed.netloc in allowed_hosts
+
+
+if PUBLIC_BASE_DOMAIN:
+    # Share the session cookie across the apex domain and its auth./
+    # dashboard. subdomains -- by default Flask's session cookie is
+    # host-only (tied to the exact host that set it), which would mean
+    # logging in on auth.<domain> wouldn't be visible on
+    # dashboard.<domain> at all.
+    app.config["SESSION_COOKIE_DOMAIN"] = f".{PUBLIC_BASE_DOMAIN}"
+    app.config["SESSION_COOKIE_SECURE"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+
+@app.before_request
+def _route_by_subdomain():
+    if not PUBLIC_BASE_DOMAIN:
+        return None
+
+    host = request.host.split(":")[0].lower()
+    auth_host = _auth_host()
+    dashboard_host = _dashboard_host()
+
+    if host in (PUBLIC_BASE_DOMAIN, f"www.{PUBLIC_BASE_DOMAIN}"):
+        # From the bare apex/www, send /login, /signup, /app to their
+        # dedicated subdomains -- one canonical URL per page in production.
+        if request.path in ("/login", "/signup"):
+            qs = f"?{request.query_string.decode()}" if request.query_string else ""
+            return redirect(f"https://{auth_host}{request.path}{qs}", code=301)
+        if request.path == "/app" or request.path.startswith("/app/"):
+            dest = request.path[len("/app"):] or "/"
+            return redirect(f"https://{dashboard_host}{dest}", code=301)
+        return None
+
+    if host == auth_host and request.path == "/":
+        qs = f"?{request.query_string.decode()}" if request.query_string else ""
+        return redirect(f"/login{qs}", code=302)
+
+    if host == dashboard_host and request.path == "/":
+        # Serve the app shell directly at the bare subdomain root (rather
+        # than redirecting to .../app on the same host), so the address
+        # bar shows exactly "dashboard.<domain>" with no extra path.
+        if session.get("user_id") is None:
+            return redirect(f"https://{auth_host}/login?next={_dashboard_origin()}/", code=302)
+        return app_shell.__wrapped__()
+
+    return None
 
 
 def _run_scaffold_in_background():
@@ -79,7 +180,7 @@ def landing():
     """Public marketing/welcome page. Logged-in visitors are sent straight
     to the app instead of seeing the pitch for something they already use."""
     if session.get("user_id"):
-        return redirect(url_for("app_shell"))
+        return redirect(_dashboard_url())
     return render_template("landing.html")
 
 
@@ -89,16 +190,18 @@ def signup():
     via the Firebase SDK (Google popup, or createUserWithEmailAndPassword
     + a verification email), which then calls POST /auth/session below."""
     if session.get("user_id"):
-        return redirect(url_for("app_shell"))
+        return redirect(_dashboard_url())
     return render_template("signup.html")
 
 
 @app.route("/login")
 def login():
     if session.get("user_id"):
-        return redirect(url_for("app_shell"))
-    next_path = request.args.get("next") or url_for("app_shell")
-    return render_template("login.html", next=next_path)
+        return redirect(_dashboard_url())
+    next_path = request.args.get("next")
+    if not _is_safe_next(next_path):
+        next_path = _dashboard_url()
+    return render_template("login.html", next=next_path, dashboard_origin=_dashboard_origin())
 
 
 @app.route("/auth/session", methods=["POST"])

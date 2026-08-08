@@ -230,6 +230,80 @@ pip install -r requirements-prod.txt -r requirements-test.txt
 pytest app_tests -v
 ```
 
+## Subdomains: auth.ieltsband.com / dashboard.ieltsband.com
+
+Login/signup now live at `auth.ieltsband.com`, and the app itself lives
+at `dashboard.ieltsband.com` (as its own clean root URL, not
+`dashboard.ieltsband.com/app`). This is **entirely off by default** — it
+only activates once you set one environment variable, specifically so
+local development never needs any of this (no `/etc/hosts` tricks, no
+`dashboard.localhost`): every existing `/login`, `/signup`, `/app` URL
+keeps working exactly as before unless you opt in.
+
+### 1. Add the environment variable
+
+On Render (or wherever you deploy): **Environment → Environment
+Variables** → add `PUBLIC_BASE_DOMAIN` = `ieltsband.com` (no `https://`,
+no subdomain — just the bare domain).
+
+### 2. Add the two subdomains in Render
+
+**Settings → Custom Domains → Add Custom Domain**, once for each:
+- `auth.ieltsband.com`
+- `dashboard.ieltsband.com`
+
+Render shows the exact DNS record for each (typically a `CNAME` pointing
+at your `<something>.onrender.com` address) — add those at your domain
+registrar the same way you did for the apex domain. Each gets its own
+free managed TLS certificate once DNS verifies.
+
+**Cost note**: Render's Hobby free tier includes 2 free custom domains.
+With the apex domain already using one, adding both `auth.` and
+`dashboard.` puts you at 3 total — the third costs $0.25/month. Still
+effectively free, just not literally $0 anymore if you want all three.
+
+### 3. Add both subdomains to Firebase's authorized domains
+
+**Firebase Console → Authentication → Settings → Authorized domains** —
+add:
+- `auth.ieltsband.com` (Firebase Auth actually runs here now — Google
+  sign-in and email/password both happen on this page)
+- `dashboard.ieltsband.com` (the app shell also loads the Firebase SDK,
+  just to sign out of the *client-side* Firebase session on logout)
+
+Sign-in silently fails on any domain not in that list.
+
+### How it works (so `git commit` history explains itself later)
+
+There's deliberately no DNS-level content routing — Render doesn't offer
+that for custom domains; every domain you add just points at the same
+running service. All the actual "which page for which subdomain" logic
+lives in one `before_request` hook in `app.py`
+(`_route_by_subdomain`), which only runs at all when `PUBLIC_BASE_DOMAIN`
+is set:
+
+- Visiting the apex `/login`, `/signup`, or `/app` redirects to the
+  matching subdomain (301 — permanent, since these are the new canonical
+  URLs).
+- `auth.ieltsband.com/` redirects to `/login` on the same subdomain.
+- `dashboard.ieltsband.com/` serves the app shell directly if logged in,
+  or bounces to `auth.ieltsband.com/login?next=...` if not — and that
+  `next` value is validated server-side against a fixed allowlist of our
+  own hosts before it's ever honored, so this can't become an
+  open-redirect hole via a crafted link.
+- The Flask session cookie is configured (only when `PUBLIC_BASE_DOMAIN`
+  is set) with `SESSION_COOKIE_DOMAIN=".ieltsband.com"`, so logging in on
+  `auth.ieltsband.com` is recognized on `dashboard.ieltsband.com` too —
+  by default Flask's session cookie is tied to the exact host that set
+  it, which would otherwise mean logging in on one subdomain wouldn't be
+  visible on another at all.
+
+I tested all of this (the apex→subdomain redirects, the auth-root
+redirect, the dashboard-root behavior both logged in and out, the
+shared-cookie-across-subdomains behavior specifically, and the
+open-redirect guard on `next`) against a version of the app with
+`PUBLIC_BASE_DOMAIN` set — see `app_tests/test_subdomains.py`.
+
 ## What's still local (and why)
 
 The mock test content itself — `tests/` (PDFs, audio, manifests, answer
@@ -255,4 +329,3 @@ scaffolding writes files to disk, and in production you want your
 `tests/` folder already scaffolded *before* you build the image, not
 scanned at container startup. Scaffold locally, commit/bake in the
 result, then deploy.
-
