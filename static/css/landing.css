@@ -1,3 +1,12 @@
+/* ============================================================
+   Marketing pages (welcome / login / signup)
+   Reuses the app's own design tokens (see style.css :root) so the
+   pitch and the product never feel like two different brands.
+   Signature element: the "exam ticket" card in the hero -- a
+   countdown clock + wax-seal band stamp, echoing the actual timed,
+   auto-marked mock experience rather than a generic stat block.
+   ============================================================ */
+
 .lp-body {
   background: var(--ink);
   color: var(--paper);
@@ -250,6 +259,18 @@
 }
 
 /* ---------- auth pages ---------- */
+.lp-back-link {
+  position: fixed;
+  top: 22px;
+  left: 22px;
+  color: var(--paper);
+  opacity: 0.75;
+  font-size: 13.5px;
+  text-decoration: none;
+  z-index: 10;
+}
+.lp-back-link:hover { opacity: 1; text-decoration: underline; }
+
 .lp-auth-wrap {
   min-height: 100vh;
   display: flex;
@@ -450,6 +471,7 @@
 }
 .lp-password-checks li.met .dot svg { opacity: 1; }
 
+/* ---------- footer contact line (auth pages) ---------- */
 .lp-auth-contact {
   text-align: center;
   margin-top: 22px;
