@@ -45,13 +45,39 @@
         </div>
         <div class="lp-field">
           <label for="password">Password</label>
-          <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password">
-          <p class="lp-field-hint">At least 8 characters.</p>
+          <div class="lp-password-wrap">
+            <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password">
+            <button type="button" class="lp-password-toggle" id="password-toggle" aria-label="Show password">
+              <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 1 11s4 7 11 7a9.26 9.26 0 0 0 5.39-1.61M1 1l22 22"/>
+                <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/>
+              </svg>
+            </button>
+          </div>
+          <ul class="lp-password-checks" id="password-checks">
+            <li id="check-length" data-check="length">
+              <span class="dot"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M2 6l3 3 5-6"/></svg></span>
+              At least 8 characters
+            </li>
+            <li id="check-number" data-check="number">
+              <span class="dot"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M2 6l3 3 5-6"/></svg></span>
+              One number
+            </li>
+            <li id="check-special" data-check="special">
+              <span class="dot"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M2 6l3 3 5-6"/></svg></span>
+              One special character
+            </li>
+          </ul>
         </div>
         <button type="submit" id="submit-btn" class="lp-btn lp-btn-primary">Create account</button>
       </form>
 
       <p class="lp-auth-switch">Already have an account? <a href="/login">Log in</a></p>
+      <p class="lp-auth-contact">Need help? <a href="mailto:contact@ieltsband.com">contact@ieltsband.com</a></p>
     </div>
   </div>
 
@@ -72,6 +98,35 @@
     const googleBtn = document.getElementById('google-btn');
     const form = document.getElementById('signup-form');
     const submitBtn = document.getElementById('submit-btn');
+    const passwordInput = document.getElementById('password');
+
+    // Show/hide password
+    const toggleBtn = document.getElementById('password-toggle');
+    const eyeIcon = document.getElementById('eye-icon');
+    const eyeOffIcon = document.getElementById('eye-off-icon');
+    toggleBtn.addEventListener('click', () => {
+      const showing = passwordInput.type === 'text';
+      passwordInput.type = showing ? 'password' : 'text';
+      eyeIcon.style.display = showing ? '' : 'none';
+      eyeOffIcon.style.display = showing ? 'none' : '';
+      toggleBtn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    });
+
+    // Live password strength checklist
+    const checks = {
+      length: (v) => v.length >= 8,
+      number: (v) => /[0-9]/.test(v),
+      special: (v) => /[^A-Za-z0-9]/.test(v),
+    };
+    function passwordMeetsAllChecks(value) {
+      return Object.values(checks).every((fn) => fn(value));
+    }
+    passwordInput.addEventListener('input', () => {
+      const value = passwordInput.value;
+      for (const [name, fn] of Object.entries(checks)) {
+        document.getElementById(`check-${name}`).classList.toggle('met', fn(value));
+      }
+    });
 
     function showNotice(kind, html) {
       noticeEl.innerHTML = `<div class="lp-auth-notice ${kind}">${html}</div>`;
@@ -111,11 +166,17 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       clearNotice();
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Creating account…';
       const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+      const password = passwordInput.value;
+
+      if (!passwordMeetsAllChecks(password)) {
+        showNotice('info', 'Your password needs to meet all three requirements below before you can continue.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account…';
       try {
         const cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
         await cred.user.updateProfile({ displayName: name });

@@ -44,12 +44,25 @@
             <label for="password">Password</label>
             <button type="button" id="forgot-link" class="linklike">Forgot password?</button>
           </div>
-          <input type="password" id="password" name="password" required autocomplete="current-password">
+          <div class="lp-password-wrap">
+            <input type="password" id="password" name="password" required autocomplete="current-password">
+            <button type="button" class="lp-password-toggle" id="password-toggle" aria-label="Show password">
+              <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 1 11s4 7 11 7a9.26 9.26 0 0 0 5.39-1.61M1 1l22 22"/>
+                <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <button type="submit" id="submit-btn" class="lp-btn lp-btn-primary">Log in</button>
       </form>
 
       <p class="lp-auth-switch">New here? <a href="/signup">Create an account</a></p>
+      <p class="lp-auth-contact">Need help? <a href="mailto:contact@ieltsband.com">contact@ieltsband.com</a></p>
     </div>
   </div>
 
@@ -72,6 +85,18 @@
     const form = document.getElementById('login-form');
     const submitBtn = document.getElementById('submit-btn');
     const forgotLink = document.getElementById('forgot-link');
+    const passwordInput = document.getElementById('password');
+
+    const toggleBtn = document.getElementById('password-toggle');
+    const eyeIcon = document.getElementById('eye-icon');
+    const eyeOffIcon = document.getElementById('eye-off-icon');
+    toggleBtn.addEventListener('click', () => {
+      const showing = passwordInput.type === 'text';
+      passwordInput.type = showing ? 'password' : 'text';
+      eyeIcon.style.display = showing ? '' : 'none';
+      eyeOffIcon.style.display = showing ? 'none' : '';
+      toggleBtn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    });
 
     forgotLink.addEventListener('click', async () => {
       clearNotice();

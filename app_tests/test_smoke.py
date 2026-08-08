@@ -3,8 +3,21 @@ def test_landing_page_loads(client):
 
 
 def test_login_and_signup_pages_render(client):
-    assert client.get("/login").status_code == 200
-    assert client.get("/signup").status_code == 200
+    r_login = client.get("/login")
+    r_signup = client.get("/signup")
+    assert r_login.status_code == 200
+    assert r_signup.status_code == 200
+
+    signup_html = r_signup.data.decode()
+    assert "check-length" in signup_html
+    assert "check-number" in signup_html
+    assert "check-special" in signup_html
+    assert "password-toggle" in signup_html
+    assert "contact@ieltsband.com" in signup_html
+
+    login_html = r_login.data.decode()
+    assert "password-toggle" in login_html
+    assert "contact@ieltsband.com" in login_html
 
 
 def test_app_shell_requires_login(client):
@@ -66,6 +79,26 @@ def test_google_signin_bypasses_email_verification(client, monkeypatch):
 def test_missing_id_token_is_rejected(client):
     r = client.post("/auth/session", json={})
     assert r.status_code == 400
+
+
+def test_token_verification_failure_gives_diagnosable_error(client, monkeypatch):
+    """Regression test: a verification failure must not silently swallow
+    the real reason. In debug mode (as tests run), the response should
+    include the underlying exception detail rather than only the generic
+    user-facing message, so this failure mode is actually diagnosable."""
+    import lib.firebase_admin_setup as fas
+    import app as flaskapp
+
+    def fake_verify_raises(id_token):
+        raise ValueError("service account project does not match token audience")
+
+    monkeypatch.setattr(fas, "verify_id_token", fake_verify_raises)
+    monkeypatch.setattr(flaskapp.firebase_admin_setup, "verify_id_token", fake_verify_raises)
+
+    r = client.post("/auth/session", json={"idToken": "fake"})
+    assert r.status_code == 401
+    assert "debug detail" in r.get_json()["error"]
+    assert "does not match token audience" in r.get_json()["error"]
 
 
 def test_attempt_lifecycle_and_history(client, verified_token):

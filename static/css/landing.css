@@ -240,6 +240,7 @@
   color: var(--ink-faint);
   font-size: 13px;
 }
+.lp-footer a { color: inherit; text-decoration: underline; }
 
 @media (max-width: 860px) {
   .lp-hero { grid-template-columns: 1fr; padding-top: 40px; }
@@ -379,3 +380,80 @@
 }
 
 .lp-btn[disabled] { opacity: 0.65; cursor: not-allowed; }
+
+/* ---------- password field with visibility toggle ---------- */
+.lp-password-wrap {
+  position: relative;
+  display: flex;
+}
+.lp-password-wrap input {
+  padding-right: 40px;
+}
+.lp-password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lp-password-toggle:hover { color: var(--ink-soft); }
+.lp-password-toggle svg { width: 18px; height: 18px; }
+
+/* ---------- live password strength checklist ---------- */
+.lp-password-checks {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.lp-password-checks li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  transition: color 0.15s ease;
+}
+.lp-password-checks li .dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.lp-password-checks li .dot svg {
+  width: 9px;
+  height: 9px;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.lp-password-checks li.met {
+  color: var(--good);
+  font-weight: 600;
+}
+.lp-password-checks li.met .dot {
+  background: var(--good);
+  border-color: var(--good);
+}
+.lp-password-checks li.met .dot svg { opacity: 1; }
+
+.lp-auth-contact {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+.lp-auth-contact a { color: inherit; text-decoration: underline; }

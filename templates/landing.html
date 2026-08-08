@@ -120,14 +120,17 @@
     <a href="/signup" class="lp-btn lp-btn-primary">Start free</a>
   </div>
 
-  <footer class="lp-footer">IELTSBand — self-hosted mock exam platform.</footer>
+  <footer class="lp-footer">
+    IELTSBand — self-hosted mock exam platform. ·
+    <a href="mailto:contact@ieltsband.com">contact@ieltsband.com</a>
+  </footer>
 
   <script>
     // Decorative countdown on the hero ticket -- purely cosmetic, no real attempt behind it.
     (function () {
       var el = document.querySelector('.lp-timer');
       if (!el) return;
-      var seconds = 17 * 60 + 4;
+      var seconds = 16 * 60 + 2;
       setInterval(function () {
         seconds = seconds > 0 ? seconds - 1 : 16 * 60 + 2;
         var m = String(Math.floor(seconds / 60)).padStart(2, '0');

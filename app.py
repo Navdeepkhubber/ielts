@@ -8,10 +8,6 @@ from lib.auth import login_required
 
 app = Flask(__name__)
 
-@app.route("/health")
-def health():
-    return "OK", 200
-
 _is_debug = os.environ.get("FLASK_DEBUG", "1") == "1"
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 if not app.secret_key:
@@ -121,8 +117,21 @@ def auth_session():
 
     try:
         decoded = firebase_admin_setup.verify_id_token(id_token)
-    except Exception:
-        return jsonify({"error": "That sign-in couldn't be verified. Please try again."}), 401
+    except Exception as e:
+        # Always log the real reason server-side -- swallowing it entirely
+        # (the previous version of this handler did) makes this failure
+        # mode undiagnosable. Common causes: serviceAccountKey.json missing/
+        # wrong path, or belonging to a DIFFERENT Firebase project than the
+        # one static/js/firebase-config.js points the browser at (the token's
+        # audience won't match what the Admin SDK expects); the server's
+        # system clock being off; or Firebase Admin never having initialized
+        # at all (check for an earlier "Could not initialize Firebase Admin"
+        # error in the logs, from lib/firebase_admin_setup.py).
+        app.logger.exception("Firebase ID token verification failed")
+        message = "That sign-in couldn't be verified. Please try again."
+        if app.debug:
+            message += f" (debug detail: {e})"
+        return jsonify({"error": message}), 401
 
     provider = decoded.get("firebase", {}).get("sign_in_provider")
     if provider != "google.com" and not decoded.get("email_verified"):
