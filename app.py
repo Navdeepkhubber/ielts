@@ -16,8 +16,36 @@ except ImportError:
 
 from flask import Flask, jsonify, request, send_file, render_template, abort, session, redirect, url_for
 
-from lib import test_loader, pdf_render, scoring, storage, scaffold, report, auth, firebase_admin_setup
+import time
+
+_startup_time = time.perf_counter()
+
+from lib import test_loader
+print(f"[startup] test_loader: {time.perf_counter() - _startup_time:.2f}s", flush=True)
+
+from lib import pdf_render
+print(f"[startup] pdf_render: {time.perf_counter() - _startup_time:.2f}s", flush=True)
+
+from lib import scoring
+print(f"[startup] scoring: {time.perf_counter() - _startup_time:.2f}s", flush=True)
+
+from lib import storage
+print(f"[startup] storage: {time.perf_counter() - _startup_time:.2f}s", flush=True)
+
+from lib import scaffold
+print(f"[startup] scaffold: {time.perf_counter() - _startup_time:.2f}s", flush=True)
+
+from lib import report
+print(f"[startup] report: {time.perf_counter() - _startup_time:.2f}s", flush=True)
+
+from lib import auth
+print(f"[startup] auth: {time.perf_counter() - _startup_time:.2f}s", flush=True)
+
+from lib import firebase_admin_setup
+print(f"[startup] firebase_admin_setup: {time.perf_counter() - _startup_time:.2f}s", flush=True)
+
 from lib.auth import login_required
+print(f"[startup] ALL IMPORTS: {time.perf_counter() - _startup_time:.2f}s", flush=True)
 
 app = Flask(__name__)
 
