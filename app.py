@@ -215,6 +215,15 @@ def landing():
     return render_template("landing.html")
 
 
+@app.route("/band-calculator")
+def band_calculator_page():
+    """Public, no-login IELTS band score calculator. Deliberately reachable
+    whether or not the visitor is signed in / has an account -- it's a
+    top-of-funnel tool meant to be shared and linked to on its own, not
+    gated behind the product."""
+    return render_template("band-calculator.html")
+
+
 @app.route("/signup")
 def signup():
     """Rendering only -- the actual account creation happens client-side
@@ -299,6 +308,35 @@ def app_shell():
     """The actual exam portal (mock tests + progress) -- everything that
     used to live at '/'. Only reachable once logged in."""
     return render_template("index.html", user=auth.current_user())
+
+
+@app.route("/api/band-calculator", methods=["POST"])
+def api_band_calculator():
+    """Public, no-login band estimate lookup for the standalone calculator
+    page. Deliberately reuses scoring.band_explanation -- the exact same
+    table a real marked attempt is scored against -- rather than
+    duplicating the conversion tables here, so the two can never drift
+    apart.
+    """
+    data = request.get_json(silent=True) or {}
+
+    section = data.get("section")
+    if section not in ("reading", "listening"):
+        return jsonify({"error": "section must be 'reading' or 'listening'."}), 400
+
+    variant = data.get("variant", "academic")
+    if variant not in ("academic", "general"):
+        return jsonify({"error": "variant must be 'academic' or 'general'."}), 400
+
+    try:
+        correct_count = int(data.get("correct_count"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "correct_count must be a whole number."}), 400
+
+    if not 0 <= correct_count <= 40:
+        return jsonify({"error": "correct_count must be between 0 and 40."}), 400
+
+    return jsonify(scoring.band_explanation(correct_count, 40, section, variant))
 
 
 # ---------- Mock / test discovery ----------

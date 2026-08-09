@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IELTS Band Score Calculator — Free Reading &amp; Listening Converter | IELTSBand</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<meta name="description" content="Convert your raw IELTS Reading or Listening score (out of 40) into an estimated band score instantly. Free, no sign-up required, covers Academic and General Training.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/landing.css">
+<link rel="stylesheet" href="/static/css/calculator.css">
+</head>
+
+<body class="lp-body">
+
+  <div class="lp-nav-bar" id="site-nav">
+    <nav class="lp-nav">
+      <a href="/" class="wordmark" style="text-decoration:none;">
+        <span class="wordmark-badge">IB</span>
+        <span class="wordmark-text">IELTSBand</span>
+      </a>
+
+      <button
+        class="lp-nav-toggle"
+        id="nav-toggle"
+        aria-label="Menu"
+        aria-expanded="false"
+        aria-controls="nav-links"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="lp-nav-links" id="nav-links">
+        <a href="/#how-it-works">How it works</a>
+        <a href="/#offerings">Offerings</a>
+        <a href="/band-calculator">Band calculator</a>
+        <a href="/login" class="lp-btn lp-btn-ghost">Log in</a>
+        <a href="/signup" class="lp-btn lp-btn-primary">Start free</a>
+      </div>
+    </nav>
+  </div>
+  <div class="lp-nav-backdrop" id="nav-backdrop"></div>
+
+  <header class="calc-hero">
+    <p class="lp-eyebrow">Free tool · No sign-up required</p>
+    <h1>IELTS Band Score Calculator</h1>
+    <p class="lp-sub">
+      Enter your raw score out of 40 for Reading or Listening and get an
+      instant band estimate — the same conversion table our full mock
+      tests use to auto-mark real attempts.
+    </p>
+  </header>
+
+  <section class="calc-wrap">
+    <div class="calc-card">
+      <div class="calc-tabs" role="tablist" aria-label="Section">
+        <button type="button" class="calc-tab active" data-section="listening" role="tab" aria-selected="true">
+          Listening
+        </button>
+        <button type="button" class="calc-tab" data-section="reading" role="tab" aria-selected="false">
+          Reading
+        </button>
+      </div>
+
+      <div class="calc-variant" id="calc-variant" hidden>
+        <span class="calc-variant-label">Test type</span>
+        <div class="calc-variant-toggle">
+          <button type="button" class="calc-variant-btn active" data-variant="academic">Academic</button>
+          <button type="button" class="calc-variant-btn" data-variant="general">General Training</button>
+        </div>
+      </div>
+
+      <div class="calc-field">
+        <label for="calc-score">Correct answers <span class="calc-field-hint">(out of 40)</span></label>
+        <input
+          type="number"
+          id="calc-score"
+          min="0"
+          max="40"
+          step="1"
+          inputmode="numeric"
+          placeholder="e.g. 32"
+          autocomplete="off"
+        >
+        <input type="range" id="calc-slider" min="0" max="40" step="1" value="0">
+      </div>
+
+      <div class="calc-result" id="calc-result" hidden>
+        <div class="calc-result-band">
+          <span class="calc-result-num" id="calc-result-num">7.0</span>
+          <span class="calc-result-lbl">Estimated Band</span>
+        </div>
+        <p class="calc-result-detail" id="calc-result-detail"></p>
+      </div>
+
+      <p class="calc-error" id="calc-error" hidden></p>
+    </div>
+
+    <details class="calc-table-wrap">
+      <summary>See the full conversion table</summary>
+      <table class="calc-table" id="calc-table">
+        <thead>
+          <tr><th>Raw score (min.)</th><th>Band</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
+
+    <p class="calc-fineprint">
+      These are the standard published approximations used across IELTS
+      preparation resources — official scoring can vary slightly between
+      test versions. Reading uses different tables for Academic vs.
+      General Training; Listening is the same for both.
+    </p>
+
+    <div class="calc-cta">
+      <h2>Want the real thing?</h2>
+      <p>Sit a full, timed mock and get auto-marked the moment you submit — plus AI-graded Writing feedback.</p>
+      <a href="/signup" class="lp-btn lp-btn-primary">Create your free account</a>
+    </div>
+  </section>
+
+  <footer class="lp-footer">
+    <p>
+      IELTSBand is an independent IELTS preparation platform and is not
+      affiliated with, endorsed by, or officially associated with IELTS,
+      the British Council, IDP IELTS, or Cambridge University Press &amp; Assessment.
+      IELTS is a registered trademark of the IELTS Partners.
+    </p>
+
+    <p>
+      © 2026 IELTSBand ·
+      <a href="mailto:contact@ieltsband.com">contact@ieltsband.com</a>
+    </p>
+  </footer>
+
+  <script>
+    (function () {
+      var toggle = document.getElementById('nav-toggle');
+      var links = document.getElementById('nav-links');
+      var backdrop = document.getElementById('nav-backdrop');
+      var navBar = document.getElementById('site-nav');
+      if (!toggle || !links) return;
+
+      function setOpen(isOpen) {
+        links.classList.toggle('open', isOpen);
+        if (backdrop) backdrop.classList.toggle('open', isOpen);
+        if (navBar) navBar.classList.toggle('menu-open', isOpen);
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      }
+
+      toggle.addEventListener('click', function () { setOpen(!links.classList.contains('open')); });
+      links.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () { setOpen(false); });
+      });
+      if (backdrop) backdrop.addEventListener('click', function () { setOpen(false); });
+      window.addEventListener('scroll', function () {
+        if (links.classList.contains('open')) setOpen(false);
+      }, { passive: true });
+    })();
+  </script>
+
+  <script>
+    // Nav bar stays fixed/sticky at all times and fades while scrolling down.
+    (function () {
+      var navBar = document.getElementById('site-nav');
+      if (!navBar) return;
+
+      var lastY = window.scrollY;
+      var ticking = false;
+
+      function onScroll() {
+        var y = window.scrollY;
+
+        if (y < 40) {
+          navBar.classList.remove('faded');
+        } else if (y < lastY) {
+          navBar.classList.remove('faded');
+        } else if (y > lastY) {
+          navBar.classList.add('faded');
+        }
+
+        lastY = y;
+        ticking = false;
+      }
+
+      window.addEventListener('scroll', function () {
+        if (!ticking) {
+          requestAnimationFrame(onScroll);
+          ticking = true;
+        }
+      }, { passive: true });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var section = 'listening';
+      var variant = 'academic';
+
+      var tabs = document.querySelectorAll('.calc-tab');
+      var variantWrap = document.getElementById('calc-variant');
+      var variantBtns = document.querySelectorAll('.calc-variant-btn');
+      var scoreInput = document.getElementById('calc-score');
+      var slider = document.getElementById('calc-slider');
+      var resultBox = document.getElementById('calc-result');
+      var resultNum = document.getElementById('calc-result-num');
+      var resultDetail = document.getElementById('calc-result-detail');
+      var errorBox = document.getElementById('calc-error');
+      var tableBody = document.querySelector('#calc-table tbody');
+
+      var debounceTimer = null;
+
+      function setSection(next) {
+        section = next;
+        tabs.forEach(function (t) {
+          var active = t.dataset.section === section;
+          t.classList.toggle('active', active);
+          t.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        variantWrap.hidden = section !== 'reading';
+        compute();
+      }
+
+      function setVariant(next) {
+        variant = next;
+        variantBtns.forEach(function (b) {
+          b.classList.toggle('active', b.dataset.variant === variant);
+        });
+        compute();
+      }
+
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () { setSection(t.dataset.section); });
+      });
+      variantBtns.forEach(function (b) {
+        b.addEventListener('click', function () { setVariant(b.dataset.variant); });
+      });
+
+      scoreInput.addEventListener('input', function () {
+        var v = clamp(scoreInput.value);
+        slider.value = v === '' ? 0 : v;
+        debouncedCompute();
+      });
+      slider.addEventListener('input', function () {
+        scoreInput.value = slider.value;
+        debouncedCompute();
+      });
+
+      function clamp(raw) {
+        if (raw === '' || raw === null) return '';
+        var n = Math.max(0, Math.min(40, Math.round(Number(raw))));
+        return isNaN(n) ? '' : n;
+      }
+
+      function debouncedCompute() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(compute, 150);
+      }
+
+      function compute() {
+        var raw = scoreInput.value;
+        if (raw === '' || raw === null || isNaN(Number(raw))) {
+          resultBox.hidden = true;
+          errorBox.hidden = true;
+          tableBody.innerHTML = '';
+          return;
+        }
+
+        fetch('/api/band-calculator', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            section: section,
+            variant: variant,
+            correct_count: Number(raw),
+          }),
+        })
+          .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              errorBox.textContent = res.data.error || 'Something went wrong.';
+              errorBox.hidden = false;
+              resultBox.hidden = true;
+              return;
+            }
+            errorBox.hidden = true;
+            renderResult(res.data);
+          })
+          .catch(function () {
+            errorBox.textContent = 'Could not reach the server. Please try again.';
+            errorBox.hidden = false;
+            resultBox.hidden = true;
+          });
+      }
+
+      function renderResult(data) {
+        resultBox.hidden = false;
+        resultNum.textContent = data.band.toFixed(1);
+        resultDetail.textContent =
+          data.correct_count + ' / 40 correct on the ' + data.table_name + ' table \u2192 band ' + data.band.toFixed(1) + '.';
+
+        tableBody.innerHTML = '';
+        data.table.forEach(function (row) {
+          var tr = document.createElement('tr');
+          if (row.threshold === data.matched_threshold) tr.classList.add('calc-row-active');
+          var tdT = document.createElement('td');
+          tdT.textContent = row.threshold;
+          var tdB = document.createElement('td');
+          tdB.textContent = row.band.toFixed(1);
+          tr.appendChild(tdT);
+          tr.appendChild(tdB);
+          tableBody.appendChild(tr);
+        });
+      }
+
+      // Initial state: variant toggle hidden (starts on Listening).
+      variantWrap.hidden = true;
+    })();
+  </script>
+
+</body>
+</html>
