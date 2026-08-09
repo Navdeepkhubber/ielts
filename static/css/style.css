@@ -1586,3 +1586,38 @@ table.history .mono { font-family: var(--font-mono); font-variant-numeric: tabul
     display: none !important;
   }
 }
+
+
+/* ---------- Account / profile navigation ---------- */
+
+.account-profile-link {
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+
+.account-profile-link:hover {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.mobile-nav-link-anchor {
+  display: block;
+  text-decoration: none;
+}
+
+.mobile-nav-link-anchor:visited {
+  color: var(--ink-soft);
+}
+
+.mobile-nav-link-anchor:hover {
+  color: var(--ink);
+}
+
+.mobile-nav-link-anchor.active {
+  background: var(--ink);
+  color: #fff;
+}

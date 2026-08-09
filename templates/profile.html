@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IELTSBand — Profile</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css?v=3">
+<link rel="stylesheet" href="/static/css/profile.css?v=1">
+</head>
+<body class="profile-page">
+
+<header class="topbar" id="profile-topbar">
+  <a class="profile-wordmark" href="/app" aria-label="Back to IELTSBand">
+    <span class="wordmark-badge">IB</span>
+    <span class="wordmark-text">IELTSBand</span>
+  </a>
+
+  <nav class="profile-desktop-nav" aria-label="Account navigation">
+    <a href="/app">Tests</a>
+    <a href="/app#progress">Progress</a>
+    <span class="profile-nav-current">Profile</span>
+  </nav>
+
+  <div class="profile-desktop-account">
+    <span class="profile-account-name">{{ user.name }}</span>
+    <form method="POST" action="/logout" id="profile-logout-form">
+      <button type="submit" class="account-logout">Log out</button>
+    </form>
+  </div>
+
+  <button
+    class="profile-menu-toggle"
+    id="profile-menu-toggle"
+    type="button"
+    aria-label="Open menu"
+    aria-expanded="false"
+    aria-controls="profile-mobile-menu"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+</header>
+
+<div class="profile-menu-backdrop" id="profile-menu-backdrop"></div>
+
+<aside class="profile-mobile-menu" id="profile-mobile-menu" aria-hidden="true">
+  <nav>
+    <a href="/app">Tests</a>
+    <a href="/app#progress">Progress</a>
+    <a href="/profile" class="active">Profile</a>
+  </nav>
+  <div class="profile-mobile-account">
+    <div class="profile-mobile-name">{{ user.name }}</div>
+    <form method="POST" action="/logout" id="profile-mobile-logout-form">
+      <button type="submit" class="profile-mobile-logout">Log out</button>
+    </form>
+  </div>
+</aside>
+
+<main class="profile-main">
+  <div class="profile-page-head">
+    <div>
+      <p class="profile-eyebrow">Account</p>
+      <h1>Your profile</h1>
+      <p>Keep your account details and study goals up to date.</p>
+    </div>
+  </div>
+
+  <div id="profile-status" class="profile-status" role="status" aria-live="polite"></div>
+
+  <section class="profile-card profile-identity-card">
+    <div class="profile-avatar" aria-hidden="true">
+      <span id="avatar-initials">{{ (user.name or 'Student')[:1] | upper }}</span>
+    </div>
+
+    <div class="profile-identity">
+      <h2 id="identity-name">{{ user.name or 'Student' }}</h2>
+      <p>{{ user.email }}</p>
+      <span class="profile-verified">Account verified</span>
+    </div>
+  </section>
+
+  <div class="profile-grid">
+
+    <section class="profile-card">
+      <div class="profile-card-head">
+        <div>
+          <p class="profile-card-kicker">Personal details</p>
+          <h2>About you</h2>
+        </div>
+      </div>
+
+      <div class="profile-form">
+        <div class="profile-field">
+          <label for="profile-name">Name</label>
+          <input id="profile-name" type="text" maxlength="80" value="{{ user.name or '' }}" autocomplete="name">
+        </div>
+
+        <div class="profile-field">
+          <label for="profile-email">Email</label>
+          <input id="profile-email" type="email" value="{{ user.email }}" disabled>
+          <p class="profile-hint">Your email is managed by your sign-in provider.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="profile-card">
+      <div class="profile-card-head">
+        <div>
+          <p class="profile-card-kicker">Study goals</p>
+          <h2>Your target</h2>
+        </div>
+      </div>
+
+      <div class="profile-form">
+        <div class="profile-field">
+          <label for="target-band">Target band</label>
+          <select id="target-band">
+            <option value="">Not set</option>
+            <option>6.0</option>
+            <option>6.5</option>
+            <option>7.0</option>
+            <option>7.5</option>
+            <option>8.0</option>
+            <option>8.5</option>
+            <option>9.0</option>
+          </select>
+        </div>
+
+        <div class="profile-field">
+          <label for="test-type">Test type</label>
+          <select id="test-type">
+            <option value="">Not set</option>
+            <option value="Academic">Academic</option>
+            <option value="General Training">General Training</option>
+          </select>
+        </div>
+
+        <div class="profile-field">
+          <label for="exam-date">Exam date <span class="optional">(optional)</span></label>
+          <input id="exam-date" type="date">
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="profile-card profile-account-card">
+    <div class="profile-card-head">
+      <div>
+        <p class="profile-card-kicker">Account</p>
+        <h2>Account details</h2>
+      </div>
+    </div>
+
+    <div class="profile-account-list">
+      <div class="profile-account-row">
+        <span>Sign-in email</span>
+        <strong>{{ user.email }}</strong>
+      </div>
+      <div class="profile-account-row">
+        <span>Authentication</span>
+        <strong>{{ user.provider_label or 'Firebase Authentication' }}</strong>
+      </div>
+    </div>
+  </section>
+
+  <div class="profile-actions">
+    <a href="/app" class="profile-cancel">Back to tests</a>
+    <button type="button" class="profile-save" id="profile-save">Save changes</button>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="/static/js/firebase-config.js"></script>
+
+<script>
+(function () {
+  var menu = document.getElementById('profile-mobile-menu');
+  var toggle = document.getElementById('profile-menu-toggle');
+  var backdrop = document.getElementById('profile-menu-backdrop');
+  var topbar = document.getElementById('profile-topbar');
+
+  if (menu && toggle && backdrop) {
+    var menuIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+    var closeIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>';
+
+    function setOpen(open) {
+      menu.classList.toggle('open', open);
+      backdrop.classList.toggle('open', open);
+      topbar.classList.toggle('menu-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+      toggle.innerHTML = open ? closeIcon : menuIcon;
+    }
+
+    toggle.addEventListener('click', function () {
+      setOpen(!menu.classList.contains('open'));
+    });
+
+    backdrop.addEventListener('click', function () {
+      setOpen(false);
+    });
+
+    menu.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', function () {
+        setOpen(false);
+      });
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 720) setOpen(false);
+    });
+  }
+
+  function wireLogout(formId) {
+    var form = document.getElementById(formId);
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      firebase.auth().signOut().finally(function () {
+        form.submit();
+      });
+    });
+  }
+
+  wireLogout('profile-logout-form');
+  wireLogout('profile-mobile-logout-form');
+
+  var nameInput = document.getElementById('profile-name');
+  var targetBand = document.getElementById('target-band');
+  var testType = document.getElementById('test-type');
+  var examDate = document.getElementById('exam-date');
+  var saveButton = document.getElementById('profile-save');
+  var status = document.getElementById('profile-status');
+
+  function showStatus(message, kind) {
+    status.textContent = message;
+    status.className = 'profile-status ' + (kind || '');
+  }
+
+  fetch('/api/me')
+    .then(function (response) {
+      if (!response.ok) throw new Error('Could not load profile');
+      return response.json();
+    })
+    .then(function (user) {
+      nameInput.value = user.name || '';
+      document.getElementById('identity-name').textContent = user.name || 'Student';
+      document.getElementById('avatar-initials').textContent = (user.name || 'Student').trim().charAt(0).toUpperCase();
+      targetBand.value = user.target_band || '';
+      testType.value = user.test_type || '';
+      examDate.value = user.exam_date || '';
+    })
+    .catch(function () {
+      showStatus('Could not load your saved profile details.', 'error');
+    });
+
+  saveButton.addEventListener('click', function () {
+    var name = nameInput.value.trim();
+
+    if (!name) {
+      showStatus('Please enter your name.', 'error');
+      nameInput.focus();
+      return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = 'Saving…';
+    status.className = 'profile-status';
+
+    fetch('/api/me/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name,
+        target_band: targetBand.value,
+        test_type: testType.value,
+        exam_date: examDate.value
+      })
+    })
+    .then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok) throw new Error(data.error || 'Could not save changes');
+        return data;
+      });
+    })
+    .then(function (user) {
+      document.getElementById('identity-name').textContent = user.name || 'Student';
+      document.getElementById('avatar-initials').textContent = (user.name || 'Student').trim().charAt(0).toUpperCase();
+      showStatus('Your profile was saved.', 'success');
+    })
+    .catch(function (error) {
+      showStatus(error.message || 'Could not save changes.', 'error');
+    })
+    .finally(function () {
+      saveButton.disabled = false;
+      saveButton.textContent = 'Save changes';
+    });
+  });
+})();
+</script>
+</body>
+</html>

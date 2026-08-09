@@ -23,7 +23,9 @@
     </nav>
 
     <div class="topbar-account">
-      {% if user %}<span class="account-name">{{ user.name }}</span>{% endif %}
+      {% if user %}
+        <a href="/profile" class="account-profile-link">{{ user.name }}</a>
+      {% endif %}
       <form method="POST" action="/logout" id="logout-form" style="display:inline">
         <button type="submit" class="account-logout">Log out</button>
       </form>
@@ -51,6 +53,7 @@
     <nav class="mobile-menu-links" aria-label="Dashboard navigation">
       <button data-view="home" class="mobile-nav-link active">Tests</button>
       <button data-view="dashboard" class="mobile-nav-link">Progress</button>
+      <a href="/profile" class="mobile-nav-link mobile-nav-link-anchor">Profile</a>
     </nav>
 
     <div class="mobile-menu-account">
@@ -190,6 +193,12 @@
             navigateTo(view);
           }
 
+          setOpen(false);
+        });
+      });
+
+      menu.querySelectorAll('.mobile-nav-link-anchor').forEach(function (link) {
+        link.addEventListener('click', function () {
           setOpen(false);
         });
       });

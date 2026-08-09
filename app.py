@@ -476,6 +476,33 @@ def api_me():
     return jsonify(auth.current_user())
 
 
+@app.route("/api/me/profile", methods=["POST"])
+@login_required
+def api_update_profile():
+    data = request.get_json(silent=True) or {}
+    try:
+        user = auth.update_profile(
+            user_id=session["user_id"],
+            name=data.get("name", ""),
+            target_band=data.get("target_band", ""),
+            test_type=data.get("test_type", ""),
+            exam_date=data.get("exam_date", ""),
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        app.logger.exception("Profile update failed")
+        return jsonify({"error": "Could not save profile changes."}), 500
+
+    return jsonify(user)
+
+
+@app.route("/profile")
+@login_required
+def profile():
+    return render_template("profile.html", user=auth.current_user())
+
+
 def _variant_for_test_id(test_id):
     """Best-effort lookup of a test's variant from its manifest; falls
     back to "academic" if the mock/test no longer exists on disk."""
