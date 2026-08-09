@@ -26,8 +26,13 @@
    through underneath and look broken. The bar stays a solid, opaque
    strip at all times; only what's drawn on top of it dims. */
 .lp-nav { transition: opacity 0.25s ease; }
-.lp-nav-bar.faded .lp-nav { opacity: 0.55; }
+.lp-nav-bar.faded .lp-nav {
+  opacity: 0.55;
+}
 
+.lp-nav-bar.menu-open .lp-nav {
+  opacity: 1;
+}
 /* Hovering the bar while it's faded (desktop/laptop, mouse only --
    touch devices don't trigger :hover, which is fine since the mobile
    drawer has its own tap-based interaction) brings it back to full
@@ -122,7 +127,7 @@
     gap: 4px;
     padding: 84px 24px 24px;
     box-shadow: -16px 0 32px -16px rgba(0,0,0,0.5);
-    z-index: 200;
+    z-index: 101;
     overflow-y: auto;
     transform: translateX(100%);
     transition: transform 0.28s ease;
@@ -133,13 +138,13 @@
   }
 
   .lp-nav-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    z-index: 150;
-    opacity: 0;
-    transition: opacity 0.28s ease;
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 90;
+  opacity: 0;
+  transition: opacity 0.28s ease;
   }
 
   .lp-nav-backdrop.open {

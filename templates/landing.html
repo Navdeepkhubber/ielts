@@ -216,16 +216,26 @@
     // higher than both the drawer and the backdrop (see landing.css),
     // so the toggle button always stays clickable no matter what's open.
     (function () {
-      var toggle = document.getElementById('nav-toggle');
-      var links = document.getElementById('nav-links');
-      var backdrop = document.getElementById('nav-backdrop');
-      if (!toggle || !links) return;
+        var toggle = document.getElementById('nav-toggle');
+        var links = document.getElementById('nav-links');
+        var backdrop = document.getElementById('nav-backdrop');
+        var navBar = document.getElementById('site-nav');
 
-      function setOpen(isOpen) {
+        if (!toggle || !links) return;
+
+        function setOpen(isOpen) {
         links.classList.toggle('open', isOpen);
-        if (backdrop) backdrop.classList.toggle('open', isOpen);
+
+        if (backdrop) {
+            backdrop.classList.toggle('open', isOpen);
+        }
+
+        if (navBar) {
+            navBar.classList.toggle('menu-open', isOpen);
+        }
+
         toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-      }
+        }
 
       toggle.addEventListener('click', function () {
         setOpen(!links.classList.contains('open'));
