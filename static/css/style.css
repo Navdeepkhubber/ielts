@@ -1410,3 +1410,179 @@ table.history .mono { font-family: var(--font-mono); font-variant-numeric: tabul
   white-space: nowrap;
 }
 .btn-enter-score:hover { border-color: var(--navy-btn); }
+/* ============================================================
+   Mobile dashboard navigation
+   The desktop topbar remains unchanged. On small screens the
+   nav/account controls collapse into a slide-out hamburger menu.
+   ============================================================ */
+.topbar-menu-toggle {
+  display: none;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.topbar-menu-toggle:hover {
+  background: var(--paper);
+}
+
+.topbar-menu-toggle svg {
+  display: block;
+  width: 21px;
+  height: 21px;
+}
+
+/* Keep the backdrop below the topbar and above the page content. */
+.mobile-menu-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 35, 59, 0.42);
+  z-index: 70;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+.mobile-menu-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* The drawer is above the backdrop and below nothing interactive. */
+.mobile-menu {
+  position: fixed;
+  top: 60px;
+  right: 0;
+  width: min(82vw, 320px);
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  box-shadow: -8px 12px 30px rgba(22, 35, 59, 0.16);
+  z-index: 80;
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.22s ease, visibility 0.22s ease;
+}
+
+.mobile-menu.open {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.mobile-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mobile-nav-link {
+  width: 100%;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-nav-link:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.mobile-nav-link.active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.mobile-menu-account {
+  padding: 14px;
+}
+
+.mobile-account-name {
+  margin: 0 2px 10px;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-account-logout {
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-account-logout:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* The dashboard topbar's normal scroll fade must not fade the menu
+   trigger while its drawer is open. */
+.topbar.menu-open > * {
+  opacity: 1 !important;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .topnav,
+  .topbar-account {
+    display: none;
+  }
+
+  .topbar-menu-toggle {
+    display: inline-flex;
+  }
+
+  main {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  /* Keep dashboard history usable on narrow screens. */
+  table.history {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 721px) {
+  .mobile-menu,
+  .mobile-menu-backdrop {
+    display: none !important;
+  }
+}
