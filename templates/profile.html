@@ -121,31 +121,125 @@
 
       <div class="profile-form">
         <div class="profile-field">
-          <label for="target-band">Target band</label>
-          <select id="target-band">
-            <option value="">Not set</option>
-            <option>6.0</option>
-            <option>6.5</option>
-            <option>7.0</option>
-            <option>7.5</option>
-            <option>8.0</option>
-            <option>8.5</option>
-            <option>9.0</option>
-          </select>
+          <div class="profile-control-label">
+            <label>Target band</label>
+            <span class="profile-selection-value" id="target-band-value">Not set</span>
+          </div>
+          <p class="profile-hint profile-field-intro">Choose the score you're aiming for.</p>
+
+          <div class="band-picker" id="target-band-picker" role="radiogroup" aria-label="Target band">
+            <button type="button" class="band-option" data-value="6.0" role="radio" aria-checked="false">6.0</button>
+            <button type="button" class="band-option" data-value="6.5" role="radio" aria-checked="false">6.5</button>
+            <button type="button" class="band-option" data-value="7.0" role="radio" aria-checked="false">7.0</button>
+            <button type="button" class="band-option" data-value="7.5" role="radio" aria-checked="false">7.5</button>
+            <button type="button" class="band-option" data-value="8.0" role="radio" aria-checked="false">8.0</button>
+            <button type="button" class="band-option" data-value="8.5" role="radio" aria-checked="false">8.5</button>
+            <button type="button" class="band-option" data-value="9.0" role="radio" aria-checked="false">9.0</button>
+          </div>
+
+          <input type="hidden" id="target-band" value="">
+        </div>
+
+        <div class="profile-field profile-test-type-field">
+          <div class="profile-control-label">
+            <label>Test type</label>
+            <span class="profile-selection-value" id="test-type-value">Not set</span>
+          </div>
+          <p class="profile-hint profile-field-intro">Choose the IELTS format you're preparing for.</p>
+
+          <div class="test-type-picker" id="test-type-picker" role="radiogroup" aria-label="Test type">
+            <button type="button" class="test-type-option" data-value="Academic" role="radio" aria-checked="false">
+              <span class="test-type-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19h16"></path>
+                  <path d="M6 17V9l6-4 6 4v8"></path>
+                  <path d="M9 17v-4h6v4"></path>
+                </svg>
+              </span>
+              <span class="test-type-copy">
+                <strong>Academic</strong>
+                <small>University & study</small>
+              </span>
+            </button>
+
+            <button type="button" class="test-type-option" data-value="General Training" role="radio" aria-checked="false">
+              <span class="test-type-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="4" y="5" width="16" height="14" rx="2"></rect>
+                  <path d="M8 9h8M8 13h5"></path>
+                </svg>
+              </span>
+              <span class="test-type-copy">
+                <strong>General Training</strong>
+                <small>Work & migration</small>
+              </span>
+            </button>
+          </div>
+
+          <input type="hidden" id="test-type" value="">
         </div>
 
         <div class="profile-field">
-          <label for="test-type">Test type</label>
-          <select id="test-type">
-            <option value="">Not set</option>
-            <option value="Academic">Academic</option>
-            <option value="General Training">General Training</option>
-          </select>
-        </div>
+          <label for="exam-date-display">Exam date <span class="optional">(optional)</span></label>
 
-        <div class="profile-field">
-          <label for="exam-date">Exam date <span class="optional">(optional)</span></label>
-          <input id="exam-date" type="date">
+          <div class="custom-date-picker" id="date-picker">
+            <button
+              type="button"
+              class="date-picker-trigger"
+              id="exam-date-display"
+              aria-haspopup="dialog"
+              aria-expanded="false"
+              aria-controls="calendar-popup"
+            >
+              <span class="date-picker-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="17" rx="2"></rect>
+                  <path d="M16 2v4M8 2v4M3 10h18"></path>
+                </svg>
+              </span>
+              <span id="exam-date-label">Select your exam date</span>
+              <span class="date-picker-chevron" aria-hidden="true">⌄</span>
+            </button>
+
+            <input type="hidden" id="exam-date" value="">
+
+            <div
+              class="calendar-popup"
+              id="calendar-popup"
+              role="dialog"
+              aria-label="Choose exam date"
+              aria-hidden="true"
+            >
+              <div class="calendar-head">
+                <button type="button" class="calendar-nav" id="calendar-prev" aria-label="Previous month">‹</button>
+                <button type="button" class="calendar-month-button" id="calendar-month-button">
+                  <span id="calendar-month"></span>
+                  <span id="calendar-year"></span>
+                </button>
+                <button type="button" class="calendar-nav" id="calendar-next" aria-label="Next month">›</button>
+              </div>
+
+              <div class="calendar-weekdays" aria-hidden="true">
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+                <span>Sun</span>
+              </div>
+
+              <div class="calendar-days" id="calendar-days"></div>
+
+              <div class="calendar-footer">
+                <button type="button" id="calendar-clear">Clear date</button>
+                <button type="button" id="calendar-today">Today</button>
+              </div>
+            </div>
+          </div>
+
+          <p class="profile-hint">Choose your planned IELTS exam date.</p>
         </div>
       </div>
     </section>
@@ -261,13 +355,266 @@
       nameInput.value = user.name || '';
       document.getElementById('identity-name').textContent = user.name || 'Student';
       document.getElementById('avatar-initials').textContent = (user.name || 'Student').trim().charAt(0).toUpperCase();
-      targetBand.value = user.target_band || '';
-      testType.value = user.test_type || '';
-      examDate.value = user.exam_date || '';
+      setBand(user.target_band || '');
+      setTestType(user.test_type || '');
+      setSelectedDate(user.exam_date || '');
     })
     .catch(function () {
       showStatus('Could not load your saved profile details.', 'error');
     });
+
+
+  /* ---------- Study-goal selectors ---------- */
+
+  var targetBandInput = document.getElementById('target-band');
+  var targetBandValue = document.getElementById('target-band-value');
+  var bandOptions = document.querySelectorAll('.band-option');
+
+  var testTypeInput = document.getElementById('test-type');
+  var testTypeValue = document.getElementById('test-type-value');
+  var testTypeOptions = document.querySelectorAll('.test-type-option');
+
+  function setBand(value) {
+    targetBandInput.value = value || '';
+    targetBandValue.textContent = value || 'Not set';
+
+    bandOptions.forEach(function (button) {
+      var selected = button.dataset.value === value;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-checked', selected ? 'true' : 'false');
+    });
+  }
+
+  function setTestType(value) {
+    testTypeInput.value = value || '';
+    testTypeValue.textContent = value || 'Not set';
+
+    testTypeOptions.forEach(function (button) {
+      var selected = button.dataset.value === value;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-checked', selected ? 'true' : 'false');
+    });
+  }
+
+  bandOptions.forEach(function (button) {
+    button.addEventListener('click', function () {
+      setBand(button.dataset.value);
+    });
+  });
+
+  testTypeOptions.forEach(function (button) {
+    button.addEventListener('click', function () {
+      setTestType(button.dataset.value);
+    });
+  });
+
+  /* ---------- Custom exam-date picker ---------- */
+
+  var datePicker = document.getElementById('date-picker');
+  var dateTrigger = document.getElementById('exam-date-display');
+  var dateLabel = document.getElementById('exam-date-label');
+  var examDate = document.getElementById('exam-date');
+  var calendar = document.getElementById('calendar-popup');
+  var calendarDays = document.getElementById('calendar-days');
+  var calendarMonth = document.getElementById('calendar-month');
+  var calendarYear = document.getElementById('calendar-year');
+  var calendarPrev = document.getElementById('calendar-prev');
+  var calendarNext = document.getElementById('calendar-next');
+  var calendarToday = document.getElementById('calendar-today');
+  var calendarClear = document.getElementById('calendar-clear');
+
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  var viewDate = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  function pad(number) {
+    return String(number).padStart(2, '0');
+  }
+
+  function isoDate(date) {
+    return date.getFullYear() + '-' +
+      pad(date.getMonth() + 1) + '-' +
+      pad(date.getDate());
+  }
+
+  function parseISO(value) {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+
+    var parts = value.split('-').map(Number);
+    var date = new Date(parts[0], parts[1] - 1, parts[2]);
+    date.setHours(0, 0, 0, 0);
+
+    if (isNaN(date.getTime())) return null;
+    return date;
+  }
+
+  function formatDisplay(value) {
+    var date = parseISO(value);
+    if (!date) return 'Select your exam date';
+
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+
+  function sameDate(a, b) {
+    return a &&
+      b &&
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+  }
+
+  function setSelectedDate(value) {
+    var date = parseISO(value);
+
+    if (date && date >= today) {
+      examDate.value = isoDate(date);
+      dateLabel.textContent = formatDisplay(examDate.value);
+      viewDate = new Date(date.getFullYear(), date.getMonth(), 1);
+    } else {
+      examDate.value = '';
+      dateLabel.textContent = 'Select your exam date';
+    }
+
+    renderCalendar();
+  }
+
+  function setCalendarOpen(open) {
+    datePicker.classList.toggle('open', open);
+    dateTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    calendar.setAttribute('aria-hidden', open ? 'false' : 'true');
+
+    if (open) {
+      renderCalendar();
+    }
+  }
+
+  function renderCalendar() {
+    var year = viewDate.getFullYear();
+    var month = viewDate.getMonth();
+
+    calendarMonth.textContent = viewDate.toLocaleDateString('en-US', {
+      month: 'long'
+    });
+    calendarYear.textContent = year;
+
+    calendarDays.innerHTML = '';
+
+    /* JS uses Sunday=0. Convert to Monday=0. */
+    var firstDay = new Date(year, month, 1).getDay();
+    var mondayIndex = (firstDay + 6) % 7;
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    /* Previous month's trailing dates. */
+    var prevMonthDays = new Date(year, month, 0).getDate();
+
+    for (var i = mondayIndex - 1; i >= 0; i--) {
+      var prevDate = new Date(year, month - 1, prevMonthDays - i);
+      appendDay(prevDate, true);
+    }
+
+    for (var day = 1; day <= daysInMonth; day++) {
+      appendDay(new Date(year, month, day), false);
+    }
+
+    /* Complete the final week, but don't create a huge sixth row unless needed. */
+    var totalCells = mondayIndex + daysInMonth;
+    var trailing = (7 - (totalCells % 7)) % 7;
+
+    for (var j = 1; j <= trailing; j++) {
+      appendDay(new Date(year, month + 1, j), true);
+    }
+
+    var previousMonth = new Date(year, month - 1, 1);
+    var nextMonth = new Date(year, month + 1, 1);
+
+    /* Don't allow navigating into months entirely before today. */
+    calendarPrev.disabled =
+      previousMonth.getFullYear() < today.getFullYear() ||
+      (previousMonth.getFullYear() === today.getFullYear() &&
+       previousMonth.getMonth() < today.getMonth());
+
+    calendarNext.disabled = false;
+  }
+
+  function appendDay(date, outsideMonth) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'calendar-day';
+    button.textContent = date.getDate();
+
+    if (outsideMonth) {
+      button.classList.add('outside-month');
+    }
+
+    if (sameDate(date, today)) {
+      button.classList.add('today');
+    }
+
+    var selected = parseISO(examDate.value);
+    if (sameDate(date, selected)) {
+      button.classList.add('selected');
+      button.setAttribute('aria-current', 'date');
+    }
+
+    if (date < today) {
+      button.disabled = true;
+      button.classList.add('disabled');
+    } else {
+      button.addEventListener('click', function () {
+        setSelectedDate(isoDate(date));
+        setCalendarOpen(false);
+      });
+    }
+
+    calendarDays.appendChild(button);
+  }
+
+  dateTrigger.addEventListener('click', function () {
+    setCalendarOpen(!datePicker.classList.contains('open'));
+  });
+
+  calendarPrev.addEventListener('click', function () {
+    if (!calendarPrev.disabled) {
+      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
+      renderCalendar();
+    }
+  });
+
+  calendarNext.addEventListener('click', function () {
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
+  calendarToday.addEventListener('click', function () {
+    setSelectedDate(isoDate(today));
+    setCalendarOpen(false);
+  });
+
+  calendarClear.addEventListener('click', function () {
+    setSelectedDate('');
+    setCalendarOpen(false);
+  });
+
+  document.addEventListener('click', function (event) {
+    if (datePicker.classList.contains('open') &&
+        !datePicker.contains(event.target)) {
+      setCalendarOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && datePicker.classList.contains('open')) {
+      setCalendarOpen(false);
+      dateTrigger.focus();
+    }
+  });
+
+  renderCalendar();
 
   saveButton.addEventListener('click', function () {
     var name = nameInput.value.trim();
