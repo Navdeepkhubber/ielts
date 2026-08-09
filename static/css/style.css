@@ -81,6 +81,7 @@ button { font-family: inherit; }
    its three direct children (logo, tabs, account controls) dim. */
 .topbar > * { transition: opacity 0.25s ease; }
 .topbar.faded > * { opacity: 0.6; }
+.topbar.faded:hover > * { opacity: 1; }
 .wordmark { display: flex; align-items: center; gap: 10px; }
 .wordmark-badge {
   font-family: var(--font-display);

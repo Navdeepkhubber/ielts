@@ -28,6 +28,12 @@
 .lp-nav { transition: opacity 0.25s ease; }
 .lp-nav-bar.faded .lp-nav { opacity: 0.55; }
 
+/* Hovering the bar while it's faded (desktop/laptop, mouse only --
+   touch devices don't trigger :hover, which is fine since the mobile
+   drawer has its own tap-based interaction) brings it back to full
+   opacity for as long as the mouse stays over it. */
+.lp-nav-bar.faded:hover .lp-nav { opacity: 1; }
+
 .lp-nav {
   display: flex;
   align-items: center;

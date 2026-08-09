@@ -212,7 +212,9 @@
     // click, closes after any link inside is clicked, and closes itself
     // (sliding back out toward the hamburger's side) the moment the
     // person starts scrolling the page rather than locking background
-    // scroll while it's open.
+    // scroll while it's open. The nav bar's z-index is deliberately
+    // higher than both the drawer and the backdrop (see landing.css),
+    // so the toggle button always stays clickable no matter what's open.
     (function () {
       var toggle = document.getElementById('nav-toggle');
       var links = document.getElementById('nav-links');
