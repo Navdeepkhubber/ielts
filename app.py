@@ -286,6 +286,10 @@ def auth_session():
 @app.route("/logout", methods=["POST"])
 def logout():
     session.clear()
+
+    if PUBLIC_BASE_DOMAIN:
+        return redirect(f"https://{PUBLIC_BASE_DOMAIN}/")
+
     return redirect(url_for("landing"))
 
 
