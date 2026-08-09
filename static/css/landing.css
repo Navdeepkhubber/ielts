@@ -18,10 +18,15 @@
   z-index: 100;
   background: var(--ink);
   border-bottom: 1px solid rgba(244,246,249,0.08);
-  transition: opacity 0.25s ease;
 }
 
-.lp-nav-bar.faded { opacity: 0.55; }
+/* Fade only the nav's own content, never the bar's background --
+   applying opacity to .lp-nav-bar itself would make the solid
+   background semi-transparent too, letting scrolled content bleed
+   through underneath and look broken. The bar stays a solid, opaque
+   strip at all times; only what's drawn on top of it dims. */
+.lp-nav { transition: opacity 0.25s ease; }
+.lp-nav-bar.faded .lp-nav { opacity: 0.55; }
 
 .lp-nav {
   display: flex;
@@ -93,28 +98,53 @@
     display: block;
   }
 
+  /* Slides in from the right -- the same side the hamburger button
+     sits on once .lp-nav-links leaves the flex flow below. Deliberately
+     not full width (min(78vw, 300px)) so a sliver of the page stays
+     visible behind it, rather than a full-screen takeover. */
   .lp-nav-links {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
+    display: flex;
+    position: fixed;
+    top: 0;
     right: 0;
+    height: 100vh;
+    width: min(78vw, 300px);
     background: var(--ink);
-    border-bottom: 1px solid rgba(244,246,249,0.08);
+    border-left: 1px solid rgba(244,246,249,0.12);
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
-    padding: 4px 24px 20px;
-    box-shadow: 0 12px 24px -12px rgba(0,0,0,0.4);
+    gap: 4px;
+    padding: 84px 24px 24px;
+    box-shadow: -16px 0 32px -16px rgba(0,0,0,0.5);
+    z-index: 200;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.28s ease;
   }
 
   .lp-nav-links.open {
-    display: flex;
+    transform: translateX(0);
+  }
+
+  .lp-nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 150;
+    opacity: 0;
+    transition: opacity 0.28s ease;
+  }
+
+  .lp-nav-backdrop.open {
+    display: block;
+    opacity: 1;
   }
 
   .lp-nav-links a {
-    padding: 6px 0;
+    padding: 12px 0;
     font-size: 15px;
+    border-bottom: 1px solid rgba(244,246,249,0.08);
   }
 
   .lp-nav-links .lp-btn {

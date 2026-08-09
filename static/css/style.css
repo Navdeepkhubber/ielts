@@ -73,9 +73,14 @@ button { font-family: inherit; }
   position: sticky;
   top: 0;
   z-index: 50;
-  transition: opacity 0.25s ease;
 }
-.topbar.faded { opacity: 0.6; }
+/* Fade only the topbar's own content, never its background -- applying
+   opacity to .topbar itself would make the solid background
+   semi-transparent too, letting scrolled page content bleed through
+   underneath. The bar stays a solid, opaque strip at all times; only
+   its three direct children (logo, tabs, account controls) dim. */
+.topbar > * { transition: opacity 0.25s ease; }
+.topbar.faded > * { opacity: 0.6; }
 .wordmark { display: flex; align-items: center; gap: 10px; }
 .wordmark-badge {
   font-family: var(--font-display);
