@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-  <header class="topbar">
+  <header class="topbar" id="topbar">
     <div class="wordmark">
       <span class="wordmark-badge">IB</span>
       <span class="wordmark-text">IELTSBand</span>
@@ -42,6 +42,38 @@
       e.preventDefault();
       firebase.auth().signOut().finally(() => e.target.submit());
     });
+  </script>
+  <script>
+    // Same fade-while-scrolling-down / instant-restore-on-any-scroll-up
+    // behavior as the marketing page's nav (see templates/landing.html)
+    // -- applied here too so it's consistent across the whole site, not
+    // just the logged-out pages. The topbar is already position:sticky
+    // (see .topbar in style.css); this only adds the opacity fade.
+    (function () {
+      var topbar = document.getElementById('topbar');
+      if (!topbar) return;
+      var lastY = window.scrollY;
+      var ticking = false;
+
+      function onScroll() {
+        var y = window.scrollY;
+        if (y < 40) {
+          topbar.classList.remove('faded');
+        } else if (y < lastY) {
+          topbar.classList.remove('faded');
+        } else if (y > lastY) {
+          topbar.classList.add('faded');
+        }
+        lastY = y;
+        ticking = false;
+      }
+      window.addEventListener('scroll', function () {
+        if (!ticking) {
+          requestAnimationFrame(onScroll);
+          ticking = true;
+        }
+      }, { passive: true });
+    })();
   </script>
   <script src="/static/js/app.js"></script>
 </body>

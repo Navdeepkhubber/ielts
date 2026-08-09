@@ -298,28 +298,108 @@ against a version of the app with `PUBLIC_BASE_DOMAIN` set — see
 `app_tests/test_subdomains.py`.
 
 
+## Remote test-content storage (Backblaze B2 or similar)
+
+Test content (`tests/` — PDFs, audio, manifests, answer keys) can now
+live in S3-compatible remote storage instead of being baked into the
+Docker image. This is what actually solves the "growing library keeps
+bloating the deployed image" problem — the image stays a fixed, small
+size regardless of how many mocks you add, since the app fetches
+content from the bucket on demand instead.
+
+Like every other optional integration in this app, it's **entirely
+inert unless configured** — with no `BLOB_*` env vars set, `lib/test_loader.py`
+reads straight from the local `tests/` folder exactly as it always has.
+Nothing changes for local dev.
+
+### One-time bucket + key setup
+
+1. Create a bucket (you've done this — **Private**, any region).
+2. **Create a scoped Application Key** — not the Master key. Two
+   reasons, not just one: it's the usual security practice (the Master
+   key has account-wide power), but more concretely, **Backblaze's docs
+   state the Master key doesn't work with the S3-compatible API at
+   all** — since this app talks to B2 over that API (via `boto3`), the
+   Master key would fail outright, not just be risky.
+
+   In B2 Console → Application Keys → Add a New Application Key:
+   - **Allow Access to Bucket(s)** → your specific bucket (not "All")
+   - Also check **"Allow List All Bucket Names"** — required for S3-SDK
+     compatibility even on a bucket-restricted key, or you'll hit an
+     authorization error
+   - Access type: **Read and Write**
+   - Copy both the **Key ID** and **Application Key** immediately — the
+     secret is shown once, never again
+
+### Environment variables
+
+| Variable | Value |
+|---|---|
+| `BLOB_BUCKET_NAME` | Your bucket's **name** (not its Bucket ID) |
+| `BLOB_ENDPOINT_URL` | e.g. `https://s3.ca-east-006.backblazeb2.com` — the region-specific endpoint your bucket's page shows |
+| `BLOB_KEY_ID` | The scoped key's Key ID |
+| `BLOB_APPLICATION_KEY` | The scoped key's secret |
+
+Set all four in Render (or wherever you deploy) and locally (a `.env`
+file, or exported in your shell) once you're ready to switch over.
+
+### Uploading your existing test library
+
+```
+pip install -r requirements.txt   # picks up boto3
+python3 scripts/sync_tests_to_blob_storage.py --dry-run   # see what would upload
+python3 scripts/sync_tests_to_blob_storage.py             # actually upload
+```
+
+Skips files already in the bucket with a matching size, so re-running
+it after adding one new mock only uploads what's new. `--mock "Mock 19"`
+limits it to a single mock folder. This script is the only thing that
+ever writes to the bucket — the deployed app only ever reads from it.
+
+### How it works
+
+`lib/blob_storage.py` wraps a plain `boto3` S3 client. `lib/test_loader.py`'s
+`cached_file()` is the one place that decides whether to read from the
+local `tests/` folder or fetch-and-cache from the bucket — every other
+function (`main_pdf_path`, `audio_path`, `load_answers`, ...) calls
+through it, so `lib/pdf_render.py`, `app.py`'s routes, and `lib/scaffold.py`
+needed zero changes. Fetched files are cached under `BLOB_CACHE_DIR`
+(defaults to `/tmp/ielts-blob-cache`) so a page or audio file is only
+downloaded once per container instance's lifetime, not on every
+request — on Render specifically, that cache is wiped on every
+redeploy/restart (ephemeral disk), so the first request for each file
+after a deploy is a little slower while it re-downloads; every request
+after that is served from the local cache.
+
+I tested this against a fake in-memory S3 client (`app_tests/fake_s3.py`)
+covering: fetch-and-cache, caching actually preventing a second download,
+a missing-object 404, bucket listing, the upload path, and — the
+property that matters most — that `test_loader.py` behaves identically
+to the pre-B2 version when nothing is configured. See
+`app_tests/test_blob_storage.py`.
+
+### Switching providers later
+
+Cloudflare R2, Wasabi, and DigitalOcean Spaces all speak the same S3
+API `boto3` already uses here — moving to any of them later is a matter
+of changing `BLOB_ENDPOINT_URL` and the credentials, not touching code.
+
 ## What's still local (and why)
 
-The mock test content itself — `tests/` (PDFs, audio, manifests, answer
-keys) — still lives on disk inside the container image, not in Firestore
-or Cloud Storage. That's a deliberate scope line, not an oversight:
+Test content (`tests/`) is now **optionally** remote (see the section
+above) — baked into the image only if you haven't configured
+`BLOB_*`. What's genuinely still local, always:
 
-- It's static once scaffolded (unlike users/attempts, which change on
-  every request), so it doesn't have the "wiped on redeploy" problem —
-  whatever's baked into the image at build time is what serves, and
-  stays consistent across replicas.
-- Moving it to Cloud Storage would mean rewriting `lib/test_loader.py`
-  and `lib/pdf_render.py` to fetch/cache from a bucket instead of
-  reading local paths — a real chunk of work I haven't done here, since
-  it wasn't clearly part of what you asked for.
-- If your test library grows large enough that container image size or
-  rebuild time becomes annoying, that rewrite is the right next step —
-  happy to do it if/when that's actually the bottleneck.
-
-One consequence: the background auto-scaffolder (`scan_and_scaffold`,
-triggered from `app.py`'s `__main__` block) only runs under
-`python3 app.py`, not under gunicorn/Docker — intentionally, since
-scaffolding writes files to disk, and in production you want your
-`tests/` folder already scaffolded *before* you build the image, not
-scanned at container startup. Scaffold locally, commit/bake in the
-result, then deploy.
+- **Scaffolding itself.** Turning a freshly-dumped, unscanned mock
+  folder into `manifest.json` + answer files (`lib/scaffold.py`,
+  `lib/answer_key.py`) is a local authoring step, not something the
+  deployed app does. Those tools (plus `fill_answer_keys_local.py`,
+  `scripts/diagnose_mock.py`, `lib/report.py`) still work directly
+  against your local `tests/` folder exactly as before — they're for
+  *before* you upload, not something the server needs at runtime.
+- The background auto-scaffolder (`scan_and_scaffold`, triggered from
+  `app.py`'s `__main__` block) only runs under `python3 app.py`, not
+  under gunicorn/Docker — intentionally, since scaffolding writes files
+  to disk, and in production you want content already scaffolded (and,
+  now, already uploaded) *before* you deploy, not scanned at container
+  startup. Scaffold locally, sync to blob storage, then deploy.

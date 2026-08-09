@@ -73,7 +73,9 @@ button { font-family: inherit; }
   position: sticky;
   top: 0;
   z-index: 50;
+  transition: opacity 0.25s ease;
 }
+.topbar.faded { opacity: 0.6; }
 .wordmark { display: flex; align-items: center; gap: 10px; }
 .wordmark-badge {
   font-family: var(--font-display);

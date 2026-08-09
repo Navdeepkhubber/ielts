@@ -13,18 +13,27 @@
 </head>
 <body class="lp-body">
 
-  <nav class="lp-nav">
-    <div class="wordmark">
-      <span class="wordmark-badge">IB</span>
-      <span class="wordmark-text">IELTSBand</span>
-    </div>
-    <div class="lp-nav-links">
-      <a href="#how-it-works" data-scroll-to="how-it-works">How it works</a>
-      <a href="#offerings" data-scroll-to="offerings">Offerings</a>
-      <a href="/login" class="lp-btn lp-btn-ghost">Log in</a>
-      <a href="/signup" class="lp-btn lp-btn-primary">Start free</a>
-    </div>
-  </nav>
+  <div class="lp-nav-bar" id="site-nav">
+    <nav class="lp-nav">
+      <div class="wordmark">
+        <span class="wordmark-badge">IB</span>
+        <span class="wordmark-text">IELTSBand</span>
+      </div>
+      <button class="lp-nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="nav-links">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <div class="lp-nav-links" id="nav-links">
+        <a href="#how-it-works" data-scroll-to="how-it-works">How it works</a>
+        <a href="#offerings" data-scroll-to="offerings">Offerings</a>
+        <a href="/login" class="lp-btn lp-btn-ghost">Log in</a>
+        <a href="/signup" class="lp-btn lp-btn-primary">Start free</a>
+      </div>
+    </nav>
+  </div>
 
   <header class="lp-hero">
     <div>
@@ -136,6 +145,62 @@
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
+  </script>
+  <script>
+    // Mobile hamburger menu -- toggles the collapsed nav links open/closed,
+    // and closes itself after any link inside is clicked (so tapping
+    // "Log in" doesn't leave a stale open menu behind on the next page).
+    (function () {
+      var toggle = document.getElementById('nav-toggle');
+      var links = document.getElementById('nav-links');
+      if (!toggle || !links) return;
+
+      function setOpen(isOpen) {
+        links.classList.toggle('open', isOpen);
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      }
+      toggle.addEventListener('click', function () {
+        setOpen(!links.classList.contains('open'));
+      });
+      links.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () { setOpen(false); });
+      });
+    })();
+  </script>
+  <script>
+    // Nav bar stays fixed/sticky at all times (see .lp-nav-bar in
+    // landing.css) and fades to reduced opacity while actively scrolling
+    // down -- getting out of the way while reading -- but any upward
+    // scroll motion, even a single pixel, immediately restores full
+    // opacity, since that's a clear signal the person wants to navigate
+    // rather than keep reading. Stays fully visible near the top of the
+    // page regardless of direction, so it never fades on initial load or
+    // from a stray scroll jitter right at the top.
+    (function () {
+      var navBar = document.getElementById('site-nav');
+      if (!navBar) return;
+      var lastY = window.scrollY;
+      var ticking = false;
+
+      function onScroll() {
+        var y = window.scrollY;
+        if (y < 40) {
+          navBar.classList.remove('faded');
+        } else if (y < lastY) {
+          navBar.classList.remove('faded');
+        } else if (y > lastY) {
+          navBar.classList.add('faded');
+        }
+        lastY = y;
+        ticking = false;
+      }
+      window.addEventListener('scroll', function () {
+        if (!ticking) {
+          requestAnimationFrame(onScroll);
+          ticking = true;
+        }
+      }, { passive: true });
+    })();
   </script>
   <script>
     // Decorative countdown on the hero ticket -- purely cosmetic, no real attempt behind it.

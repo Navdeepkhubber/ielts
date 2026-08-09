@@ -11,6 +11,17 @@ gunicorn==22.0.0
 # SETUP.md for the one-time Firebase project setup this needs.
 firebase-admin==6.5.0
 
+# S3-compatible client for optional remote test-content storage (B2, R2,
+# Wasabi, Spaces, ...) -- see lib/blob_storage.py and SETUP.md. Entirely
+# inert if the BLOB_* env vars aren't set; scripts/sync_tests_to_blob_storage.py
+# is the only thing that writes to it.
+boto3==1.34.144
+
+# Loads a local .env file if present (see .env.example) -- purely a local
+# dev convenience, never needed in production. Safe to skip installing;
+# app.py's import is wrapped in try/except ImportError.
+python-dotenv==1.0.1
+
 # Fixes "CERTIFICATE_VERIFY_FAILED" downloading the high-accuracy OCR
 # model on macOS -- python.org's installer doesn't link the system CA
 # store, so this bundles known-good certificates instead. Tiny package,

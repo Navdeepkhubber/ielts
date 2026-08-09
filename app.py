@@ -1,6 +1,19 @@
 import io
 import json
 import os
+
+# Local dev convenience only: if a .env file is present and python-dotenv
+# is installed, load it. Silently does nothing otherwise -- production
+# (Render or wherever) sets real environment variables directly, .env is
+# gitignored so it's never even present in a deployed container, and
+# load_dotenv() never overrides a variable that's already set, so this
+# can't clobber real platform config even if it somehow did run there.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from flask import Flask, jsonify, request, send_file, render_template, abort, session, redirect, url_for
 
 from lib import test_loader, pdf_render, scoring, storage, scaffold, report, auth, firebase_admin_setup
@@ -245,7 +258,7 @@ def auth_session():
 @app.route("/logout", methods=["POST"])
 def logout():
     session.clear()
-    return redirect("https://ieltsband.com")
+    return redirect(url_for("landing"))
 
 
 @app.route("/app")
@@ -289,8 +302,8 @@ def api_test_config(mock_id, test_name):
 def api_test_content(mock_id, test_name):
     """Extracted section text (content/<Test N>.json) for the text view.
     404 when not extracted -- the frontend falls back to page images."""
-    path = os.path.join(test_loader.mock_folder(mock_id), "content", f"{test_name}.json")
-    if not os.path.isfile(path):
+    path = test_loader.cached_file(mock_id, os.path.join("content", f"{test_name}.json"))
+    if path is None:
         abort(404)
     with open(path) as f:
         return jsonify(json.load(f))
@@ -308,8 +321,8 @@ def api_answer_key_page(mock_id, test_name):
     whose answer-key layout wasn't recognised at all).
     """
     section = request.args.get("section", "")
-    meta_path = os.path.join(test_loader.mock_folder(mock_id), ".answer_key_meta.json")
-    if not os.path.isfile(meta_path):
+    meta_path = test_loader.cached_file(mock_id, ".answer_key_meta.json")
+    if meta_path is None:
         abort(404)
     with open(meta_path) as f:
         meta = json.load(f)
@@ -549,8 +562,7 @@ def api_remark_attempt(attempt_id):
     except FileNotFoundError:
         abort(404, "This mock/test no longer exists on disk -- nothing was changed")
 
-    answers_path = os.path.join(test_loader.mock_folder(mock_id), "answers", test_name, f"{attempt['section']}.json")
-    if not os.path.isfile(answers_path):
+    if not test_loader.answers_exist(mock_id, test_name, attempt["section"]):
         abort(404, f"answers/{test_name}/{attempt['section']}.json is missing entirely -- nothing was changed")
 
     answer_key = test_loader.load_answers(mock_id, test_name, attempt["section"])
