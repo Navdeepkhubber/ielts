@@ -427,13 +427,6 @@ routes.toggleHide = () => {
   const hidden = shell.classList.toggle("is-hidden");
   btn.textContent = hidden ? "Resume test" : "Hide";
 };
-routes.toggleWritingOriginal = () => {
-  const panel = document.getElementById("writingOriginalPage");
-  const btn = document.querySelector(".writing-original-toggle");
-  if (!panel || !btn) return;
-  panel.hidden = !panel.hidden;
-  btn.textContent = panel.hidden ? "View original page" : "Hide original page";
-};
 routes.toggleContrast = () => {
   const on = document.body.classList.toggle("high-contrast");
   const btn = document.getElementById("contrastToggle");
@@ -570,379 +563,6 @@ function wireInlineInputs(container) {
   });
 }
 
-/* ---------------- structured question workspace ----------------
-   The existing answer-sheet inputs remain the canonical values submitted
-   to Flask. This layer only changes how questions are presented and
-   attempted in the browser.
------------------------------------------------------------------ */
-
-function normalizeExamText(text) {
-  return String(text || "")
-    .replace(/\r/g, "")
-    .replace(/\u00a0/g, " ")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function questionHeadingMatch(line) {
-  return String(line || "").match(
-    /^\s*(?:questions?|quesions?|q)\s+(\d{1,2})(?:\s*[-–—]\s*(\d{1,2}))?\s*$/i
-  );
-}
-
-function splitReadingText(text, qFrom, qTo) {
-  const normalized = normalizeExamText(text);
-  if (!normalized) return { passage: "", questions: "" };
-
-  const lines = normalized.split("\n");
-  let start = -1;
-
-  for (let i = 0; i < lines.length; i++) {
-    const m = questionHeadingMatch(lines[i]);
-    if (!m) continue;
-    const from = Number(m[1]);
-    const to = Number(m[2] || m[1]);
-    if (from <= qFrom && to >= qFrom) {
-      start = i;
-      break;
-    }
-  }
-
-  if (start === -1) {
-    const qRe = /^\s*(\d{1,2})\s*[.)]\s+/;
-    for (let i = 0; i < lines.length; i++) {
-      const m = lines[i].match(qRe);
-      if (m && Number(m[1]) === qFrom) {
-        start = i;
-        break;
-      }
-    }
-  }
-
-  if (start === -1) return { passage: normalized, questions: "" };
-  return {
-    passage: lines.slice(0, start).join("\n").trim(),
-    questions: lines.slice(start).join("\n").trim(),
-  };
-}
-
-function optionLineMatch(line) {
-  const m = String(line || "").match(/^\s*([A-H])\s*[\.\):\-]\s*(.+)$/i);
-  if (m) return { key: m[1].toUpperCase(), text: m[2].trim() };
-
-  const loose = String(line || "").match(/^\s*([A-H])\s{2,}(.+)$/i);
-  if (loose) return { key: loose[1].toUpperCase(), text: loose[2].trim() };
-
-  return null;
-}
-
-function questionLineMatch(line) {
-  const m = String(line || "").match(/^\s*(\d{1,2})\s*[.)]\s*(.*)$/);
-  if (!m) return null;
-  return { q: Number(m[1]), text: m[2].trim() };
-}
-
-function renderAnswerInput(prefix, q, extraClass = "") {
-  return `<input class="question-input ${extraClass}" type="text"
-      data-question-input="1" data-prefix="${esc(prefix)}" data-q="${q}"
-      autocomplete="off" spellcheck="false"
-      aria-label="Answer for question ${q}">`;
-}
-
-function renderQuestionPrompt(text, prefix, q, fillMode = false) {
-  let html = esc(String(text || "").replace(/\s+/g, " ").trim());
-
-  html = html.replace(
-    /(\b)(\d{1,2})(\s*)(?:[.…·]{3,}|_{3,})(?=\s|$)/g,
-    (m, lead, num) => {
-      const n = Number(num);
-      return n === q
-        ? `${lead}<span class="prompt-qnum">${n}</span>${renderAnswerInput(prefix, q)}`
-        : m;
-    }
-  );
-
-  if (fillMode && !/question-input|inline-input/.test(html)) {
-    html += ` ${renderAnswerInput(prefix, q)}`;
-  }
-
-  return html;
-}
-
-function choiceModeFor(instruction, options, rangeSize) {
-  const s = String(instruction || "").toLowerCase();
-
-  if (/true\s*\/?\s*false\s*\/?\s*not\s+given|true\s+false\s+not\s+given/.test(s)) {
-    return "tfng";
-  }
-  if (/yes\s*\/?\s*no\s*\/?\s*not\s+given|yes\s+no\s+not\s+given/.test(s)) {
-    return "ynng";
-  }
-  if (options.length >= 2) {
-    if (/choose\s+the\s+correct\s+letter|match|heading|paragraph|sentence ending/.test(s)) {
-      return "select";
-    }
-    if (/which\s+(?:one|of the following)|choose\s+one|choose\s+the\s+correct/.test(s)) {
-      return "radio";
-    }
-    if (rangeSize === 1) return "radio";
-    return "select";
-  }
-  return "text";
-}
-
-function renderChoiceGroup(prefix, q, options, mode) {
-  if (mode === "tfng" || mode === "ynng") {
-    const choices = mode === "tfng"
-      ? ["TRUE", "FALSE", "NOT GIVEN"]
-      : ["YES", "NO", "NOT GIVEN"];
-
-    return `
-      <div class="choice-grid choice-grid-compact" data-choice-group="${q}">
-        ${choices.map(choice => `
-          <label class="choice-card choice-card-small">
-            <input type="radio" name="${prefix}-choice-${q}" value="${esc(choice)}"
-              data-question-choice="1" data-prefix="${esc(prefix)}" data-q="${q}">
-            <span>${esc(choice)}</span>
-          </label>`).join("")}
-      </div>`;
-  }
-
-  if (mode === "select") {
-    return `
-      <div class="select-wrap">
-        <span class="select-label">Answer</span>
-        <select class="question-select" data-question-choice="1"
-          data-prefix="${esc(prefix)}" data-q="${q}" aria-label="Answer for question ${q}">
-          <option value="">Choose…</option>
-          ${options.map(o => `<option value="${esc(o.key)}">${esc(o.key)} — ${esc(o.text)}</option>`).join("")}
-        </select>
-      </div>`;
-  }
-
-  return `
-    <div class="choice-list" data-choice-group="${q}">
-      ${options.map(o => `
-        <label class="choice-card">
-          <input type="radio" name="${prefix}-choice-${q}" value="${esc(o.key)}"
-            data-question-choice="1" data-prefix="${esc(prefix)}" data-q="${q}">
-          <span class="choice-key">${esc(o.key)}</span>
-          <span class="choice-text">${esc(o.text)}</span>
-        </label>`).join("")}
-    </div>`;
-}
-
-function parseQuestionGroups(text, qFrom, qTo) {
-  const normalized = normalizeExamText(text);
-  if (!normalized) return [];
-
-  const lines = normalized.split("\n").map(s => s.trim()).filter(Boolean);
-  const groups = [];
-  let current = null;
-
-  const flush = () => {
-    if (current) groups.push(current);
-    current = null;
-  };
-
-  for (const line of lines) {
-    const heading = questionHeadingMatch(line);
-    if (heading) {
-      flush();
-      current = {
-        from: Number(heading[1]),
-        to: Number(heading[2] || heading[1]),
-        heading: line,
-        lines: [],
-      };
-      continue;
-    }
-
-    if (!current) {
-      const q = questionLineMatch(line);
-      if (q && q.q >= qFrom && q.q <= qTo) {
-        current = { from: qFrom, to: qTo, heading: "", lines: [line] };
-      }
-      continue;
-    }
-
-    current.lines.push(line);
-  }
-  flush();
-
-  return groups
-    .filter(g => g.to >= qFrom && g.from <= qTo)
-    .map(g => ({
-      ...g,
-      from: Math.max(g.from, qFrom),
-      to: Math.min(g.to, qTo),
-    }));
-}
-
-function buildQuestionCards(text, prefix, qFrom, qTo) {
-  const groups = parseQuestionGroups(text, qFrom, qTo);
-
-  if (!groups.length) {
-    const fallback = normalizeExamText(text);
-    return {
-      html: fallback
-        ? `<div class="question-fallback">${textWithInlineInputs(fallback, prefix, qFrom, qTo)}</div>`
-        : `<div class="question-empty">Question text is not available in text view. Use Book view for the original page.</div>`,
-      questions: 0,
-    };
-  }
-
-  let html = "";
-  let rendered = 0;
-
-  for (const group of groups) {
-    const optionLines = group.lines.map(optionLineMatch).filter(Boolean);
-    const options = optionLines.filter((o, idx, arr) =>
-      arr.findIndex(x => x.key === o.key) === idx
-    );
-
-    const questionStarts = [];
-    group.lines.forEach((line, idx) => {
-      const q = questionLineMatch(line);
-      if (q && q.q >= group.from && q.q <= group.to) {
-        questionStarts.push({ ...q, idx });
-      }
-    });
-
-    const firstQIdx = questionStarts.length ? questionStarts[0].idx : Infinity;
-    const instructionLines = group.lines
-      .slice(0, firstQIdx)
-      .filter(l => !optionLineMatch(l));
-
-    const instruction = instructionLines.join(" ");
-    const rangeSize = group.to - group.from + 1;
-    const mode = choiceModeFor(instruction, options, rangeSize);
-    const fillMode = mode === "text" &&
-      /complete|summary|notes|form|table|sentence|diagram|label/i.test(instruction);
-
-    html += `
-      <section class="question-group" data-qfrom="${group.from}" data-qto="${group.to}">
-        <div class="question-group-head">
-          <div>
-            <div class="question-group-title">${esc(group.heading || `Questions ${group.from}–${group.to}`)}</div>
-            ${instruction ? `<div class="question-group-instruction">${esc(instruction)}</div>` : ""}
-          </div>
-          <span class="question-group-count">Q${group.from}–${group.to}</span>
-        </div>`;
-
-    if (!questionStarts.length) {
-      const visibleText = group.lines
-        .filter(l => !optionLineMatch(l) && l !== instruction)
-        .join(" ");
-
-      for (let q = group.from; q <= group.to; q++) {
-        html += `
-          <article class="question-card" id="qcard-${prefix}-${q}" data-q="${q}">
-            <div class="question-card-top">
-              <span class="question-number">${q}</span>
-              <div class="question-card-body">
-                ${visibleText && q === group.from ? `<div class="question-stem">${esc(visibleText)}</div>` : ""}
-                ${options.length
-                  ? renderChoiceGroup(prefix, q, options, mode)
-                  : renderAnswerInput(prefix, q)}
-              </div>
-            </div>
-          </article>`;
-        rendered++;
-      }
-    } else {
-      for (let i = 0; i < questionStarts.length; i++) {
-        const start = questionStarts[i];
-        const end = questionStarts[i + 1]?.idx ?? group.lines.length;
-        const rawBody = group.lines.slice(start.idx, end)
-          .filter(l => !optionLineMatch(l))
-          .join(" ");
-        const body = rawBody.replace(new RegExp(`^${start.q}\\s*[.)]?\\s*`), "").trim();
-
-        html += `
-          <article class="question-card" id="qcard-${prefix}-${start.q}" data-q="${start.q}">
-            <div class="question-card-top">
-              <span class="question-number">${start.q}</span>
-              <div class="question-card-body">
-                <div class="question-stem">${renderQuestionPrompt(body, prefix, start.q, fillMode)}</div>
-                ${options.length ? renderChoiceGroup(prefix, start.q, options, mode) : ""}
-                ${!options.length && !fillMode ? renderAnswerInput(prefix, start.q) : ""}
-              </div>
-            </div>
-          </article>`;
-        rendered++;
-      }
-    }
-
-    html += `</section>`;
-  }
-
-  return { html, questions: rendered };
-}
-
-function questionWorkspaceHtml(text, prefix, qFrom, qTo, label = "Questions") {
-  const built = buildQuestionCards(text, prefix, qFrom, qTo);
-
-  return `
-    <div class="question-workspace" data-prefix="${esc(prefix)}">
-      <div class="question-workspace-head">
-        <div>
-          <span class="eyebrow">${esc(label)}</span>
-          <h3>Answer the questions</h3>
-        </div>
-        <span class="workspace-hint">Your answers are saved as you type</span>
-      </div>
-      ${built.html}
-    </div>`;
-}
-
-function wireQuestionControls(container) {
-  container.querySelectorAll("[data-question-choice]").forEach(control => {
-    const q = control.dataset.q;
-    const prefix = control.dataset.prefix;
-    const sheet = document.getElementById(`${prefix}-${q}`);
-    if (!sheet) return;
-
-    const sync = () => {
-      sheet.value = control.tagName === "SELECT"
-        ? control.value
-        : container.querySelector(`input[name="${prefix}-choice-${q}"]:checked`)?.value || "";
-      sheet.dispatchEvent(new Event("input"));
-    };
-
-    control.addEventListener("change", sync);
-    control.addEventListener("focus", () => syncNavCurrent(prefix, q));
-
-    if (sheet.value) {
-      if (control.tagName === "SELECT") {
-        control.value = sheet.value;
-      } else {
-        const radio = [...container.querySelectorAll(`input[name="${prefix}-choice-${q}"]`)]
-          .find(r => r.value === sheet.value);
-        if (radio) radio.checked = true;
-      }
-    }
-  });
-
-  container.querySelectorAll(".question-input").forEach(inp => {
-    const q = inp.dataset.q;
-    const prefix = inp.dataset.prefix;
-    const sheet = document.getElementById(`${prefix}-${q}`);
-    if (!sheet) return;
-
-    inp.value = sheet.value || "";
-    inp.addEventListener("input", () => {
-      sheet.value = inp.value;
-      sheet.dispatchEvent(new Event("input"));
-    });
-    inp.addEventListener("focus", () => syncNavCurrent(prefix, q));
-    sheet.addEventListener("input", () => {
-      if (document.activeElement !== inp) inp.value = sheet.value;
-    });
-  });
-}
-
 function viewToggleHtml(hasText) {
   if (!hasText) return "";
   return `
@@ -982,48 +602,32 @@ async function startReading(mockId, testName) {
   const groups = rcfg.passages.map((p, i) => ({ label: `Passage ${i + 1}`, from: p.questions[0], to: p.questions[1] }));
   let totalQ = 0;
   let materialHtml = "";
-  let questionHtml = "";
-
   rcfg.passages.forEach((p, i) => {
     const imgs = p.pages.map(pg =>
       `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pg}" alt="Reading passage page ${pg}" loading="lazy">`).join("");
-    const txt = rtexts[i]?.text || "";
-    const split = splitReadingText(txt, p.questions[0], p.questions[1]);
-
-    materialHtml += `
-      <div class="passage-block">
-        <div class="passage-head">
-          <span>Reading Passage ${i + 1}</span>
-          <span class="passage-range">Q${p.questions[0]}–${p.questions[1]}</span>
-        </div>
-        ${split.passage
-          ? `<div class="content-text">${textWithInlineInputs(split.passage, "ans", p.questions[0], p.questions[1])}</div>`
-          : (!txt ? `<div class="question-empty">Text extraction isn't available for this passage.</div>` : "")}
-        <div class="content-book" style="display:none">${imgs}</div>
-      </div>`;
-
-    questionHtml += `
-      <div class="passage-question-section">
-        <div class="question-section-label">Passage ${i + 1}</div>
-        ${questionWorkspaceHtml(split.questions || txt, "ans", p.questions[0], p.questions[1], `Questions ${p.questions[0]}–${p.questions[1]}`)}
-      </div>`;
-
+    const txt = rtexts[i]?.text;
+    if (txt) {
+      materialHtml += `
+        <div class="passage-block">
+          <div class="passage-head">Reading Passage ${i + 1}</div>
+          <div class="content-text">${textWithInlineInputs(txt, "ans", p.questions[0], p.questions[1])}</div>
+          <div class="content-book" style="display:none">${imgs}</div>
+        </div>`;
+    } else {
+      materialHtml += `<div class="passage-block"><div class="passage-head">Reading Passage ${i + 1}</div>${imgs}</div>`;
+    }
     totalQ += p.questions[1] - p.questions[0] + 1;
   });
-
   const hasText = rtexts.some(t => t?.text);
 
   app.innerHTML = `
     ${examBarHtml("Reading", { mockId })}
     ${viewToggleHtml(hasText)}
-    <div class="exam-shell exam-shell-reading">
+    <div class="exam-shell">
       <div class="exam-material">${materialHtml}</div>
       <div class="exam-answers">
-        ${questionHtml}
-        <details class="quick-answer-sheet">
-          <summary>Open quick answer sheet</summary>
-          ${answerSheetHtml(groups, "ans")}
-        </details>
+        <h3>Answer sheet</h3>
+        ${answerSheetHtml(groups, "ans")}
         <div class="submit-area">
           <button class="btn btn-primary" id="submitBtn">Submit reading</button>
         </div>
@@ -1036,7 +640,6 @@ async function startReading(mockId, testName) {
   document.body.classList.add("has-exam-navbar");
   wireAnswerSheet(app);
   wireInlineInputs(app);
-  wireQuestionControls(app);
   wireViewToggle(app);
   syncNavAnswered("ans");
   document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
@@ -1079,16 +682,21 @@ async function startListening(mockId, testName) {
   const content = await fetchContent(mockId, testName);
   const ltexts = content?.listening?.parts || [];
   let materialHtml = "";
-  let questionHtml = "";
-
   lcfg.parts.forEach((p, i) => {
     const pages = p.pages || [];
     const imgs = pages.length
       ? pages.map(pg => `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pg}" alt="Listening part ${i + 1} question sheet, page ${pg}" loading="lazy">`).join("")
       : `<div class="missing-sheet">The question sheet for this part isn't configured yet. Add its page numbers to the <strong>pages</strong> list for this part in manifest.json.</div>`;
-    const txt = ltexts[i]?.text || "";
+    const txt = ltexts[i]?.text;
+    const sheetHtml = txt
+      ? `<div class="content-text">${textWithInlineInputs(txt, "lans", p.questions[0], p.questions[1])}</div>
+         <div class="content-book" style="display:none">${imgs}</div>`
+      : imgs;
+    // A part can be split across multiple audio files (e.g. two halves of
+    // one recording) -- these must play back-to-back as ONE continuous
+    // "once only" listen, not as separate parts. Old manifests may still
+    // have a singular "file" instead of "files"; support both.
     const partFiles = p.files || (p.file ? [p.file] : []);
-
     materialHtml += `
       <div class="listening-part">
         <div class="audio-bar">
@@ -1097,33 +705,19 @@ async function startListening(mockId, testName) {
           <div class="audio-progress"><div class="audio-progress-fill" id="audioFill-${i}"></div></div>
           <span class="audio-time" id="audioTime-${i}">not started</span>
         </div>
-        <div class="listening-reference">
-          ${txt ? `<div class="content-text listening-reference-text">${textWithInlineInputs(txt, "lans", p.questions[0], p.questions[1])}</div>` : ""}
-          <div class="content-book" style="display:none">${imgs}</div>
-          ${!txt && !pages.length ? imgs : ""}
-        </div>
-      </div>`;
-
-    questionHtml += `
-      <div class="listening-question-section">
-        <div class="question-section-label">Part ${p.part_number || i + 1}</div>
-        ${questionWorkspaceHtml(txt, "lans", p.questions[0], p.questions[1], `Questions ${p.questions[0]}–${p.questions[1]}`)}
+        <div class="question-sheet">${sheetHtml}</div>
       </div>`;
   });
-
   const hasText = ltexts.some(t => t?.text);
 
   app.innerHTML = `
     ${examBarHtml("Listening", { mockId })}
     ${viewToggleHtml(hasText)}
-    <div class="exam-shell exam-shell-listening">
+    <div class="exam-shell">
       <div class="exam-material">${materialHtml}</div>
       <div class="exam-answers">
-        ${questionHtml}
-        <details class="quick-answer-sheet">
-          <summary>Open quick answer sheet</summary>
-          ${answerSheetHtml(groups, "lans")}
-        </details>
+        <h3>Answer sheet</h3>
+        ${answerSheetHtml(groups, "lans")}
         <div class="submit-area">
           <button class="btn btn-primary" id="submitBtn">Submit listening</button>
         </div>
@@ -1136,7 +730,6 @@ async function startListening(mockId, testName) {
   document.body.classList.add("has-exam-navbar");
   wireAnswerSheet(app);
   wireInlineInputs(app);
-  wireQuestionControls(app);
   wireViewToggle(app);
   syncNavAnswered("lans");
   document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
@@ -1249,30 +842,15 @@ async function startWritingTask(mockId, testName, taskKey, taskCfg, onDone) {
   });
 
   const label = taskKey === "task1" ? "Writing · Task 1" : "Writing · Task 2";
-  const content = await fetchContent(mockId, testName);
-  const extractedTask = content?.writing?.[taskKey]?.text || content?.writing?.[taskKey] || "";
-  const promptHtml = extractedTask
-    ? `<div class="writing-prompt-text">${textWithInlineInputs(String(extractedTask), "writing", 0, 0)}</div>`
-    : `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${taskCfg.page}" alt="${esc(label)} prompt">`;
-
   app.innerHTML = `
     ${examBarHtml(label, { mockId })}
-    <div class="exam-shell exam-shell-writing">
-      <div class="exam-material writing-material">
-        <div class="writing-task-label">${esc(label)}</div>
-        ${promptHtml}
-        ${extractedTask ? `<div class="writing-original-page"><button class="btn btn-ghost writing-original-toggle" data-action="toggleWritingOriginal">View original page</button>
-          <div id="writingOriginalPage" hidden><img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${taskCfg.page}" alt="Original ${esc(label)} page"></div></div>` : ""}
+    <div class="exam-shell">
+      <div class="exam-material">
+        <img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${taskCfg.page}" alt="${esc(label)} prompt">
       </div>
-      <div class="exam-answers writing-answer-panel">
-        <div class="writing-editor-head">
-          <div>
-            <span class="eyebrow">Your response</span>
-            <h3>Write your answer</h3>
-          </div>
-          <span class="writing-minimum">${taskKey === "task1" ? "Minimum 150 words" : "Minimum 250 words"}</span>
-        </div>
-        <textarea class="essay" id="essayBox" placeholder="Start writing here…" spellcheck="true"></textarea>
+      <div class="exam-answers">
+        <h3>Your response</h3>
+        <textarea class="essay" id="essayBox" placeholder="Write your response here…"></textarea>
         <div class="word-count" id="wc">0 words</div>
         <div class="submit-area">
           <button class="btn btn-primary" id="submitBtn">Submit ${taskKey === "task1" ? "Task 1" : "Task 2"}</button>
