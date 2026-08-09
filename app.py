@@ -693,6 +693,26 @@ def api_band_explanation(attempt_id):
         attempt["correct_count"], attempt["total"] or 40, attempt["section"], variant
     ))
 
+@app.route("/api/debug/blob")
+@login_required
+def api_debug_blob():
+    from lib import blob_storage
+
+    result = {
+        "configured": blob_storage.is_configured(),
+        "bucket": blob_storage.BUCKET,
+        "endpoint": blob_storage.ENDPOINT,
+        "prefix": blob_storage.PREFIX,
+    }
+
+    if blob_storage.is_configured():
+        try:
+            result["mock_ids"] = blob_storage.list_mock_ids()
+        except Exception as e:
+            app.logger.exception("B2 debug failed")
+            result["error"] = str(e)
+
+    return jsonify(result)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
