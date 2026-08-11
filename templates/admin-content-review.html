@@ -21,8 +21,11 @@
   .pane-head strong { font-family:var(--font-display); }
   .pane-meta { font-size:.78rem; color:var(--ink-soft); font-family:var(--font-mono); }
   .pane-body { padding:16px; overflow:auto; max-height:78vh; }
-  .book-pages img { display:block; width:100%; max-width:1000px; margin:0 auto 16px; border:1px solid var(--line); border-radius:4px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.06); }
-  .book-pages img:last-child { margin-bottom:0; }
+  .book-page { margin:0 auto 16px; }
+  .book-page img { display:block; width:100%; max-width:1000px; margin:0 auto; border:1px solid var(--line); border-radius:4px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .book-page img.is-loading { min-height:120px; }
+  .page-error { padding:16px; border:1px solid #e5c9a8; border-radius:8px; background:#fff7ed; color:#7c4a12; font-size:.84rem; }
+  .page-error code { font-family:var(--font-mono); font-size:.76rem; }
   .structured-content { font-size:1rem; line-height:1.7; }
   .content-intro { padding:12px 14px; margin-bottom:14px; border:1px solid var(--line); border-radius:8px; background:var(--paper); }
   .content-intro-row { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
@@ -30,6 +33,7 @@
   .qa-badge { display:inline-flex; align-items:center; gap:5px; font-size:.76rem; font-family:var(--font-mono); font-weight:700; padding:4px 8px; border-radius:999px; }
   .qa-ok { background:#e9f7ee; color:#146c35; }
   .qa-check { background:#fff0df; color:#8a4b08; }
+  .qa-legacy { background:#edf2f7; color:#475569; }
   .qa-detail { font-size:.78rem; color:var(--ink-soft); margin-top:7px; }
   .prose-block { margin:0 0 15px; }
   .prose-block:last-child { margin-bottom:18px; }
@@ -39,6 +43,7 @@
   .review-question { display:grid; grid-template-columns:44px minmax(0,1fr); gap:11px; border:1px solid var(--line); border-radius:8px; padding:12px; margin:0 0 10px; background:#fff; }
   .review-question-num { font-weight:800; font-family:var(--font-mono); color:var(--navy-btn); }
   .review-question-body { min-width:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .legacy-content { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.75; }
   .raw-content { white-space:pre-wrap; overflow-wrap:anywhere; margin:0; font:inherit; line-height:1.65; }
   .review-empty { padding:30px; text-align:center; color:var(--ink-soft); }
   .status { font-size:.78rem; color:var(--ink-soft); }
@@ -96,8 +101,8 @@
   let mocks = [], current = null, sectionData = [], index = 0, mode = 'structured';
 
   async function api(path) {
-    const r = await fetch(path);
-    if (!r.ok) throw new Error(await r.text());
+    const r = await fetch(path, { credentials: 'same-origin' });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
     return r.json();
   }
 
@@ -135,6 +140,36 @@
     return `<div class="question-list"><div class="question-section-label">Questions</div>${cards}</div>`;
   }
 
+  function renderLegacyText(text) {
+    const value = String(text || '').trim();
+    if (!value) return '<div class="review-empty">No extracted text available.</div>';
+    return `<div class="legacy-content">${esc(value)}</div>`;
+  }
+
+  function renderPages(pages) {
+    if (!pages?.length) {
+      return '<div class="review-empty">No page numbers configured.</div>';
+    }
+    return pages.map(page => `
+      <div class="book-page" data-page="${page}">
+        <img class="is-loading" src="/api/mocks/${encodeURIComponent(current.mock)}/page?page=${page}" alt="Original PDF page ${page}" loading="eager">
+      </div>
+    `).join('');
+  }
+
+  function wirePageErrors() {
+    document.querySelectorAll('#bookPane img').forEach(img => {
+      img.addEventListener('load', () => img.classList.remove('is-loading'), { once: true });
+      img.addEventListener('error', () => {
+        const page = img.closest('.book-page')?.dataset.page || '?';
+        const holder = img.parentElement;
+        holder.innerHTML = `<div class="page-error"><strong>Could not render PDF page ${esc(page)}.</strong><br>` +
+          `The source PDF could not be served by the local content endpoint.<br>` +
+          `<code>/api/mocks/${esc(current.mock)}/page?page=${esc(page)}</code></div>`;
+      }, { once: true });
+    });
+  }
+
   async function loadMocks() {
     mocks = await api('/api/mocks');
     $('mockSelect').innerHTML = mocks.map(m =>
@@ -158,36 +193,43 @@
     if (!mock || !test) return;
 
     current = {mock, test, section};
-    const content = await api('/api/mocks/' + encodeURIComponent(mock) + '/tests/' + encodeURIComponent(test) + '/content');
-    const cfg = await api('/api/mocks/' + encodeURIComponent(mock) + '/tests/' + encodeURIComponent(test));
-    const arr = section === 'reading' ? (content.reading?.passages || []) : (content.listening?.parts || []);
-    const cfgArr = section === 'reading' ? (cfg.reading?.passages || []) : (cfg.listening?.parts || []);
+    try {
+      const [content, cfg] = await Promise.all([
+        api('/api/mocks/' + encodeURIComponent(mock) + '/tests/' + encodeURIComponent(test) + '/content'),
+        api('/api/mocks/' + encodeURIComponent(mock) + '/tests/' + encodeURIComponent(test))
+      ]);
+      const arr = section === 'reading' ? (content.reading?.passages || []) : (content.listening?.parts || []);
+      const cfgArr = section === 'reading' ? (cfg.reading?.passages || []) : (cfg.listening?.parts || []);
 
-    sectionData = arr.map((x, i) => ({
-      ...x,
-      pages: cfgArr[i]?.pages || [],
-      label: section === 'reading' ? `Passage ${i + 1}` : `Part ${i + 1}`
-    }));
-    index = 0;
-    render();
+      sectionData = cfgArr.map((cfgSection, i) => ({
+        ...(arr[i] || {}),
+        pages: cfgSection.pages || [],
+        label: section === 'reading' ? `Passage ${i + 1}` : `Part ${i + 1}`
+      }));
+      index = 0;
+      render();
+    } catch (e) {
+      $('bookPane').innerHTML = '<div class="review-empty">Could not load this section.</div>';
+      $('textPane').innerHTML = `<div class="page-error">${esc(e.message)}</div>`;
+      $('status').textContent = 'Load failed';
+    }
   }
 
   function render() {
     const s = sectionData[index];
     if (!s) {
-      $('bookPane').innerHTML = '<div class="review-empty">No extracted content for this section.</div>';
+      $('bookPane').innerHTML = '<div class="review-empty">No section configured.</div>';
       $('textPane').innerHTML = '<div class="review-empty">No structured content available.</div>';
       return;
     }
 
     $('pageLabel').textContent = s.pages?.length ? `Pages ${s.pages.join(', ')}` : '';
-    $('questionLabel').textContent = `${s.questions?.length || 0} detected questions`;
+    $('questionLabel').textContent = s.questions?.length ? `${s.questions.length} detected questions` : (s.text ? 'Legacy extracted text' : '0 detected questions');
     $('textTitle').textContent = `${s.label} · ${mode === 'structured' ? 'Formatted text' : 'Raw extracted text'}`;
     $('status').textContent = `${index + 1} / ${sectionData.length}`;
 
-    $('bookPane').innerHTML = (s.pages || []).map(p =>
-      `<img src="/api/mocks/${encodeURIComponent(current.mock)}/page?page=${p}" alt="Original PDF page ${p}" loading="lazy">`
-    ).join('') || '<div class="review-empty">No page numbers configured.</div>';
+    $('bookPane').innerHTML = renderPages(s.pages);
+    wirePageErrors();
 
     if (mode === 'raw') {
       $('textPane').innerHTML = `<pre class="raw-content">${esc(s.text || '')}</pre>`;
@@ -195,12 +237,19 @@
     }
 
     const qa = s.qa || {};
-    const badge = `<span class="qa-badge ${qa.ok ? 'qa-ok' : 'qa-check'}">${qa.ok ? 'PASS' : 'CHECK'} · ${qa.detected_count || 0}/${qa.expected_count || 0}</span>`;
-    const details = [
-      (qa.missing_questions || []).length ? `Missing: ${qa.missing_questions.join(', ')}` : '',
-      (qa.duplicate_questions || []).length ? `Duplicates: ${qa.duplicate_questions.join(', ')}` : '',
-      (qa.unexpected_questions || []).length ? `Unexpected: ${qa.unexpected_questions.join(', ')}` : ''
-    ].filter(Boolean).join(' · ');
+    const hasStructuredQa = Number.isFinite(qa.expected_count) && qa.expected_count > 0;
+    let badge;
+    let details = '';
+    if (hasStructuredQa) {
+      badge = `<span class="qa-badge ${qa.ok ? 'qa-ok' : 'qa-check'}">${qa.ok ? 'PASS' : 'CHECK'} · ${qa.detected_count || 0}/${qa.expected_count || 0}</span>`;
+      details = [
+        (qa.missing_questions || []).length ? `Missing: ${qa.missing_questions.join(', ')}` : '',
+        (qa.duplicate_questions || []).length ? `Duplicates: ${qa.duplicate_questions.join(', ')}` : '',
+        (qa.unexpected_questions || []).length ? `Unexpected: ${qa.unexpected_questions.join(', ')}` : ''
+      ].filter(Boolean).join(' · ');
+    } else {
+      badge = '<span class="qa-badge qa-legacy">LEGACY · re-extraction needed</span>';
+    }
 
     const qaHtml = `
       <div class="content-intro">
@@ -214,7 +263,11 @@
 
     const prose = renderProse(s.blocks);
     const questions = renderQuestions(s.questions);
-    $('textPane').innerHTML = qaHtml + (prose || questions ? prose + questions : '<div class="review-empty">No structured blocks detected.</div>');
+    let body = prose + questions;
+    if (!body) {
+      body = renderLegacyText(s.text);
+    }
+    $('textPane').innerHTML = qaHtml + body;
   }
 
   $('mockSelect').addEventListener('change', loadTests);
