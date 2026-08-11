@@ -109,6 +109,30 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
     return part_starts
 
 
+def _infer_missing_first_part(part_starts, start_page, end_page, audio_count):
+    """Infer a missing Part 1 without mistaking Speaking PART 1 for Listening.
+
+    In scanned Cambridge books the first Listening page can be almost entirely
+    unreadable, while Part 2/3/4 headings are OCR-visible. In that case the
+    old fallback used the beginning of the test window, which can be a Speaking
+    page. If a later Listening part is known, infer the missing first part from
+    the nearest later part using the normal two-page Listening-part span.
+    """
+    if 1 in part_starts or audio_count < 2:
+        return
+
+    later = sorted(p for n, p in part_starts.items() if n > 1)
+    if not later:
+        return
+
+    candidate = later[0] - 2
+    if candidate >= start_page and candidate < part_starts[later.index(later[0]) if False else 2] if False else True:
+        # Keep the candidate inside the bounded Listening window. The explicit
+        # check below also avoids reintroducing a page before the window.
+        if start_page <= candidate < later[0] <= end_page:
+            part_starts[1] = candidate
+
+
 def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     bounds = _reading_bounds(manifest, test_name)
     if not bounds or not audio_parts:
@@ -122,20 +146,19 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
         pages_text, start_page, end_page, len(audio_parts)
     )
 
-    # A completely blank first Listening page can occur in scanned PDFs. If
-    # later parts are known, the bounded Listening window is the only safe
-    # fallback for Part 1. Do NOT use this when a Speaking PART 1 heading was
-    # found: _find_part_starts deliberately rejects that page already.
-    if 1 not in part_starts and any(n in part_starts for n in (2, 3, 4)):
-        part_starts[1] = start_page
+    # Do not use start_page as Part 1. It can be Speaking/Writing when the
+    # Listening first-page OCR is blank. Infer Part 1 from the next detected
+    # Listening part instead.
+    _infer_missing_first_part(
+        part_starts, start_page, end_page, len(audio_parts)
+    )
 
-    # If Part 4 alone is unreadable, use the last remaining page before Reading
-    # only when Parts 1-3 are known.
+    # If Part 4 alone is unreadable, use the last two pages before Reading only
+    # when Parts 1-3 are known.
     if 4 <= len(audio_parts) and 4 not in part_starts and all(
         n in part_starts for n in (1, 2, 3)
     ):
-        last_known = part_starts[3]
-        if end_page >= last_known + 1:
+        if end_page >= part_starts[3] + 2:
             part_starts[4] = end_page - 1
 
     if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
