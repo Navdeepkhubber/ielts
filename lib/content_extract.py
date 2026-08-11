@@ -37,6 +37,10 @@ _QUESTION_GROUP_RE = re.compile(
     r"^\s*(?:questions?|qns?)[\s:]+(\d{1,2})\s*(?:and|&|to|[-–—])\s*(\d{1,2})\b",
     re.IGNORECASE,
 )
+_FORM_NUMBER_GAP_RE = re.compile(r"^\s*(\d{1,2})\s*(?:[.…·]{2,}|_{2,})")
+_FORM_BLANK_RE = re.compile(
+    r"^\s*(?:\d{1,2}\s*)?(?:[A-Za-z][A-Za-z0-9'()/,&\- ]{0,55})?\s*(?:_{3,}|[.…·]{4,})\s*$"
+)
 
 
 def _is_heading_like(line):
@@ -179,6 +183,74 @@ def _extract_page(lines, q_range, mode, page):
     return prose_blocks, questions
 
 
+def _extract_form_slots(lines, q_range, page):
+    """Infer numbered answer slots from a form/note layout.
+
+    This is restricted to the IELTS Listening form-style parts where question
+    numbers are often printed beside blanks rather than as normal question
+    lines. Explicit numbers remain authoritative; missing numbers can only be
+    assigned when the complete set of answer rows is present.
+    """
+    if not q_range_valid(*q_range):
+        return []
+    start, end = q_range
+    expected_count = end - start + 1
+    candidates = []
+    explicit = set()
+
+    for idx, raw in enumerate(lines):
+        line = raw.strip()
+        if not line:
+            continue
+
+        m = _FORM_NUMBER_GAP_RE.match(line)
+        if m:
+            q = int(m.group(1))
+            if start <= q <= end and q not in explicit:
+                candidates.append((q, line, idx))
+                explicit.add(q)
+                continue
+
+        m = _LONE_QUESTION_NUMBER_RE.match(line)
+        if m:
+            q = int(m.group(1))
+            if start <= q <= end and q not in explicit:
+                next_line = lines[idx + 1].strip() if idx + 1 < len(lines) else ""
+                if next_line and (_FORM_BLANK_RE.match(next_line) or _GAP_RE.search(next_line)):
+                    candidates.append((q, f"{line} {next_line}", idx))
+                    explicit.add(q)
+
+    slot_rows = []
+    seen_indexes = set()
+    for q, text, idx in candidates:
+        slot_rows.append((idx, q, text))
+        seen_indexes.add(idx)
+
+    for idx, raw in enumerate(lines):
+        line = raw.strip()
+        if not line or idx in seen_indexes or _QUESTION_GROUP_RE.match(line):
+            continue
+        if _FORM_BLANK_RE.search(line) or _GAP_RE.search(line):
+            slot_rows.append((idx, None, line))
+
+    slot_rows.sort(key=lambda item: item[0])
+
+    # If every expected slot is represented, assign missing numbers to the
+    # unnumbered rows in visual/OCR order. Existing explicit numbers remain
+    # authoritative.
+    if len(slot_rows) == expected_count:
+        used = {q for _, q, _ in slot_rows if q is not None}
+        missing_numbers = [q for q in range(start, end + 1) if q not in used]
+        missing_iter = iter(missing_numbers)
+        inferred = []
+        for _, q, text in slot_rows:
+            assigned = q if q is not None else next(missing_iter)
+            inferred.append({"page": page, "question": assigned, "text": text})
+        return inferred
+
+    return []
+
+
 def _expected_questions(q_range):
     if not q_range or len(q_range) != 2:
         return []
@@ -248,8 +320,8 @@ def _paddle_page(pdf_path, page_number):
         gc.collect()
 
 
-def _ocr_page_variants(pdf_path, page_number):
-    """Single-page Tesseract OCR for a scanned page."""
+def _ocr_page_variants(pdf_path, page_number, form_mode=False):
+    """Single-page Tesseract OCR; form pages get a small layout-aware retry."""
     try:
         import fitz
         import pytesseract
@@ -263,9 +335,12 @@ def _ocr_page_variants(pdf_path, page_number):
             pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), colorspace=fitz.csGRAY, alpha=False)
             image = ImageOps.autocontrast(Image.open(io.BytesIO(pix.tobytes("png")))).filter(ImageFilter.SHARPEN)
             os.environ.setdefault("OMP_THREAD_LIMIT", "1")
-            text = pytesseract.image_to_string(image, config="--oem 3 --psm 3")
+            configs = ["--oem 3 --psm 3"]
+            if form_mode:
+                configs += ["--oem 3 --psm 6", "--oem 3 --psm 11"]
+            texts = [pytesseract.image_to_string(image, config=config) for config in configs]
             del image, pix
-            return [text]
+            return texts
         finally:
             doc.close()
             gc.collect()
@@ -283,7 +358,7 @@ def _merge_question_candidates(questions):
     return [by_question[n] for n in sorted(by_question)]
 
 
-def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
+def _section_content(pages_text, pages, mode, q_range, pdf_path=None, form_mode=False):
     prose_blocks, questions = [], []
     for p in pages:
         if not 1 <= p <= len(pages_text):
@@ -298,24 +373,29 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
     if not qa["ok"] and pdf_path:
         initial_missing = set(qa["missing_questions"])
         for p in pages:
-            # Tesseract is lightweight and was empirically better on the
-            # supplied Cambridge 14 scans. Use it first, one page at a time.
-            ocr_texts = _ocr_page_variants(pdf_path, p)
+            ocr_texts = _ocr_page_variants(pdf_path, p, form_mode=form_mode)
             ocr_lines = [line for text in ocr_texts for line in text.splitlines()]
             if ocr_lines:
-                _, ocr_questions = _extract_page(_clean_lines("\n".join(ocr_lines)), q_range, mode, p)
+                cleaned_ocr = _clean_lines("\n".join(ocr_lines))
+                _, ocr_questions = _extract_page(cleaned_ocr, q_range, mode, p)
                 questions = _merge_question_candidates(questions + ocr_questions)
+
+                if form_mode:
+                    form_questions = _extract_form_slots(cleaned_ocr, q_range, p)
+                    questions = _merge_question_candidates(questions + form_questions)
+
                 qa = _qa_for_section(q_range, questions)
                 if qa["ok"]:
                     break
 
-            # Only use PaddleOCR if Tesseract did not close the gap on this
-            # page. It remains page-at-a-time and therefore memory bounded.
             if initial_missing - {q["question"] for q in questions}:
                 paddle_lines = _paddle_page(pdf_path, p)
                 if paddle_lines:
                     _, paddle_questions = _extract_page(paddle_lines, q_range, mode, p)
                     questions = _merge_question_candidates(questions + paddle_questions)
+                    if form_mode:
+                        form_questions = _extract_form_slots(paddle_lines, q_range, p)
+                        questions = _merge_question_candidates(questions + form_questions)
                     qa = _qa_for_section(q_range, questions)
                     if qa["ok"]:
                         break
@@ -333,9 +413,15 @@ def build_content_for_test(pages_text, test_cfg, pdf_path=None):
     content = {"schema_version": 3}
     listening = test_cfg.get("listening", {})
     parts, any_listening = [], False
-    for part in listening.get("parts", []):
+    for index, part in enumerate(listening.get("parts", [])):
         pages = part.get("pages") or []
-        section = _section_content(pages_text, pages, "list", part.get("questions"), pdf_path=pdf_path)
+        # Cambridge Listening Parts 1 and 4 commonly use form/note layouts.
+        # Enable the extra layout-aware OCR and slot inference only there.
+        form_mode = index in (0, 3)
+        section = _section_content(
+            pages_text, pages, "list", part.get("questions"),
+            pdf_path=pdf_path, form_mode=form_mode
+        )
         any_listening = any_listening or bool(section["text"])
         parts.append(section)
     if any_listening:
