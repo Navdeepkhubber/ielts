@@ -124,8 +124,7 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
 
     There are deliberately no page-count or Cambridge-book-specific fallbacks.
     If the PDF does not provide enough evidence to determine a boundary, the
-    function returns None and the caller keeps the audio-only scaffold rather
-    than silently creating a potentially wrong manifest.
+    function returns None and the caller must not preserve stale page values.
     """
     bounds = _reading_bounds(manifest, test_name)
     if not bounds or not audio_parts:
@@ -145,9 +144,6 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
         pages_text, listening_start, end_page, len(audio_parts)
     )
 
-    # The actual Listening heading establishes Part 1 only if the page also
-    # contains evidence that it is the first question group. Do not invent a
-    # Part 1 start merely from the location of the word LISTENING.
     if 1 not in part_starts:
         return None
 
@@ -205,6 +201,24 @@ def _cache_looks_incomplete(pdf_path, manifest, test_dirs):
         return False
 
 
+def _audio_only_block(test_name, generic):
+    """Return a block whose page values are explicitly unresolved.
+
+    We intentionally do not copy pages from the existing manifest here. This
+    makes an unresolved extraction visible instead of falsely reporting stale
+    data as "up to date".
+    """
+    parts = []
+    for part in generic.get("parts", []):
+        parts.append({
+            "part_number": part.get("part_number"),
+            "files": part.get("files", []),
+            "questions": part.get("questions"),
+            "pages": [],
+        })
+    return {"audio_folder": test_name, "parts": parts}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mock", required=True)
@@ -244,27 +258,37 @@ def main():
     for test_name in test_dirs:
         cfg = manifest.setdefault("tests", {}).setdefault(test_name, {})
         old = cfg.get("listening")
-        generic = _build_listening_block(test_name, audio_root, detected_parts=None)
+        generic = _build_listening_block(
+            test_name, audio_root, detected_parts=None
+        )
         inferred_parts = _infer_listening_parts(
             test_name, manifest, pages_text, generic.get("parts", [])
         )
-        new = (
-            {"audio_folder": test_name, "parts": inferred_parts}
-            if inferred_parts else generic
-        )
+
+        if inferred_parts is not None:
+            new = {
+                "audio_folder": test_name,
+                "parts": inferred_parts,
+            }
+            status = "derived from PDF"
+        else:
+            new = _audio_only_block(test_name, generic)
+            status = "UNRESOLVED - no reliable PDF boundaries"
 
         if old != new:
             cfg["listening"] = new
             changed = True
-            print(f"  {test_name}: listening parts={len(new.get('parts', []))}")
+            print(f"  {test_name}: {status}")
             for part in new.get("parts", []):
                 print(
                     f"    Part {part.get('part_number')}: "
                     f"questions={part.get('questions')}, "
                     f"pages={part.get('pages', [])}"
                 )
+        elif inferred_parts is None:
+            print(f"  {test_name}: {status}")
         else:
-            print(f"  {test_name}: listening already up to date")
+            print(f"  {test_name}: listening derived from PDF and up to date")
 
     if changed:
         with open(manifest_path, "w") as f:
