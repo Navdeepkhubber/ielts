@@ -3,9 +3,10 @@
 Usage:
     python3 scripts/sync_listening_manifest.py --mock "Cambridge 9"
 
-The PDF is scanned for the actual Listening section and canonical question
-ranges. Existing manifest values are re-derived so stale page ranges are
-corrected instead of being treated as authoritative.
+Existing listening page ranges are never treated as authoritative. Page
+boundaries are derived from evidence in the PDF. If cached text is
+insufficient, a small targeted OCR pass is run only for the test's
+pre-Reading window instead of guessing or OCRing the whole book.
 """
 import argparse
 import json
@@ -20,13 +21,8 @@ sys.path.insert(0, ROOT)
 from lib import pdf_structure  # noqa: E402
 from lib.scaffold import _build_listening_block, _discover_test_dirs  # noqa: E402
 
-_LISTENING_HEADING_RE = re.compile(
-    r"^\s*(?:SECTION|PART)\s+(\d+)\s*(?:[QO]uestions?\s+\d+\s*[-–—~]\s*\d+)?\s*\.?\s*$",
-    re.IGNORECASE,
-)
 _QUESTION_RANGE_RE = re.compile(
-    r"[QO]uestions?\s+(\d{1,2})\s*[-–—~]\s*(\d{1,2})",
-    re.IGNORECASE,
+    r"[QO]uestions?\s+(\d{1,2})\s*[-–—~]\s*(\d{1,2})", re.IGNORECASE
 )
 _MIN_TEXT_CHARS = 20
 
@@ -68,155 +64,98 @@ def _is_non_listening_page(text):
     return "SPEAKING" in upper or "WRITING TASK" in upper
 
 
-def _find_listening_start(pages_text, start_page, end_page):
+def _question_starts(pages_text, start_page, end_page, audio_count):
+    starts = {}
     end_page = min(end_page, len(pages_text))
-    for page in range(start_page, end_page + 1):
-        text = pages_text[page - 1]
-        if _is_non_listening_page(text):
-            continue
-        if "LISTENING" in text.upper():
-            return page
-    return None
-
-
-def _find_part_starts(pages_text, start_page, end_page, audio_count):
-    end_page = min(end_page, len(pages_text))
-    part_starts = {}
-
-    # Canonical question ranges are the strongest signal. These are the
-    # actual question groups printed in the IELTS paper and do not depend on
-    # a fixed page count.
     for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
         if _is_non_listening_page(text):
             continue
         for m in _QUESTION_RANGE_RE.finditer(text):
             s, e = int(m.group(1)), int(m.group(2))
-            part_num = ((s - 1) // 10) + 1
-            expected_start = (part_num - 1) * 10 + 1
-            expected_end = part_num * 10
-            if (
-                1 <= part_num <= audio_count
-                and s == expected_start
-                and e == expected_end
-            ):
-                part_starts.setdefault(part_num, page)
+            if s >= 1 and s <= 40 and e == s + 9:
+                part = ((s - 1) // 10) + 1
+                if 1 <= part <= audio_count:
+                    starts.setdefault(part, page)
+    return starts
 
-    # Explicit SECTION/PART headings are a second evidence source, but only
-    # when they occur inside the already identified Listening section.
+
+def _heading_part_starts(pages_text, start_page, end_page, audio_count):
+    """Find SECTION/PART headings without treating SPEAKING as Listening."""
+    pattern = re.compile(
+        r"^\s*(?:SECTION|PART)\s+(\d+)\b.*$", re.IGNORECASE | re.MULTILINE
+    )
+    starts = {}
+    end_page = min(end_page, len(pages_text))
     for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
         if _is_non_listening_page(text):
             continue
-        for raw in text.splitlines():
-            m = _LISTENING_HEADING_RE.match(raw.strip())
-            if not m:
-                continue
-            n = int(m.group(1))
-            if 1 <= n <= audio_count:
-                part_starts.setdefault(n, page)
-
-    return part_starts
+        for line in text.splitlines():
+            m = pattern.match(line.strip())
+            if m:
+                n = int(m.group(1))
+                if 1 <= n <= audio_count:
+                    starts.setdefault(n, page)
+    return starts
 
 
-def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
-    """Infer parts only from evidence in the PDF.
-
-    There are deliberately no page-count or Cambridge-book-specific fallbacks.
-    If the PDF does not provide enough evidence to determine a boundary, the
-    function returns None and the caller must not preserve stale page values.
-    """
-    bounds = _reading_bounds(manifest, test_name)
-    if not bounds or not audio_parts:
+def _derive_parts(pages_text, start_page, end_page, audio_parts):
+    """Derive all part spans from PDF evidence; never use existing page values."""
+    if not audio_parts or end_page < start_page:
         return None
 
-    window_start, end_page = bounds
-    if end_page < window_start:
+    count = len(audio_parts)
+    starts = _question_starts(pages_text, start_page, end_page, count)
+    headings = _heading_part_starts(pages_text, start_page, end_page, count)
+
+    # Question-range evidence is preferred. A heading is useful only for a
+    # part whose question-range heading was not OCR'd.
+    for n, page in headings.items():
+        starts.setdefault(n, page)
+
+    if any(n not in starts for n in range(1, count + 1)):
         return None
 
-    listening_start = _find_listening_start(
-        pages_text, window_start, end_page
-    )
-    if listening_start is None:
-        return None
-
-    part_starts = _find_part_starts(
-        pages_text, listening_start, end_page, len(audio_parts)
-    )
-
-    if 1 not in part_starts:
-        return None
-
-    if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
-        return None
-
-    ordered = [part_starts[n] for n in range(1, len(audio_parts) + 1)]
+    ordered = [starts[n] for n in range(1, count + 1)]
     if any(ordered[i] >= ordered[i + 1] for i in range(len(ordered) - 1)):
         return None
 
-    audio_by_num = {
-        p.get("part_number"): p
-        for p in audio_parts
-        if p.get("part_number") is not None
-    }
-    inferred = []
-    for part_num in range(1, len(audio_parts) + 1):
-        page = part_starts[part_num]
-        next_page = (
-            part_starts[part_num + 1]
-            if part_num < len(audio_parts)
-            else end_page + 1
-        )
-        audio = audio_by_num.get(part_num, {})
-        inferred.append({
-            "part_number": part_num,
+    audio_by_num = {p.get("part_number"): p for p in audio_parts}
+    result = []
+    for n in range(1, count + 1):
+        start = starts[n]
+        stop = starts[n + 1] if n < count else end_page + 1
+        audio = audio_by_num.get(n, {})
+        result.append({
+            "part_number": n,
             "files": audio.get("files", []),
-            "questions": [(part_num - 1) * 10 + 1, part_num * 10],
-            "pages": list(range(page, next_page)),
+            "questions": [(n - 1) * 10 + 1, n * 10],
+            "pages": list(range(start, stop)),
         })
-    return inferred
+    return result
 
 
-def _cache_looks_incomplete(pdf_path, manifest, test_dirs):
-    cache_path = pdf_structure._cache_path(pdf_path)
+def _targeted_ocr(pdf_path, pages_text, start_page, end_page):
+    """OCR only the unresolved pre-Reading window, keeping memory bounded."""
+    if not getattr(pdf_structure, "_OCR_AVAILABLE", False):
+        return False
     try:
-        with open(cache_path) as f:
-            cache = json.load(f)
-        if cache.get("key") != pdf_structure._cache_key(pdf_path):
-            return True
-        texts = cache.get("texts", [])
-        for test_name in test_dirs:
-            bounds = _reading_bounds(manifest, test_name)
-            if not bounds:
-                continue
-            start, end = bounds
-            if end < start or not texts:
-                continue
-            window = texts[max(0, start - 1):min(len(texts), end)]
-            meaningful = sum(len(t.strip()) >= _MIN_TEXT_CHARS for t in window)
-            if window and meaningful < max(1, len(window) // 2):
-                return True
+        import fitz
+        doc = fitz.open(pdf_path)
+        try:
+            zoom = 1.7
+            for page_num in range(start_page, end_page + 1):
+                page = doc[page_num - 1]
+                text = pdf_structure._ocr_page_text(page, zoom=zoom)
+                if text and len(text.strip()) >= _MIN_TEXT_CHARS:
+                    pages_text[page_num - 1] = text
+        finally:
+            doc.close()
+        return True
+    except Exception as exc:
+        print(f"  Targeted OCR failed: {exc}")
         return False
-    except (OSError, ValueError, KeyError, TypeError):
-        return False
-
-
-def _audio_only_block(test_name, generic):
-    """Return a block whose page values are explicitly unresolved.
-
-    We intentionally do not copy pages from the existing manifest here. This
-    makes an unresolved extraction visible instead of falsely reporting stale
-    data as "up to date".
-    """
-    parts = []
-    for part in generic.get("parts", []):
-        parts.append({
-            "part_number": part.get("part_number"),
-            "files": part.get("files", []),
-            "questions": part.get("questions"),
-            "pages": [],
-        })
-    return {"audio_folder": test_name, "parts": parts}
 
 
 def main():
@@ -243,52 +182,55 @@ def main():
         raise SystemExit(f"No audio/Test N folders found under {audio_root}")
 
     print(f"[{args.mock}] syncing listening manifest for {len(test_dirs)} audio tests")
-
-    if _cache_looks_incomplete(pdf_path, manifest, test_dirs):
-        cache_path = pdf_structure._cache_path(pdf_path)
-        try:
-            os.remove(cache_path)
-            print("  Existing PDF text cache is incomplete; refreshing OCR cache.")
-        except OSError:
-            pass
-
     pages_text, _ = pdf_structure._page_texts(pdf_path)
     changed = False
 
     for test_name in test_dirs:
         cfg = manifest.setdefault("tests", {}).setdefault(test_name, {})
-        old = cfg.get("listening")
-        generic = _build_listening_block(
-            test_name, audio_root, detected_parts=None
-        )
-        inferred_parts = _infer_listening_parts(
-            test_name, manifest, pages_text, generic.get("parts", [])
-        )
+        generic = _build_listening_block(test_name, audio_root, detected_parts=None)
+        audio_parts = generic.get("parts", [])
+        bounds = _reading_bounds(manifest, test_name)
 
-        if inferred_parts is not None:
-            new = {
+        inferred = None
+        if bounds:
+            inferred = _derive_parts(pages_text, bounds[0], bounds[1], audio_parts)
+            if inferred is None:
+                print(f"  {test_name}: retrying targeted OCR for pages {bounds[0]}-{bounds[1]}")
+                if _targeted_ocr(pdf_path, pages_text, bounds[0], bounds[1]):
+                    inferred = _derive_parts(pages_text, bounds[0], bounds[1], audio_parts)
+
+        if inferred:
+            new = {"audio_folder": test_name, "parts": inferred}
+            old = cfg.get("listening")
+            if old != new:
+                cfg["listening"] = new
+                changed = True
+                print(f"  {test_name}: listening derived from PDF")
+                for part in inferred:
+                    print(
+                        f"    Part {part['part_number']}: "
+                        f"questions={part['questions']}, pages={part['pages']}"
+                    )
+            else:
+                print(f"  {test_name}: listening derived from PDF and up to date")
+        else:
+            unresolved = {
                 "audio_folder": test_name,
-                "parts": inferred_parts,
+                "parts": [
+                    {
+                        "part_number": p.get("part_number"),
+                        "files": p.get("files", []),
+                        "questions": p.get("questions"),
+                        "pages": [],
+                    }
+                    for p in audio_parts
+                ],
             }
-            status = "derived from PDF"
-        else:
-            new = _audio_only_block(test_name, generic)
-            status = "UNRESOLVED - no reliable PDF boundaries"
-
-        if old != new:
-            cfg["listening"] = new
-            changed = True
-            print(f"  {test_name}: {status}")
-            for part in new.get("parts", []):
-                print(
-                    f"    Part {part.get('part_number')}: "
-                    f"questions={part.get('questions')}, "
-                    f"pages={part.get('pages', [])}"
-                )
-        elif inferred_parts is None:
-            print(f"  {test_name}: {status}")
-        else:
-            print(f"  {test_name}: listening derived from PDF and up to date")
+            old = cfg.get("listening")
+            if old != unresolved:
+                cfg["listening"] = unresolved
+                changed = True
+            print(f"  {test_name}: UNRESOLVED - no reliable PDF boundaries")
 
     if changed:
         with open(manifest_path, "w") as f:
