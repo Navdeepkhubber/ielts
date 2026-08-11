@@ -3,7 +3,7 @@
 Keeps the existing `text` field for backwards compatibility while adding
 `blocks`, `questions`, and QA metadata. Question boundaries are constrained
 by the manifest question range. Scanned pages use a memory-bounded, page-at-a-time
-PaddleOCR pass when available, with Tesseract as a fallback.
+Tesseract pass first, with PaddleOCR as a layout-aware fallback.
 """
 import gc
 import io
@@ -137,10 +137,6 @@ def _extract_page(lines, q_range, mode, page):
             return
         text = _normalise_question(current["lines"], mode)
         if text:
-            # A prompt such as "Questions 11 and 12" describes two answer
-            # slots sharing one visual block. Preserve that shared block for
-            # both question records instead of requiring OCR to invent a
-            # separate question number that is not printed.
             for question in current.get("questions", [current["question"]]):
                 questions.append({"page": page, "question": question, "text": text})
         current = None
@@ -253,7 +249,7 @@ def _paddle_page(pdf_path, page_number):
 
 
 def _ocr_page_variants(pdf_path, page_number):
-    """Single-page Tesseract fallback for a scanned page."""
+    """Single-page Tesseract OCR for a scanned page."""
     try:
         import fitz
         import pytesseract
@@ -277,6 +273,16 @@ def _ocr_page_variants(pdf_path, page_number):
         return []
 
 
+def _merge_question_candidates(questions):
+    by_question = {}
+    for q in questions:
+        n = q["question"]
+        existing = by_question.get(n)
+        if existing is None or len(q.get("text", "")) > len(existing.get("text", "")):
+            by_question[n] = q
+    return [by_question[n] for n in sorted(by_question)]
+
+
 def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
     prose_blocks, questions = [], []
     for p in pages:
@@ -287,29 +293,34 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
         prose_blocks.extend({"type": "text", "page": p, "text": x} for x in page_prose if x)
         questions.extend(page_questions)
 
+    questions = _merge_question_candidates(questions)
     qa = _qa_for_section(q_range, questions)
     if not qa["ok"] and pdf_path:
-        missing_before_ocr = set(qa["missing_questions"])
+        initial_missing = set(qa["missing_questions"])
         for p in pages:
-            ocr_lines = _paddle_page(pdf_path, p)
-            if not ocr_lines:
-                ocr_texts = _ocr_page_variants(pdf_path, p)
-                ocr_lines = [line for text in ocr_texts for line in text.splitlines()]
-            if not ocr_lines:
-                continue
-            _, ocr_questions = _extract_page(_clean_lines("\n".join(ocr_lines)), q_range, mode, p)
-            questions.extend(ocr_questions)
-            by_num = {q["question"] for q in questions}
-            if missing_before_ocr.issubset(by_num):
-                break
+            # Tesseract is lightweight and was empirically better on the
+            # supplied Cambridge 14 scans. Use it first, one page at a time.
+            ocr_texts = _ocr_page_variants(pdf_path, p)
+            ocr_lines = [line for text in ocr_texts for line in text.splitlines()]
+            if ocr_lines:
+                _, ocr_questions = _extract_page(_clean_lines("\n".join(ocr_lines)), q_range, mode, p)
+                questions = _merge_question_candidates(questions + ocr_questions)
+                qa = _qa_for_section(q_range, questions)
+                if qa["ok"]:
+                    break
 
-    by_question = {}
-    for q in questions:
-        n = q["question"]
-        existing = by_question.get(n)
-        if existing is None or len(q.get("text", "")) > len(existing.get("text", "")):
-            by_question[n] = q
-    unique_questions = [by_question[n] for n in sorted(by_question)]
+            # Only use PaddleOCR if Tesseract did not close the gap on this
+            # page. It remains page-at-a-time and therefore memory bounded.
+            if initial_missing - {q["question"] for q in questions}:
+                paddle_lines = _paddle_page(pdf_path, p)
+                if paddle_lines:
+                    _, paddle_questions = _extract_page(paddle_lines, q_range, mode, p)
+                    questions = _merge_question_candidates(questions + paddle_questions)
+                    qa = _qa_for_section(q_range, questions)
+                    if qa["ok"]:
+                        break
+
+    unique_questions = _merge_question_candidates(questions)
     qa = _qa_for_section(q_range, unique_questions)
     return {
         "text": "\n\n".join(x["text"] for x in prose_blocks + [{"text": q["text"]} for q in unique_questions]),
