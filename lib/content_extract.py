@@ -235,9 +235,6 @@ def _extract_form_slots(lines, q_range, page):
 
     slot_rows.sort(key=lambda item: item[0])
 
-    # If every expected slot is represented, assign missing numbers to the
-    # unnumbered rows in visual/OCR order. Existing explicit numbers remain
-    # authoritative.
     if len(slot_rows) == expected_count:
         used = {q for _, q, _ in slot_rows if q is not None}
         missing_numbers = [q for q in range(start, end + 1) if q not in used]
@@ -415,9 +412,10 @@ def build_content_for_test(pages_text, test_cfg, pdf_path=None):
     parts, any_listening = [], False
     for index, part in enumerate(listening.get("parts", [])):
         pages = part.get("pages") or []
-        # Cambridge Listening Parts 1 and 4 commonly use form/note layouts.
-        # Enable the extra layout-aware OCR and slot inference only there.
-        form_mode = index in (0, 3)
+        # Listening parts can use forms, notes, tables, or standard numbered
+        # layouts. Extra OCR is enabled for every part only when its initial
+        # extraction is incomplete, so already-good sections are unaffected.
+        form_mode = True
         section = _section_content(
             pages_text, pages, "list", part.get("questions"),
             pdf_path=pdf_path, form_mode=form_mode
