@@ -83,7 +83,6 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
     end_page = min(end_page, len(pages_text))
     part_starts = {}
 
-    # Canonical question ranges are the strongest signal for each part.
     for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
         if _is_non_listening_page(text):
@@ -95,7 +94,6 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
             if 1 <= part_num <= audio_count and s == expected_start:
                 part_starts.setdefault(part_num, page)
 
-    # Explicit SECTION/PART headings are a fallback.
     if len(part_starts) < audio_count:
         for page in range(start_page, end_page + 1):
             text = pages_text[page - 1]
@@ -112,20 +110,19 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
 
 
 def _infer_listening_start_fallback(start_page, end_page, audio_count):
-    """Fallback when OCR cannot identify Listening.
+    """Infer Listening start when OCR cannot identify the section title.
 
-    Most Cambridge tests have 8 Listening pages immediately before Reading.
-    Cambridge 9 Test 1 is a known 7-page layout (pages 2-8), so use 7 pages
-    only when the bounded window is exactly 8 pages and its first page is the
-    book/test boundary rather than a Listening page.
+    For four-part IELTS tests the Listening section is normally the final
+    eight PDF pages immediately before Reading. This is used only when OCR
+    cannot identify the actual Listening start. It deliberately takes the
+    final eight pages of a larger pre-Reading window so Speaking pages at the
+    beginning of that window are not mistaken for Listening.
     """
     if audio_count != 4:
         return None
     window = end_page - start_page + 1
-    if window == 8:
-        return start_page
-    if window == 7:
-        return start_page
+    if window >= 8:
+        return end_page - 7
     return None
 
 
@@ -138,33 +135,21 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     if end_page < window_start:
         return None
 
-    # First find the actual Listening page. This prevents Speaking PART 1
-    # pages from being mistaken for Listening Part 1.
     listening_start = _find_listening_start(
         pages_text, window_start, end_page
     )
-
-    # If OCR cannot see the Listening title, use a conservative geometric
-    # fallback. The fallback is deliberately not used when OCR found a title.
     if listening_start is None:
         listening_start = _infer_listening_start_fallback(
             window_start, end_page, len(audio_parts)
         )
-
     if listening_start is None:
         return None
 
-    # Parts must be inferred only inside the Listening section. This avoids
-    # stale PART headings from Speaking/Writing and from adjacent tests.
     part_starts = _find_part_starts(
         pages_text, listening_start, end_page, len(audio_parts)
     )
-
-    # The first Listening page is authoritative for Part 1.
     part_starts[1] = listening_start
 
-    # If later parts were not readable, infer them from the standard two-page
-    # spacing, but never extend beyond the Reading boundary.
     for n in range(2, len(audio_parts) + 1):
         if n not in part_starts:
             candidate = listening_start + (n - 1) * 2
@@ -174,7 +159,6 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
         return None
 
-    # Reject obviously impossible starts caused by OCR noise.
     ordered = [part_starts[n] for n in range(1, len(audio_parts) + 1)]
     if any(ordered[i] >= ordered[i + 1] for i in range(len(ordered) - 1)):
         return None
@@ -265,9 +249,7 @@ def main():
     for test_name in test_dirs:
         cfg = manifest.setdefault("tests", {}).setdefault(test_name, {})
         old = cfg.get("listening")
-        generic = _build_listening_block(
-            test_name, audio_root, detected_parts=None
-        )
+        generic = _build_listening_block(test_name, audio_root, detected_parts=None)
         inferred_parts = _infer_listening_parts(
             test_name, manifest, pages_text, generic.get("parts", [])
         )
