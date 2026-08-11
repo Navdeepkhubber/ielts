@@ -1,11 +1,10 @@
-"""
-Structured text extraction for IELTS reading/listening content.
+"""Structured text extraction for IELTS reading/listening content.
 
 Keeps the existing `text` field for backwards compatibility while adding
-`blocks` and `questions`. Question boundaries are constrained by the manifest
-question range, so numbers in normal passage prose are not treated as
-questions. The original PDF pages remain the visual fallback for maps,
-diagrams and OCR that needs correction.
+`blocks`, `questions`, and QA metadata. Question boundaries are constrained
+by the manifest question range, but lone printed question numbers are kept
+through cleaning so OCR layouts such as `14` on one line followed by the
+question text can be detected.
 """
 import json
 import os
@@ -14,7 +13,9 @@ import re
 _NOISE_RES = [
     re.compile(r"^\s*Test\s+\d+\s*$", re.IGNORECASE),
     re.compile(r"^\s*(LISTENING|READING|WRITING|ACADEMIC READING)\s*$", re.IGNORECASE),
-    re.compile(r"^\s*\d{1,3}\s*$"),
+    # Do NOT remove lone numbers here. A question number is often emitted
+    # by OCR on its own line. The question-range guard below prevents page
+    # numbers/years from becoming question starts.
     re.compile(r"^\s*@\w+\s*$"),
     re.compile(r"^\s*[|>_\-~•·=]{1,4}\s*$"),
     re.compile(r"^\s*IELTS\s+\d+\s*$", re.IGNORECASE),
@@ -41,6 +42,8 @@ def _is_heading_like(line):
 
 
 def _question_start(line, q_from, q_to):
+    if not q_range_valid(q_from, q_to):
+        return None
     m = _QUESTION_START_RE.match(line)
     if m:
         q = int(m.group(1))
@@ -54,14 +57,25 @@ def _question_start(line, q_from, q_to):
     return None
 
 
+def q_range_valid(q_from, q_to):
+    return isinstance(q_from, int) and isinstance(q_to, int) and q_from <= q_to
+
+
 def _clean_lines(text):
-    return [line for raw in text.splitlines() for line in [raw.rstrip()] if not any(rx.match(line) for rx in _NOISE_RES)]
+    return [
+        line
+        for raw in text.splitlines()
+        for line in [raw.rstrip()]
+        if not any(rx.match(line) for rx in _NOISE_RES)
+    ]
 
 
 def _reflow(lines, mode):
     if mode == "list":
         return [ln.strip() for ln in lines if ln.strip()]
+
     blocks, buf = [], []
+
     def flush():
         if not buf:
             return
@@ -75,6 +89,7 @@ def _reflow(lines, mode):
                 text = ln
         blocks.append(text.strip())
         buf.clear()
+
     for raw in lines:
         line = raw.strip()
         if not line:
@@ -90,7 +105,11 @@ def _reflow(lines, mode):
 
 
 def _normalise_question(lines, mode):
-    return "\n".join(x.strip() for x in lines if x.strip()) if mode == "list" else "\n\n".join(_reflow(lines, "prose"))
+    return (
+        "\n".join(x.strip() for x in lines if x.strip())
+        if mode == "list"
+        else "\n\n".join(_reflow(lines, "prose"))
+    )
 
 
 def _extract_page(lines, q_range, mode, page):
@@ -129,8 +148,6 @@ def _extract_page(lines, q_range, mode, page):
             continue
 
         if current:
-            # Structural heading after a question ends that question. This
-            # prevents the next instruction/group from being swallowed.
             if _is_heading_like(line) and not _GAP_RE.search(line):
                 flush_question()
                 prose_lines.append(line)
@@ -144,6 +161,41 @@ def _extract_page(lines, q_range, mode, page):
     return prose_blocks, questions
 
 
+def _expected_questions(q_range):
+    if not q_range or len(q_range) != 2:
+        return []
+    try:
+        start, end = int(q_range[0]), int(q_range[1])
+    except (TypeError, ValueError):
+        return []
+    return list(range(start, end + 1)) if start <= end else []
+
+
+def _qa_for_section(q_range, questions):
+    expected = _expected_questions(q_range)
+    detected = [q["question"] for q in questions]
+    seen = set()
+    duplicates = []
+    for n in detected:
+        if n in seen:
+            duplicates.append(n)
+        seen.add(n)
+    missing = [n for n in expected if n not in seen]
+    unexpected = [n for n in detected if n not in set(expected)]
+    ordered = detected == sorted(detected) and len(detected) == len(set(detected))
+    return {
+        "expected_count": len(expected),
+        "detected_count": len(detected),
+        "expected_questions": expected,
+        "detected_questions": detected,
+        "missing_questions": missing,
+        "duplicate_questions": duplicates,
+        "unexpected_questions": unexpected,
+        "ordered": ordered,
+        "ok": bool(expected) and len(detected) == len(expected) and not missing and not duplicates and not unexpected and ordered,
+    }
+
+
 def _section_content(pages_text, pages, mode, q_range):
     prose_blocks, questions = [], []
     for p in pages:
@@ -154,26 +206,29 @@ def _section_content(pages_text, pages, mode, q_range):
         prose_blocks.extend({"type": "text", "page": p, "text": x} for x in page_prose if x)
         questions.extend(page_questions)
 
-    seen = set()
+    # OCR can repeat a question when a two-column page is read more than once.
+    # Keep the first complete occurrence and record duplicates in QA metadata.
     unique_questions = []
+    seen = set()
     for q in questions:
         if q["question"] in seen:
             continue
         seen.add(q["question"])
         unique_questions.append(q)
 
-    # `text` remains a useful fallback/debug representation. The UI should
-    # prefer prose_blocks + questions when schema_version >= 2.
+    qa = _qa_for_section(q_range, questions)
     return {
         "text": "\n\n".join(x["text"] for x in prose_blocks + [{"text": q["text"]} for q in unique_questions]),
         "blocks": prose_blocks,
         "questions": unique_questions,
         "question_range": list(q_range) if q_range else None,
+        "qa": qa,
     }
 
 
 def build_content_for_test(pages_text, test_cfg):
-    content = {"schema_version": 2}
+    content = {"schema_version": 3}
+
     listening = test_cfg.get("listening", {})
     parts, any_listening = [], False
     for part in listening.get("parts", []):
@@ -193,6 +248,7 @@ def build_content_for_test(pages_text, test_cfg):
         passages.append(section)
     if any_reading:
         content["reading"] = {"passages": passages}
+
     return content
 
 
@@ -208,6 +264,10 @@ def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name):
         os.makedirs(out_dir, exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(content, f, indent=2, ensure_ascii=False)
-        detected = sum(len(s.get("questions", [])) for k in ("reading", "listening") for s in content.get(k, {}).get("passages", []) + content.get(k, {}).get("parts", []))
+        detected = sum(
+            len(s.get("questions", []))
+            for k in ("reading", "listening")
+            for s in content.get(k, {}).get("passages", []) + content.get(k, {}).get("parts", [])
+        )
         secs = " + ".join(k for k in ("reading", "listening") if k in content)
         log.append(f"[{mock_name}/{test_name}] extracted {secs}; detected {detected} structured question blocks.")
