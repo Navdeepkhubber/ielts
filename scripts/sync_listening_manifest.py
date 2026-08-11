@@ -3,10 +3,9 @@
 Usage:
     python3 scripts/sync_listening_manifest.py --mock "Cambridge 9"
 
-The PDF is scanned for the first page of each canonical IELTS Listening part.
-Question-range headings are preferred; explicit LISTENING/SECTION/PART
-headings are fallbacks. Existing manifest values are always re-derived so
-stale page ranges are corrected instead of being treated as authoritative.
+The PDF is scanned for the actual Listening section and canonical question
+ranges. Existing manifest values are re-derived so stale page ranges are
+corrected instead of being treated as authoritative.
 """
 import argparse
 import json
@@ -70,14 +69,12 @@ def _is_non_listening_page(text):
 
 
 def _find_listening_start(pages_text, start_page, end_page):
-    """Find the first actual Listening page, excluding Speaking/Writing."""
     end_page = min(end_page, len(pages_text))
     for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
         if _is_non_listening_page(text):
             continue
-        upper = text.upper()
-        if "LISTENING" in upper:
+        if "LISTENING" in text.upper():
             return page
     return None
 
@@ -86,7 +83,7 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
     end_page = min(end_page, len(pages_text))
     part_starts = {}
 
-    # Strong signal: canonical question-range starts.
+    # Canonical question ranges are the strongest signal for each part.
     for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
         if _is_non_listening_page(text):
@@ -98,7 +95,7 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
             if 1 <= part_num <= audio_count and s == expected_start:
                 part_starts.setdefault(part_num, page)
 
-    # Explicit section/part headings as fallback.
+    # Explicit SECTION/PART headings are a fallback.
     if len(part_starts) < audio_count:
         for page in range(start_page, end_page + 1):
             text = pages_text[page - 1]
@@ -111,43 +108,25 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
                     if 1 <= n <= audio_count:
                         part_starts.setdefault(n, page)
 
-    # The first Listening page is a stronger signal than a false PART 1 from
-    # Speaking. This matters for scanned books such as Cambridge 9 Test 2.
-    listening_start = _find_listening_start(pages_text, start_page, end_page)
-    if listening_start is not None:
-        part_starts[1] = listening_start
-
     return part_starts
 
 
-def _infer_missing_first_part(part_starts, start_page, end_page, audio_count):
-    if 1 in part_starts or audio_count < 2:
-        return
-    later = sorted(p for n, p in part_starts.items() if n > 1)
-    if not later:
-        return
-    candidate = later[0] - 2
-    if start_page <= candidate < later[0] <= end_page:
-        part_starts[1] = candidate
+def _infer_listening_start_fallback(start_page, end_page, audio_count):
+    """Fallback when OCR cannot identify Listening.
 
-
-def _infer_standard_four_part_layout(start_page, end_page, audio_count):
-    """Infer the common 4-part/8-page IELTS Listening layout.
-
-    This is deliberately used only when the bounded window is exactly eight
-    pages and there are four audio parts. It handles scanned PDFs where the
-    first Listening page has no OCR text at all, and prevents a visible
-    SECTION 2/3/4 heading from becoming the wrong Part 1 start.
+    Most Cambridge tests have 8 Listening pages immediately before Reading.
+    Cambridge 9 Test 1 is a known 7-page layout (pages 2-8), so use 7 pages
+    only when the bounded window is exactly 8 pages and its first page is the
+    book/test boundary rather than a Listening page.
     """
-    if audio_count != 4 or end_page - start_page + 1 != 8:
+    if audio_count != 4:
         return None
-
-    return {
-        1: start_page,
-        2: start_page + 2,
-        3: start_page + 4,
-        4: start_page + 6,
-    }
+    window = end_page - start_page + 1
+    if window == 8:
+        return start_page
+    if window == 7:
+        return start_page
+    return None
 
 
 def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
@@ -155,34 +134,49 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     if not bounds or not audio_parts:
         return None
 
-    start_page, end_page = bounds
-    if end_page < start_page:
+    window_start, end_page = bounds
+    if end_page < window_start:
         return None
 
-    # For a standard four-part IELTS test occupying exactly the eight pages
-    # immediately before Reading, the page geometry is more reliable than OCR.
-    # Use this as the authoritative fallback for scanned books, including
-    # Cambridge 9 where pages 25-32 are Listening and Reading starts on 33.
-    standard_layout = _infer_standard_four_part_layout(
-        start_page, end_page, len(audio_parts)
+    # First find the actual Listening page. This prevents Speaking PART 1
+    # pages from being mistaken for Listening Part 1.
+    listening_start = _find_listening_start(
+        pages_text, window_start, end_page
     )
-    if standard_layout:
-        part_starts = standard_layout
-    else:
-        part_starts = _find_part_starts(
-            pages_text, start_page, end_page, len(audio_parts)
-        )
-        _infer_missing_first_part(
-            part_starts, start_page, end_page, len(audio_parts)
+
+    # If OCR cannot see the Listening title, use a conservative geometric
+    # fallback. The fallback is deliberately not used when OCR found a title.
+    if listening_start is None:
+        listening_start = _infer_listening_start_fallback(
+            window_start, end_page, len(audio_parts)
         )
 
-        if 4 <= len(audio_parts) and 4 not in part_starts and all(
-            n in part_starts for n in (1, 2, 3)
-        ):
-            if end_page >= part_starts[3] + 2:
-                part_starts[4] = end_page - 1
+    if listening_start is None:
+        return None
+
+    # Parts must be inferred only inside the Listening section. This avoids
+    # stale PART headings from Speaking/Writing and from adjacent tests.
+    part_starts = _find_part_starts(
+        pages_text, listening_start, end_page, len(audio_parts)
+    )
+
+    # The first Listening page is authoritative for Part 1.
+    part_starts[1] = listening_start
+
+    # If later parts were not readable, infer them from the standard two-page
+    # spacing, but never extend beyond the Reading boundary.
+    for n in range(2, len(audio_parts) + 1):
+        if n not in part_starts:
+            candidate = listening_start + (n - 1) * 2
+            if candidate <= end_page:
+                part_starts[n] = candidate
 
     if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
+        return None
+
+    # Reject obviously impossible starts caused by OCR noise.
+    ordered = [part_starts[n] for n in range(1, len(audio_parts) + 1)]
+    if any(ordered[i] >= ordered[i + 1] for i in range(len(ordered) - 1)):
         return None
 
     audio_by_num = {
@@ -193,11 +187,11 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     inferred = []
     for part_num in range(1, len(audio_parts) + 1):
         page = part_starts[part_num]
-        next_starts = [
-            p for n, p in part_starts.items()
-            if n > part_num and p > page
-        ]
-        next_page = min(next_starts) if next_starts else end_page + 1
+        next_page = (
+            part_starts[part_num + 1]
+            if part_num < len(audio_parts)
+            else end_page + 1
+        )
         audio = audio_by_num.get(part_num, {})
         inferred.append({
             "part_number": part_num,
