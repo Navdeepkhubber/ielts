@@ -2,13 +2,15 @@
 
 Keeps the existing `text` field for backwards compatibility while adding
 `blocks`, `questions`, and QA metadata. Question boundaries are constrained
-by the manifest question range, but scanned/multi-column PDF layouts are
-handled with a dedicated OCR pass when the native PDF text is incomplete.
+by the manifest question range. Scanned pages use a memory-bounded, page-at-a-time
+PaddleOCR pass when available, with Tesseract as a fallback.
 """
+import gc
 import io
 import json
 import os
 import re
+import tempfile
 
 _NOISE_RES = [
     re.compile(r"^\s*Test\s+\d+\s*$", re.IGNORECASE),
@@ -170,70 +172,79 @@ def _qa_for_section(q_range, questions):
         if n in seen:
             duplicates.append(n)
         seen.add(n)
+    expected_set = set(expected)
     missing = [n for n in expected if n not in seen]
-    unexpected = [n for n in detected if n not in set(expected)]
+    unexpected = [n for n in detected if n not in expected_set]
     ordered = detected == sorted(detected) and len(detected) == len(set(detected))
     return {
-        "expected_count": len(expected),
-        "detected_count": len(detected),
-        "expected_questions": expected,
-        "detected_questions": detected,
-        "missing_questions": missing,
-        "duplicate_questions": duplicates,
-        "unexpected_questions": unexpected,
-        "ordered": ordered,
+        "expected_count": len(expected), "detected_count": len(detected),
+        "expected_questions": expected, "detected_questions": detected,
+        "missing_questions": missing, "duplicate_questions": duplicates,
+        "unexpected_questions": unexpected, "ordered": ordered,
         "ok": bool(expected) and len(detected) == len(expected) and not missing and not duplicates and not unexpected and ordered,
     }
 
 
-def _preprocess_for_ocr(image):
-    from PIL import ImageOps, ImageFilter
-    image = ImageOps.grayscale(image)
-    image = ImageOps.autocontrast(image)
-    return image.filter(ImageFilter.SHARPEN)
+def _paddle_page(pdf_path, page_number):
+    """Render and OCR one page, never retaining page images across iterations."""
+    try:
+        import fitz
+        from lib import paddle_ocr
+    except ImportError:
+        return []
+    if not paddle_ocr._get_ocr():
+        return []
+
+    tmp = None
+    doc = None
+    try:
+        doc = fitz.open(pdf_path)
+        page = doc[page_number - 1]
+        pix = page.get_pixmap(matrix=fitz.Matrix(1.75, 1.75), colorspace=fitz.csRGB, alpha=False)
+        fd, tmp = tempfile.mkstemp(suffix=".png", prefix="ielts-ocr-")
+        os.close(fd)
+        with open(tmp, "wb") as f:
+            f.write(pix.tobytes("png"))
+        del pix
+        lines = paddle_ocr.ocr_page(tmp)
+        return lines
+    except Exception as exc:
+        print(f"      PaddleOCR page {page_number}: {exc}", flush=True)
+        return []
+    finally:
+        if doc is not None:
+            doc.close()
+        if tmp and os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        gc.collect()
 
 
 def _ocr_page_variants(pdf_path, page_number):
-    """Run several OCR layouts, including left/right crops for two-column pages."""
+    """Small Tesseract fallback for a single page when PaddleOCR is unavailable."""
     try:
         import fitz
         import pytesseract
-        from PIL import Image
+        from PIL import Image, ImageOps, ImageFilter
     except ImportError:
         return []
-
-    texts = []
     try:
         doc = fitz.open(pdf_path)
         try:
             page = doc[page_number - 1]
-            pix = page.get_pixmap(matrix=fitz.Matrix(2.5, 2.5), colorspace=fitz.csGRAY, alpha=False)
-            image = _preprocess_for_ocr(Image.open(io.BytesIO(pix.tobytes("png"))))
+            pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), colorspace=fitz.csGRAY, alpha=False)
+            image = ImageOps.autocontrast(Image.open(io.BytesIO(pix.tobytes("png")))).filter(ImageFilter.SHARPEN)
             os.environ.setdefault("OMP_THREAD_LIMIT", "1")
-
-            # Whole-page modes. PSM 3 lets Tesseract infer columns; 6 assumes
-            # one uniform block; 11 handles sparse question sheets.
-            for psm in (3, 6, 11):
-                texts.append(pytesseract.image_to_string(image, config=f"--oem 3 --psm {psm}"))
-
-            # Many Cambridge pages use two visual columns. OCR each column
-            # independently so the question number and its text stay in the
-            # same reading region instead of being interleaved by Tesseract.
-            width, height = image.size
-            overlap = max(20, int(width * 0.025))
-            mid = width // 2
-            crops = [
-                image.crop((0, 0, min(width, mid + overlap), height)),
-                image.crop((max(0, mid - overlap), 0, width, height)),
-            ]
-            for crop in crops:
-                for psm in (6, 11):
-                    texts.append(pytesseract.image_to_string(crop, config=f"--oem 3 --psm {psm}"))
+            text = pytesseract.image_to_string(image, config="--oem 3 --psm 3")
+            del image, pix
+            return [text]
         finally:
             doc.close()
+            gc.collect()
     except Exception:
         return []
-    return texts
 
 
 def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
@@ -246,12 +257,21 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
         prose_blocks.extend({"type": "text", "page": p, "text": x} for x in page_prose if x)
         questions.extend(page_questions)
 
-    if not _qa_for_section(q_range, questions)["ok"] and pdf_path:
+    qa = _qa_for_section(q_range, questions)
+    if not qa["ok"] and pdf_path:
+        missing = set(qa["missing_questions"])
         for p in pages:
-            for ocr_text in _ocr_page_variants(pdf_path, p):
-                ocr_lines = _clean_lines(ocr_text)
-                _, ocr_questions = _extract_page(ocr_lines, q_range, mode, p)
-                questions.extend(ocr_questions)
+            ocr_lines = _paddle_page(pdf_path, p)
+            if not ocr_lines:
+                ocr_texts = _ocr_page_variants(pdf_path, p)
+                ocr_lines = [line for text in ocr_texts for line in text.splitlines()]
+            if not ocr_lines:
+                continue
+            _, ocr_questions = _extract_page(_clean_lines("\n".join(ocr_lines)), q_range, mode, p)
+            questions.extend(ocr_questions)
+            by_num = {q["question"] for q in questions}
+            if missing.issubset(by_num):
+                break
 
     by_question = {}
     for q in questions:
@@ -261,13 +281,10 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
             by_question[n] = q
     unique_questions = [by_question[n] for n in sorted(by_question)]
     qa = _qa_for_section(q_range, unique_questions)
-
     return {
         "text": "\n\n".join(x["text"] for x in prose_blocks + [{"text": q["text"]} for q in unique_questions]),
-        "blocks": prose_blocks,
-        "questions": unique_questions,
-        "question_range": list(q_range) if q_range else None,
-        "qa": qa,
+        "blocks": prose_blocks, "questions": unique_questions,
+        "question_range": list(q_range) if q_range else None, "qa": qa,
     }
 
 
