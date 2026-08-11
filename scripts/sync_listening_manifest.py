@@ -131,6 +131,25 @@ def _infer_missing_first_part(part_starts, start_page, end_page, audio_count):
         part_starts[1] = candidate
 
 
+def _infer_standard_four_part_layout(start_page, end_page, audio_count):
+    """Infer the common 4-part/8-page IELTS Listening layout.
+
+    This is deliberately used only when the bounded window is exactly eight
+    pages and there are four audio parts. It handles scanned PDFs where the
+    first Listening page has no OCR text at all, and prevents a visible
+    SECTION 2/3/4 heading from becoming the wrong Part 1 start.
+    """
+    if audio_count != 4 or end_page - start_page + 1 != 8:
+        return None
+
+    return {
+        1: start_page,
+        2: start_page + 2,
+        3: start_page + 4,
+        4: start_page + 6,
+    }
+
+
 def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     bounds = _reading_bounds(manifest, test_name)
     if not bounds or not audio_parts:
@@ -140,27 +159,43 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     if end_page < start_page:
         return None
 
-    part_starts = _find_part_starts(
-        pages_text, start_page, end_page, len(audio_parts)
+    # For a standard four-part IELTS test occupying exactly the eight pages
+    # immediately before Reading, the page geometry is more reliable than OCR.
+    # Use this as the authoritative fallback for scanned books, including
+    # Cambridge 9 where pages 25-32 are Listening and Reading starts on 33.
+    standard_layout = _infer_standard_four_part_layout(
+        start_page, end_page, len(audio_parts)
     )
-    _infer_missing_first_part(part_starts, start_page, end_page, len(audio_parts))
+    if standard_layout:
+        part_starts = standard_layout
+    else:
+        part_starts = _find_part_starts(
+            pages_text, start_page, end_page, len(audio_parts)
+        )
+        _infer_missing_first_part(
+            part_starts, start_page, end_page, len(audio_parts)
+        )
 
-    if 4 <= len(audio_parts) and 4 not in part_starts and all(
-        n in part_starts for n in (1, 2, 3)
-    ):
-        part_starts[4] = end_page - 1
+        if 4 <= len(audio_parts) and 4 not in part_starts and all(
+            n in part_starts for n in (1, 2, 3)
+        ):
+            if end_page >= part_starts[3] + 2:
+                part_starts[4] = end_page - 1
 
     if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
         return None
 
     audio_by_num = {
-        p.get("part_number"): p for p in audio_parts if p.get("part_number") is not None
+        p.get("part_number"): p
+        for p in audio_parts
+        if p.get("part_number") is not None
     }
     inferred = []
     for part_num in range(1, len(audio_parts) + 1):
         page = part_starts[part_num]
         next_starts = [
-            p for n, p in part_starts.items() if n > part_num and p > page
+            p for n, p in part_starts.items()
+            if n > part_num and p > page
         ]
         next_page = min(next_starts) if next_starts else end_page + 1
         audio = audio_by_num.get(part_num, {})
@@ -236,7 +271,9 @@ def main():
     for test_name in test_dirs:
         cfg = manifest.setdefault("tests", {}).setdefault(test_name, {})
         old = cfg.get("listening")
-        generic = _build_listening_block(test_name, audio_root, detected_parts=None)
+        generic = _build_listening_block(
+            test_name, audio_root, detected_parts=None
+        )
         inferred_parts = _infer_listening_parts(
             test_name, manifest, pages_text, generic.get("parts", [])
         )
