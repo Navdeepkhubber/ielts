@@ -95,7 +95,7 @@ def _normalise_question(lines, mode):
 
 def _extract_page(lines, q_range, mode, page):
     """Split one page into non-question blocks and independently bounded questions."""
-    prose, questions, current = [], [], None
+    prose_lines, prose_blocks, questions, current = [], [], [], None
 
     def flush_question():
         nonlocal current
@@ -107,10 +107,10 @@ def _extract_page(lines, q_range, mode, page):
         current = None
 
     def flush_prose():
-        nonlocal prose
-        if prose:
-            prose.extend(_reflow(prose, mode))
-            prose.clear()
+        if not prose_lines:
+            return
+        prose_blocks.extend(_reflow(prose_lines, mode))
+        prose_lines.clear()
 
     for raw in lines:
         line = raw.strip()
@@ -133,15 +133,15 @@ def _extract_page(lines, q_range, mode, page):
             # prevents the next instruction/group from being swallowed.
             if _is_heading_like(line) and not _GAP_RE.search(line):
                 flush_question()
-                prose.append(line)
+                prose_lines.append(line)
             else:
                 current["lines"].append(line)
         else:
-            prose.append(line)
+            prose_lines.append(line)
 
     flush_question()
     flush_prose()
-    return prose, questions
+    return prose_blocks, questions
 
 
 def _section_content(pages_text, pages, mode, q_range):
