@@ -2,9 +2,7 @@
 
 Keeps the existing `text` field for backwards compatibility while adding
 `blocks`, `questions`, and QA metadata. Question boundaries are constrained
-by the manifest question range, but lone printed question numbers are kept
-through cleaning so OCR layouts such as `14` on one line followed by the
-question text can be detected.
+by the manifest question range, but OCR layouts are handled more defensively.
 """
 import json
 import os
@@ -13,9 +11,6 @@ import re
 _NOISE_RES = [
     re.compile(r"^\s*Test\s+\d+\s*$", re.IGNORECASE),
     re.compile(r"^\s*(LISTENING|READING|WRITING|ACADEMIC READING)\s*$", re.IGNORECASE),
-    # Do NOT remove lone numbers here. A question number is often emitted
-    # by OCR on its own line. The question-range guard below prevents page
-    # numbers/years from becoming question starts.
     re.compile(r"^\s*@\w+\s*$"),
     re.compile(r"^\s*[|>_\-~•·=]{1,4}\s*$"),
     re.compile(r"^\s*IELTS\s+\d+\s*$", re.IGNORECASE),
@@ -26,15 +21,21 @@ _HEADING_LIKE_RES = [
     re.compile(r"^\s*(?:SECTION|PART)\s+\d+\s*$", re.IGNORECASE),
     re.compile(r"^\s*[A-H]\s*$"),
     re.compile(r"^\s*[A-Z][A-Z\s'.,\-]{3,60}$"),
-    re.compile(r"^\s*Complete the .{3,60}$", re.IGNORECASE),
-    re.compile(r"^\s*Choose .{3,60}$", re.IGNORECASE),
-    re.compile(r"^\s*Write (?:ONE|NO MORE|TRUE|FALSE) .{0,60}$", re.IGNORECASE),
+    re.compile(r"^\s*Complete the .{3,80}$", re.IGNORECASE),
+    re.compile(r"^\s*Choose .{3,80}$", re.IGNORECASE),
+    re.compile(r"^\s*Write (?:ONE|NO MORE|TRUE|FALSE) .{0,80}$", re.IGNORECASE),
 ]
 _GAP_RE = re.compile(r"\d{1,2}\s*(?:[.…·]{3,}|_{3,})")
 _QUESTION_START_RE = re.compile(
-    r"^\s*(\d{1,2})(?:\s*[.)/:]\s+|\s+(?=[A-Za-z(\[])|\s+(?=[_.…·]{3,}))(.+?)\s*$"
+    r"^\s*(\d{1,2})(?:\s*[.)/:]\s*(.*)|\s+(.+?))\s*$"
 )
 _LONE_QUESTION_NUMBER_RE = re.compile(r"^\s*(\d{1,2})\s*$")
+# OCR/PDF text extraction can put the question number at the end of a line,
+# or prefix it with a stray punctuation mark. This is intentionally narrow:
+# only numbers in the manifest's expected range are accepted.
+_EMBEDDED_QUESTION_RE = re.compile(
+    r"(?:^|\s)[\[(]?(\d{1,2})[\])\.]?(?=\s|$)"
+)
 
 
 def _is_heading_like(line):
@@ -44,16 +45,29 @@ def _is_heading_like(line):
 def _question_start(line, q_from, q_to):
     if not q_range_valid(q_from, q_to):
         return None
+
     m = _QUESTION_START_RE.match(line)
     if m:
         q = int(m.group(1))
         if q_from <= q <= q_to:
             return q
+
     m = _LONE_QUESTION_NUMBER_RE.match(line)
     if m:
         q = int(m.group(1))
         if q_from <= q <= q_to:
             return q
+
+    # Some PDF text layers flatten a visual line so the question number is
+    # no longer at column 0. Accept an expected number only when it looks
+    # like a standalone token. Sequence filtering happens later in the
+    # section QA pass, which prevents ordinary prose numbers from dominating.
+    for m in _EMBEDDED_QUESTION_RE.finditer(line):
+        q = int(m.group(1))
+        if q_from <= q <= q_to:
+            prefix = line[:m.start(1)].strip()
+            if not prefix or len(prefix) <= 4:
+                return q
     return None
 
 
@@ -148,9 +162,11 @@ def _extract_page(lines, q_range, mode, page):
             continue
 
         if current:
-            if _is_heading_like(line) and not _GAP_RE.search(line):
-                flush_question()
-                prose_lines.append(line)
+            # A heading is allowed to be part of a question if it is the
+            # first non-empty line after a number. In particular, IELTS
+            # instructions frequently start with "Choose..." or "Complete...".
+            if _is_heading_like(line) and not _GAP_RE.search(line) and current["lines"]:
+                current["lines"].append(line)
             else:
                 current["lines"].append(line)
         else:
@@ -196,27 +212,74 @@ def _qa_for_section(q_range, questions):
     }
 
 
-def _section_content(pages_text, pages, mode, q_range):
+def _ocr_pages(pdf_path, pages):
+    """OCR only the pages belonging to a section when native extraction misses questions."""
+    if not pdf_path or not pages:
+        return {}
+    try:
+        import fitz
+        import io
+        import pytesseract
+        from PIL import Image
+    except ImportError:
+        return {}
+
+    out = {}
+    try:
+        doc = fitz.open(pdf_path)
+        try:
+            for p in sorted(set(pages)):
+                if not 1 <= p <= len(doc):
+                    continue
+                page = doc[p - 1]
+                pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), colorspace=fitz.csGRAY)
+                image = Image.open(io.BytesIO(pix.tobytes("png")))
+                out[p] = pytesseract.image_to_string(image, config="--psm 6")
+        finally:
+            doc.close()
+    except Exception:
+        return {}
+    return out
+
+
+def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
     prose_blocks, questions = [], []
+    page_lines = {}
+
     for p in pages:
         if not 1 <= p <= len(pages_text):
             continue
-        lines = _clean_lines(pages_text[p - 1])
-        page_prose, page_questions = _extract_page(lines, q_range, mode, p)
+        page_lines[p] = _clean_lines(pages_text[p - 1])
+        page_prose, page_questions = _extract_page(page_lines[p], q_range, mode, p)
         prose_blocks.extend({"type": "text", "page": p, "text": x} for x in page_prose if x)
         questions.extend(page_questions)
 
-    # OCR can repeat a question when a two-column page is read more than once.
-    # Keep the first complete occurrence and record duplicates in QA metadata.
-    unique_questions = []
-    seen = set()
+    # Native PDF text is frequently good enough for prose but bad at the
+    # multi-column numbered question area. If question QA is incomplete,
+    # OCR the section pages and merge any question starts found there.
+    qa = _qa_for_section(q_range, questions)
+    if not qa["ok"] and pdf_path:
+        ocr_text = _ocr_pages(pdf_path, pages)
+        for p, text in ocr_text.items():
+            ocr_lines = _clean_lines(text)
+            _, ocr_questions = _extract_page(ocr_lines, q_range, mode, p)
+            if ocr_questions:
+                questions.extend(ocr_questions)
+
+    # Keep the best/first occurrence of each question. Prefer the longer
+    # text when native extraction and OCR both found the same number.
+    by_question = {}
     for q in questions:
-        if q["question"] in seen:
-            continue
-        seen.add(q["question"])
-        unique_questions.append(q)
+        n = q["question"]
+        existing = by_question.get(n)
+        if existing is None or len(q.get("text", "")) > len(existing.get("text", "")):
+            by_question[n] = q
+    unique_questions = [by_question[n] for n in sorted(by_question)]
 
     qa = _qa_for_section(q_range, questions)
+    # QA should describe the final question set shown to the reviewer, not
+    # the intermediate duplicate OCR/native detections.
+    qa = _qa_for_section(q_range, unique_questions)
     return {
         "text": "\n\n".join(x["text"] for x in prose_blocks + [{"text": q["text"]} for q in unique_questions]),
         "blocks": prose_blocks,
@@ -226,14 +289,14 @@ def _section_content(pages_text, pages, mode, q_range):
     }
 
 
-def build_content_for_test(pages_text, test_cfg):
+def build_content_for_test(pages_text, test_cfg, pdf_path=None):
     content = {"schema_version": 3}
 
     listening = test_cfg.get("listening", {})
     parts, any_listening = [], False
     for part in listening.get("parts", []):
         pages = part.get("pages") or []
-        section = _section_content(pages_text, pages, "list", part.get("questions"))
+        section = _section_content(pages_text, pages, "list", part.get("questions"), pdf_path=pdf_path)
         any_listening = any_listening or bool(section["text"])
         parts.append(section)
     if any_listening:
@@ -243,7 +306,7 @@ def build_content_for_test(pages_text, test_cfg):
     passages, any_reading = [], False
     for passage in reading.get("passages", []):
         pages = passage.get("pages") or []
-        section = _section_content(pages_text, pages, "prose", passage.get("questions"))
+        section = _section_content(pages_text, pages, "prose", passage.get("questions"), pdf_path=pdf_path)
         any_reading = any_reading or bool(section["text"])
         passages.append(section)
     if any_reading:
@@ -258,7 +321,7 @@ def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name):
         out_path = os.path.join(out_dir, f"{test_name}.json")
         if os.path.isfile(out_path):
             continue
-        content = build_content_for_test(pages_text, cfg)
+        content = build_content_for_test(pages_text, cfg, pdf_path=os.path.join(mock_dir, manifest.get("pdf_file", "main.pdf")))
         if not any(k in content for k in ("reading", "listening")):
             continue
         os.makedirs(out_dir, exist_ok=True)
