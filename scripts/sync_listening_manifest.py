@@ -4,10 +4,9 @@ Usage:
     python3 scripts/sync_listening_manifest.py --mock "Cambridge 9"
 
 The PDF is scanned for the first page of each canonical IELTS Listening part.
-Question-range headings (Questions 1-10, 11-20, 21-30, 31-40) are preferred;
-SECTION/PART headings are only a fallback. Speaking/other PART headings are
-explicitly ignored so e.g. Cambridge 9 Test 2's Speaking PART 1 page cannot
-be mistaken for Listening Part 1.
+Question-range headings are preferred; explicit LISTENING/SECTION/PART
+headings are fallbacks. Existing manifest values are always re-derived so
+stale page ranges are corrected instead of being treated as authoritative.
 """
 import argparse
 import json
@@ -39,11 +38,9 @@ def _test_number(name):
 
 
 def _reading_bounds(manifest, test_name):
-    """Return the PDF window between the previous Reading section and this one."""
     cfg = manifest.get("tests", {}).get(test_name, {})
     reading_pages = [
-        p
-        for passage in cfg.get("reading", {}).get("passages", [])
+        p for passage in cfg.get("reading", {}).get("passages", [])
         for p in passage.get("pages", [])
     ]
     if not reading_pages:
@@ -57,8 +54,7 @@ def _reading_bounds(manifest, test_name):
         if current_num is None or other_num is None or other_num >= current_num:
             continue
         pages = [
-            p
-            for passage in other_cfg.get("reading", {}).get("passages", [])
+            p for passage in other_cfg.get("reading", {}).get("passages", [])
             for p in passage.get("pages", [])
         ]
         if pages:
@@ -69,21 +65,32 @@ def _reading_bounds(manifest, test_name):
 
 
 def _is_non_listening_page(text):
-    """Reject obvious Speaking/Writing pages from PART/SECTION fallback."""
     upper = text.upper()
     return "SPEAKING" in upper or "WRITING TASK" in upper
 
 
+def _find_listening_start(pages_text, start_page, end_page):
+    """Find the first actual Listening page, excluding Speaking/Writing."""
+    end_page = min(end_page, len(pages_text))
+    for page in range(start_page, end_page + 1):
+        text = pages_text[page - 1]
+        if _is_non_listening_page(text):
+            continue
+        upper = text.upper()
+        if "LISTENING" in upper:
+            return page
+    return None
+
+
 def _find_part_starts(pages_text, start_page, end_page, audio_count):
-    """Find first page of Listening Parts 1..N within a bounded test window."""
     end_page = min(end_page, len(pages_text))
     part_starts = {}
 
-    # Strong signal: the printed question ranges. A page containing
-    # Questions 1-10 is Part 1, 11-20 is Part 2, etc. This avoids false
-    # positives from Speaking PART 1 / PART 2.
+    # Strong signal: canonical question-range starts.
     for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
+        if _is_non_listening_page(text):
+            continue
         for m in _QUESTION_RANGE_RE.finditer(text):
             s = int(m.group(1))
             part_num = ((s - 1) // 10) + 1
@@ -91,8 +98,7 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
             if 1 <= part_num <= audio_count and s == expected_start:
                 part_starts.setdefault(part_num, page)
 
-    # Fallback: explicit SECTION/PART headings, but never accept a heading
-    # from a page that clearly belongs to Speaking or Writing.
+    # Explicit section/part headings as fallback.
     if len(part_starts) < audio_count:
         for page in range(start_page, end_page + 1):
             text = pages_text[page - 1]
@@ -100,37 +106,29 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
                 continue
             for raw in text.splitlines():
                 m = _LISTENING_HEADING_RE.match(raw.strip())
-                if not m:
-                    continue
-                n = int(m.group(1))
-                if 1 <= n <= audio_count:
-                    part_starts.setdefault(n, page)
+                if m:
+                    n = int(m.group(1))
+                    if 1 <= n <= audio_count:
+                        part_starts.setdefault(n, page)
+
+    # The first Listening page is a stronger signal than a false PART 1 from
+    # Speaking. This matters for scanned books such as Cambridge 9 Test 2.
+    listening_start = _find_listening_start(pages_text, start_page, end_page)
+    if listening_start is not None:
+        part_starts[1] = listening_start
 
     return part_starts
 
 
 def _infer_missing_first_part(part_starts, start_page, end_page, audio_count):
-    """Infer a missing Part 1 without mistaking Speaking PART 1 for Listening.
-
-    In scanned Cambridge books the first Listening page can be almost entirely
-    unreadable, while Part 2/3/4 headings are OCR-visible. In that case the
-    old fallback used the beginning of the test window, which can be a Speaking
-    page. If a later Listening part is known, infer the missing first part from
-    the nearest later part using the normal two-page Listening-part span.
-    """
     if 1 in part_starts or audio_count < 2:
         return
-
     later = sorted(p for n, p in part_starts.items() if n > 1)
     if not later:
         return
-
     candidate = later[0] - 2
-    if candidate >= start_page and candidate < part_starts[later.index(later[0]) if False else 2] if False else True:
-        # Keep the candidate inside the bounded Listening window. The explicit
-        # check below also avoids reintroducing a page before the window.
-        if start_page <= candidate < later[0] <= end_page:
-            part_starts[1] = candidate
+    if start_page <= candidate < later[0] <= end_page:
+        part_starts[1] = candidate
 
 
 def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
@@ -145,53 +143,37 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     part_starts = _find_part_starts(
         pages_text, start_page, end_page, len(audio_parts)
     )
+    _infer_missing_first_part(part_starts, start_page, end_page, len(audio_parts))
 
-    # Do not use start_page as Part 1. It can be Speaking/Writing when the
-    # Listening first-page OCR is blank. Infer Part 1 from the next detected
-    # Listening part instead.
-    _infer_missing_first_part(
-        part_starts, start_page, end_page, len(audio_parts)
-    )
-
-    # If Part 4 alone is unreadable, use the last two pages before Reading only
-    # when Parts 1-3 are known.
     if 4 <= len(audio_parts) and 4 not in part_starts and all(
         n in part_starts for n in (1, 2, 3)
     ):
-        if end_page >= part_starts[3] + 2:
-            part_starts[4] = end_page - 1
+        part_starts[4] = end_page - 1
 
     if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
         return None
 
     audio_by_num = {
-        p.get("part_number"): p
-        for p in audio_parts
-        if p.get("part_number") is not None
+        p.get("part_number"): p for p in audio_parts if p.get("part_number") is not None
     }
-
     inferred = []
     for part_num in range(1, len(audio_parts) + 1):
         page = part_starts[part_num]
         next_starts = [
-            p for n, p in part_starts.items()
-            if n > part_num and p > page
+            p for n, p in part_starts.items() if n > part_num and p > page
         ]
         next_page = min(next_starts) if next_starts else end_page + 1
-        pages = list(range(page, next_page))
         audio = audio_by_num.get(part_num, {})
         inferred.append({
             "part_number": part_num,
             "files": audio.get("files", []),
             "questions": [(part_num - 1) * 10 + 1, part_num * 10],
-            "pages": pages,
+            "pages": list(range(page, next_page)),
         })
-
     return inferred
 
 
 def _cache_looks_incomplete(pdf_path, manifest, test_dirs):
-    """Detect an old OCR cache that is mostly empty in Listening windows."""
     cache_path = pdf_structure._cache_path(pdf_path)
     try:
         with open(cache_path) as f:
@@ -223,7 +205,6 @@ def main():
     mock_dir = os.path.join(TESTS_ROOT, args.mock)
     manifest_path = os.path.join(mock_dir, "manifest.json")
     audio_root = os.path.join(mock_dir, "audio")
-
     if not os.path.isfile(manifest_path):
         raise SystemExit(f"Manifest not found: {manifest_path}")
     if not os.path.isdir(audio_root):
@@ -231,9 +212,7 @@ def main():
 
     with open(manifest_path) as f:
         manifest = json.load(f)
-
-    pdf_file = manifest.get("pdf_file", "main.pdf")
-    pdf_path = os.path.join(mock_dir, pdf_file)
+    pdf_path = os.path.join(mock_dir, manifest.get("pdf_file", "main.pdf"))
     if not os.path.isfile(pdf_path):
         raise SystemExit(f"PDF not found: {pdf_path}")
 
@@ -257,17 +236,13 @@ def main():
     for test_name in test_dirs:
         cfg = manifest.setdefault("tests", {}).setdefault(test_name, {})
         old = cfg.get("listening")
-
-        generic = _build_listening_block(
-            test_name, audio_root, detected_parts=None
-        )
+        generic = _build_listening_block(test_name, audio_root, detected_parts=None)
         inferred_parts = _infer_listening_parts(
             test_name, manifest, pages_text, generic.get("parts", [])
         )
         new = (
             {"audio_folder": test_name, "parts": inferred_parts}
-            if inferred_parts
-            else generic
+            if inferred_parts else generic
         )
 
         if old != new:
