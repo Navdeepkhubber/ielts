@@ -29,6 +29,7 @@ _QUESTION_RANGE_RE = re.compile(
     r"[QO]uestions?\s+(\d{1,2})\s*[-–—~]\s*(\d{1,2})",
     re.IGNORECASE,
 )
+_MIN_TEXT_CHARS = 20
 
 
 def _test_number(name):
@@ -64,6 +65,55 @@ def _reading_bounds(manifest, test_name):
             previous_reading_end = max(previous_reading_end or end, end)
 
     return (previous_reading_end + 1 if previous_reading_end else 1, current_reading_start - 1)
+
+
+def _cache_looks_incomplete(pdf_path, manifest, test_dirs):
+    """Detect an old/incomplete OCR cache before targeted listening inference.
+
+    Cambridge 9 has scanned Listening pages with almost no native PDF text.
+    An older cache can therefore contain only the tiny footer/watermark text,
+    causing the targeted inference to believe the Listening headings are
+    missing. If a listening window is mostly empty in the cache, invalidate it
+    once so pdf_structure performs a fresh OCR pass.
+    """
+    cache_path = pdf_structure._cache_path(pdf_path)
+    try:
+        with open(cache_path) as f:
+            cache = json.load(f)
+        if cache.get("key") != pdf_structure._cache_key(pdf_path):
+            return True
+        texts = cache.get("texts", [])
+        windows = []
+        for test_name in test_dirs:
+            bounds = _reading_bounds(manifest, test_name)
+            if bounds:
+                start, end = bounds
+                if end >= start:
+                    windows.append((max(1, start), min(len(texts), end)))
+        for start, end in windows:
+            window = texts[start - 1:end]
+            if not window:
+                continue
+            meaningful = sum(len(t.strip()) >= _MIN_TEXT_CHARS for t in window)
+            # A normal text-layer window is not expected to be overwhelmingly
+            # empty. Scanned Cambridge listening pages commonly are.
+            if meaningful < max(1, len(window) // 2):
+                return True
+        return False
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def _refresh_incomplete_cache(pdf_path, manifest, test_dirs):
+    if not _cache_looks_incomplete(pdf_path, manifest, test_dirs):
+        return False
+    cache_path = pdf_structure._cache_path(pdf_path)
+    try:
+        os.remove(cache_path)
+        print("  Existing PDF text cache is incomplete for the Listening pages; refreshing OCR cache.")
+        return True
+    except OSError:
+        return False
 
 
 def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
@@ -116,6 +166,20 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
         for n, page in heading_starts.items():
             part_starts.setdefault(n, page)
 
+    # A scanned first Listening page may have no usable text at all. If later
+    # parts are found, the Listening window itself is the only safe start for
+    # Part 1. Likewise, if Part 4's heading is missing but Parts 1-3 are found,
+    # the last part occupies the remaining pages before Reading.
+    if 1 not in part_starts and any(n in part_starts for n in (2, 3, 4)):
+        part_starts[1] = start_page
+    if 4 not in part_starts and all(n in part_starts for n in (1, 2, 3)):
+        # If the 31-40 range wasn't OCR'd, use the last known part boundary
+        # only when there are pages left before Reading. We split at the last
+        # page of the Listening window, preserving at least one page for Part 4.
+        last_known = part_starts[3]
+        if end_page >= last_known + 1:
+            part_starts[4] = end_page - 1
+
     audio_by_num = {p.get("part_number"): p for p in audio_parts if p.get("part_number") is not None}
     if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
         return None
@@ -166,9 +230,10 @@ def main():
 
     print(f"[{args.mock}] syncing listening manifest for {len(test_dirs)} audio tests")
 
-    # Do not call detect_structure() here. It can perform a full OCR structure
-    # scan and, on older scanned books, can anchor Test N too late. The cached
-    # page text is enough for the targeted Reading-bounded inference.
+    # Cambridge scanned books can have an older cache produced before OCR
+    # improvements. Refresh it only when the relevant Listening windows are
+    # mostly empty; normal text-layer books keep the fast cached path.
+    _refresh_incomplete_cache(pdf_path, manifest, test_dirs)
     pages_text, _ = pdf_structure._page_texts(pdf_path)
 
     changed = False
