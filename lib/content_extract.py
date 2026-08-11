@@ -2,8 +2,10 @@
 
 Keeps the existing `text` field for backwards compatibility while adding
 `blocks`, `questions`, and QA metadata. Question boundaries are constrained
-by the manifest question range, but OCR layouts are handled more defensively.
+by the manifest question range, but scanned/multi-column PDF layouts are
+handled with a dedicated OCR pass when the native PDF text is incomplete.
 """
+import io
 import json
 import os
 import re
@@ -30,9 +32,6 @@ _QUESTION_START_RE = re.compile(
     r"^\s*(\d{1,2})(?:\s*[.)/:]\s*(.*)|\s+(.+?))\s*$"
 )
 _LONE_QUESTION_NUMBER_RE = re.compile(r"^\s*(\d{1,2})\s*$")
-# OCR/PDF text extraction can put the question number at the end of a line,
-# or prefix it with a stray punctuation mark. This is intentionally narrow:
-# only numbers in the manifest's expected range are accepted.
 _EMBEDDED_QUESTION_RE = re.compile(
     r"(?:^|\s)[\[(]?(\d{1,2})[\])\.]?(?=\s|$)"
 )
@@ -45,23 +44,16 @@ def _is_heading_like(line):
 def _question_start(line, q_from, q_to):
     if not q_range_valid(q_from, q_to):
         return None
-
     m = _QUESTION_START_RE.match(line)
     if m:
         q = int(m.group(1))
         if q_from <= q <= q_to:
             return q
-
     m = _LONE_QUESTION_NUMBER_RE.match(line)
     if m:
         q = int(m.group(1))
         if q_from <= q <= q_to:
             return q
-
-    # Some PDF text layers flatten a visual line so the question number is
-    # no longer at column 0. Accept an expected number only when it looks
-    # like a standalone token. Sequence filtering happens later in the
-    # section QA pass, which prevents ordinary prose numbers from dominating.
     for m in _EMBEDDED_QUESTION_RE.finditer(line):
         q = int(m.group(1))
         if q_from <= q <= q_to:
@@ -87,7 +79,6 @@ def _clean_lines(text):
 def _reflow(lines, mode):
     if mode == "list":
         return [ln.strip() for ln in lines if ln.strip()]
-
     blocks, buf = [], []
 
     def flush():
@@ -127,7 +118,6 @@ def _normalise_question(lines, mode):
 
 
 def _extract_page(lines, q_range, mode, page):
-    """Split one page into non-question blocks and independently bounded questions."""
     prose_lines, prose_blocks, questions, current = [], [], [], None
 
     def flush_question():
@@ -153,22 +143,14 @@ def _extract_page(lines, q_range, mode, page):
             else:
                 flush_prose()
             continue
-
         q = _question_start(line, q_range[0], q_range[1]) if q_range else None
         if q is not None:
             flush_prose()
             flush_question()
             current = {"question": q, "lines": [line]}
             continue
-
         if current:
-            # A heading is allowed to be part of a question if it is the
-            # first non-empty line after a number. In particular, IELTS
-            # instructions frequently start with "Choose..." or "Complete...".
-            if _is_heading_like(line) and not _GAP_RE.search(line) and current["lines"]:
-                current["lines"].append(line)
-            else:
-                current["lines"].append(line)
+            current["lines"].append(line)
         else:
             prose_lines.append(line)
 
@@ -212,62 +194,70 @@ def _qa_for_section(q_range, questions):
     }
 
 
-def _ocr_pages(pdf_path, pages):
-    """OCR only the pages belonging to a section when native extraction misses questions."""
-    if not pdf_path or not pages:
-        return {}
+def _preprocess_for_ocr(image):
+    """Create a high-contrast grayscale image for scanned book pages."""
+    from PIL import ImageOps, ImageFilter
+    image = ImageOps.grayscale(image)
+    image = ImageOps.autocontrast(image)
+    return image.filter(ImageFilter.SHARPEN)
+
+
+def _ocr_page_variants(pdf_path, page_number):
+    """Run two Tesseract layouts because IELTS pages commonly use columns/forms."""
     try:
         import fitz
-        import io
         import pytesseract
         from PIL import Image
     except ImportError:
-        return {}
+        return []
 
-    out = {}
+    texts = []
     try:
         doc = fitz.open(pdf_path)
         try:
-            for p in sorted(set(pages)):
-                if not 1 <= p <= len(doc):
-                    continue
-                page = doc[p - 1]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), colorspace=fitz.csGRAY)
-                image = Image.open(io.BytesIO(pix.tobytes("png")))
-                out[p] = pytesseract.image_to_string(image, config="--psm 6")
+            page = doc[page_number - 1]
+            # 300-ish DPI gives substantially better recognition of small
+            # printed question numbers than the earlier 2x render.
+            pix = page.get_pixmap(matrix=fitz.Matrix(2.5, 2.5), colorspace=fitz.csGRAY, alpha=False)
+            image = Image.open(io.BytesIO(pix.tobytes("png")))
+            image = _preprocess_for_ocr(image)
+            os.environ.setdefault("OMP_THREAD_LIMIT", "1")
+
+            # PSM 6 works well for conventional blocks; PSM 11 is much better
+            # at sparse/multi-column question sheets. We deliberately keep
+            # both outputs and let the question parser merge their detections.
+            for psm in (6, 11):
+                texts.append(pytesseract.image_to_string(image, config=f"--oem 3 --psm {psm}"))
         finally:
             doc.close()
     except Exception:
-        return {}
-    return out
+        return []
+    return texts
 
 
 def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
     prose_blocks, questions = [], []
-    page_lines = {}
-
     for p in pages:
         if not 1 <= p <= len(pages_text):
             continue
-        page_lines[p] = _clean_lines(pages_text[p - 1])
-        page_prose, page_questions = _extract_page(page_lines[p], q_range, mode, p)
+        native_lines = _clean_lines(pages_text[p - 1])
+        page_prose, page_questions = _extract_page(native_lines, q_range, mode, p)
         prose_blocks.extend({"type": "text", "page": p, "text": x} for x in page_prose if x)
         questions.extend(page_questions)
 
-    # Native PDF text is frequently good enough for prose but bad at the
-    # multi-column numbered question area. If question QA is incomplete,
-    # OCR the section pages and merge any question starts found there.
-    qa = _qa_for_section(q_range, questions)
-    if not qa["ok"] and pdf_path:
-        ocr_text = _ocr_pages(pdf_path, pages)
-        for p, text in ocr_text.items():
-            ocr_lines = _clean_lines(text)
-            _, ocr_questions = _extract_page(ocr_lines, q_range, mode, p)
-            if ocr_questions:
+    # A scanned PDF can have an OCR-derived cache from the structural scan,
+    # but that OCR is optimized for headings rather than small question text.
+    # If native/cached extraction is incomplete, run a higher-resolution,
+    # layout-aware OCR pass specifically over this section.
+    if not _qa_for_section(q_range, questions)["ok"] and pdf_path:
+        for p in pages:
+            for ocr_text in _ocr_page_variants(pdf_path, p):
+                ocr_lines = _clean_lines(ocr_text)
+                _, ocr_questions = _extract_page(ocr_lines, q_range, mode, p)
                 questions.extend(ocr_questions)
 
-    # Keep the best/first occurrence of each question. Prefer the longer
-    # text when native extraction and OCR both found the same number.
+    # Keep one representation of each question. OCR/native results can find
+    # the same number multiple times; retain the version with more text.
     by_question = {}
     for q in questions:
         n = q["question"]
@@ -275,11 +265,8 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
         if existing is None or len(q.get("text", "")) > len(existing.get("text", "")):
             by_question[n] = q
     unique_questions = [by_question[n] for n in sorted(by_question)]
-
-    qa = _qa_for_section(q_range, questions)
-    # QA should describe the final question set shown to the reviewer, not
-    # the intermediate duplicate OCR/native detections.
     qa = _qa_for_section(q_range, unique_questions)
+
     return {
         "text": "\n\n".join(x["text"] for x in prose_blocks + [{"text": q["text"]} for q in unique_questions]),
         "blocks": prose_blocks,
@@ -291,7 +278,6 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
 
 def build_content_for_test(pages_text, test_cfg, pdf_path=None):
     content = {"schema_version": 3}
-
     listening = test_cfg.get("listening", {})
     parts, any_listening = [], False
     for part in listening.get("parts", []):
@@ -311,26 +297,28 @@ def build_content_for_test(pages_text, test_cfg, pdf_path=None):
         passages.append(section)
     if any_reading:
         content["reading"] = {"passages": passages}
-
     return content
 
 
-def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name):
+def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name, force=False):
     for test_name, cfg in manifest.get("tests", {}).items():
         out_dir = os.path.join(mock_dir, "content")
         out_path = os.path.join(out_dir, f"{test_name}.json")
-        if os.path.isfile(out_path):
+        if os.path.isfile(out_path) and not force:
             continue
-        content = build_content_for_test(pages_text, cfg, pdf_path=os.path.join(mock_dir, manifest.get("pdf_file", "main.pdf")))
+        content = build_content_for_test(
+            pages_text,
+            cfg,
+            pdf_path=os.path.join(mock_dir, manifest.get("pdf_file", "main.pdf")),
+        )
         if not any(k in content for k in ("reading", "listening")):
             continue
         os.makedirs(out_dir, exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(content, f, indent=2, ensure_ascii=False)
-        detected = sum(
-            len(s.get("questions", []))
-            for k in ("reading", "listening")
-            for s in content.get(k, {}).get("passages", []) + content.get(k, {}).get("parts", [])
-        )
-        secs = " + ".join(k for k in ("reading", "listening") if k in content)
-        log.append(f"[{mock_name}/{test_name}] extracted {secs}; detected {detected} structured question blocks.")
+        sections = []
+        for kind, key in (("reading", "passages"), ("listening", "parts")):
+            for i, section in enumerate(content.get(kind, {}).get(key, []), 1):
+                qa = section.get("qa", {})
+                sections.append(f"{kind.title()} {i}: {qa.get('detected_count', 0)}/{qa.get('expected_count', 0)}")
+        log.append(f"[{mock_name}/{test_name}] extracted {' + '.join(sections) or 'no sections'}.")
