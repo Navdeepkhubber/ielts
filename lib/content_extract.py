@@ -19,7 +19,6 @@ _NOISE_RES = [
     re.compile(r"^\s*[|>_\-~•·=]{1,4}\s*$"),
     re.compile(r"^\s*IELTS\s+\d+\s*$", re.IGNORECASE),
 ]
-
 _HEADING_LIKE_RES = [
     re.compile(r"^\s*[QO]uestions?\s+\d+.*$", re.IGNORECASE),
     re.compile(r"^\s*READING PASSAGE\s+\d+.*$", re.IGNORECASE),
@@ -31,9 +30,6 @@ _HEADING_LIKE_RES = [
     re.compile(r"^\s*Write (?:ONE|NO MORE|TRUE|FALSE) .{0,60}$", re.IGNORECASE),
 ]
 _GAP_RE = re.compile(r"\d{1,2}\s*(?:[.…·]{3,}|_{3,})")
-
-# Common printed question starts: `14. text`, `14) text`, `14: text`,
-# `14 text`, or a lone `14` followed by the question on the next line.
 _QUESTION_START_RE = re.compile(
     r"^\s*(\d{1,2})(?:\s*[.)/:]\s+|\s+(?=[A-Za-z(\[])|\s+(?=[_.…·]{3,}))(.+?)\s*$"
 )
@@ -59,21 +55,13 @@ def _question_start(line, q_from, q_to):
 
 
 def _clean_lines(text):
-    out = []
-    for raw in text.splitlines():
-        line = raw.rstrip()
-        if any(rx.match(line) for rx in _NOISE_RES):
-            continue
-        out.append(line)
-    return out
+    return [line for raw in text.splitlines() for line in [raw.rstrip()] if not any(rx.match(line) for rx in _NOISE_RES)]
 
 
 def _reflow(lines, mode):
     if mode == "list":
         return [ln.strip() for ln in lines if ln.strip()]
-
     blocks, buf = [], []
-
     def flush():
         if not buf:
             return
@@ -87,7 +75,6 @@ def _reflow(lines, mode):
                 text = ln
         blocks.append(text.strip())
         buf.clear()
-
     for raw in lines:
         line = raw.strip()
         if not line:
@@ -106,56 +93,67 @@ def _normalise_question(lines, mode):
     return "\n".join(x.strip() for x in lines if x.strip()) if mode == "list" else "\n\n".join(_reflow(lines, "prose"))
 
 
-def _extract_question_blocks(lines, q_from, q_to, mode):
-    blocks, current = [], None
+def _extract_page(lines, q_range, mode, page):
+    """Split one page into non-question blocks and independently bounded questions."""
+    prose, questions, current = [], [], None
 
-    def flush():
+    def flush_question():
         nonlocal current
         if not current:
             return
         text = _normalise_question(current["lines"], mode)
         if text:
-            current["text"] = text
-            current.pop("lines", None)
-            blocks.append(current)
+            questions.append({"page": page, "question": current["question"], "text": text})
         current = None
+
+    def flush_prose():
+        nonlocal prose
+        if prose:
+            prose.extend(_reflow(prose, mode))
+            prose.clear()
 
     for raw in lines:
         line = raw.strip()
         if not line:
             if current:
                 current["lines"].append("")
+            else:
+                flush_prose()
             continue
 
-        q = _question_start(line, q_from, q_to)
+        q = _question_start(line, q_range[0], q_range[1]) if q_range else None
         if q is not None:
-            flush()
+            flush_prose()
+            flush_question()
             current = {"question": q, "lines": [line]}
             continue
 
-        if current and _is_heading_like(line) and not _GAP_RE.search(line):
-            flush()
-            continue
         if current:
-            current["lines"].append(line)
+            # Structural heading after a question ends that question. This
+            # prevents the next instruction/group from being swallowed.
+            if _is_heading_like(line) and not _GAP_RE.search(line):
+                flush_question()
+                prose.append(line)
+            else:
+                current["lines"].append(line)
+        else:
+            prose.append(line)
 
-    flush()
-    return blocks
+    flush_question()
+    flush_prose()
+    return prose, questions
 
 
 def _section_content(pages_text, pages, mode, q_range):
-    cleaned_pages = []
-    questions = []
+    prose_blocks, questions = [], []
     for p in pages:
         if not 1 <= p <= len(pages_text):
             continue
         lines = _clean_lines(pages_text[p - 1])
-        cleaned_pages.append("\n\n".join(_reflow(lines, mode)))
-        if q_range:
-            questions.extend({"page": p, **q} for q in _extract_question_blocks(lines, q_range[0], q_range[1], mode))
+        page_prose, page_questions = _extract_page(lines, q_range, mode, p)
+        prose_blocks.extend({"type": "text", "page": p, "text": x} for x in page_prose if x)
+        questions.extend(page_questions)
 
-    # OCR may duplicate a question when a two-column page is read poorly.
-    # Keep the first occurrence; page images remain available for review.
     seen = set()
     unique_questions = []
     for q in questions:
@@ -164,12 +162,11 @@ def _section_content(pages_text, pages, mode, q_range):
         seen.add(q["question"])
         unique_questions.append(q)
 
+    # `text` remains a useful fallback/debug representation. The UI should
+    # prefer prose_blocks + questions when schema_version >= 2.
     return {
-        "text": "\n\n".join(x for x in cleaned_pages if x),
-        "blocks": [
-            {"type": "text", "page": p, "text": t}
-            for p, t in zip(pages, cleaned_pages) if t
-        ],
+        "text": "\n\n".join(x["text"] for x in prose_blocks + [{"text": q["text"]} for q in unique_questions]),
+        "blocks": prose_blocks,
         "questions": unique_questions,
         "question_range": list(q_range) if q_range else None,
     }
@@ -177,7 +174,6 @@ def _section_content(pages_text, pages, mode, q_range):
 
 def build_content_for_test(pages_text, test_cfg):
     content = {"schema_version": 2}
-
     listening = test_cfg.get("listening", {})
     parts, any_listening = [], False
     for part in listening.get("parts", []):
@@ -197,12 +193,10 @@ def build_content_for_test(pages_text, test_cfg):
         passages.append(section)
     if any_reading:
         content["reading"] = {"passages": passages}
-
     return content
 
 
 def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name):
-    """Create structured content files, never overwriting manual corrections."""
     for test_name, cfg in manifest.get("tests", {}).items():
         out_dir = os.path.join(mock_dir, "content")
         out_path = os.path.join(out_dir, f"{test_name}.json")
