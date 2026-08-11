@@ -28,13 +28,9 @@ _HEADING_LIKE_RES = [
     re.compile(r"^\s*Write (?:ONE|NO MORE|TRUE|FALSE) .{0,80}$", re.IGNORECASE),
 ]
 _GAP_RE = re.compile(r"\d{1,2}\s*(?:[.…·]{3,}|_{3,})")
-_QUESTION_START_RE = re.compile(
-    r"^\s*(\d{1,2})(?:\s*[.)/:]\s*(.*)|\s+(.+?))\s*$"
-)
+_QUESTION_START_RE = re.compile(r"^\s*(\d{1,2})(?:\s*[.)/:]\s*(.*)|\s+(.+?))\s*$")
 _LONE_QUESTION_NUMBER_RE = re.compile(r"^\s*(\d{1,2})\s*$")
-_EMBEDDED_QUESTION_RE = re.compile(
-    r"(?:^|\s)[\[(]?(\d{1,2})[\])\.]?(?=\s|$)"
-)
+_EMBEDDED_QUESTION_RE = re.compile(r"(?:^|\s)[\[(]?(\d{1,2})[\])\.]?(?=\s|$)")
 
 
 def _is_heading_like(line):
@@ -110,11 +106,7 @@ def _reflow(lines, mode):
 
 
 def _normalise_question(lines, mode):
-    return (
-        "\n".join(x.strip() for x in lines if x.strip())
-        if mode == "list"
-        else "\n\n".join(_reflow(lines, "prose"))
-    )
+    return "\n".join(x.strip() for x in lines if x.strip()) if mode == "list" else "\n\n".join(_reflow(lines, "prose"))
 
 
 def _extract_page(lines, q_range, mode, page):
@@ -195,7 +187,6 @@ def _qa_for_section(q_range, questions):
 
 
 def _preprocess_for_ocr(image):
-    """Create a high-contrast grayscale image for scanned book pages."""
     from PIL import ImageOps, ImageFilter
     image = ImageOps.grayscale(image)
     image = ImageOps.autocontrast(image)
@@ -203,7 +194,7 @@ def _preprocess_for_ocr(image):
 
 
 def _ocr_page_variants(pdf_path, page_number):
-    """Run two Tesseract layouts because IELTS pages commonly use columns/forms."""
+    """Run several OCR layouts, including left/right crops for two-column pages."""
     try:
         import fitz
         import pytesseract
@@ -216,18 +207,28 @@ def _ocr_page_variants(pdf_path, page_number):
         doc = fitz.open(pdf_path)
         try:
             page = doc[page_number - 1]
-            # 300-ish DPI gives substantially better recognition of small
-            # printed question numbers than the earlier 2x render.
             pix = page.get_pixmap(matrix=fitz.Matrix(2.5, 2.5), colorspace=fitz.csGRAY, alpha=False)
-            image = Image.open(io.BytesIO(pix.tobytes("png")))
-            image = _preprocess_for_ocr(image)
+            image = _preprocess_for_ocr(Image.open(io.BytesIO(pix.tobytes("png"))))
             os.environ.setdefault("OMP_THREAD_LIMIT", "1")
 
-            # PSM 6 works well for conventional blocks; PSM 11 is much better
-            # at sparse/multi-column question sheets. We deliberately keep
-            # both outputs and let the question parser merge their detections.
-            for psm in (6, 11):
+            # Whole-page modes. PSM 3 lets Tesseract infer columns; 6 assumes
+            # one uniform block; 11 handles sparse question sheets.
+            for psm in (3, 6, 11):
                 texts.append(pytesseract.image_to_string(image, config=f"--oem 3 --psm {psm}"))
+
+            # Many Cambridge pages use two visual columns. OCR each column
+            # independently so the question number and its text stay in the
+            # same reading region instead of being interleaved by Tesseract.
+            width, height = image.size
+            overlap = max(20, int(width * 0.025))
+            mid = width // 2
+            crops = [
+                image.crop((0, 0, min(width, mid + overlap), height)),
+                image.crop((max(0, mid - overlap), 0, width, height)),
+            ]
+            for crop in crops:
+                for psm in (6, 11):
+                    texts.append(pytesseract.image_to_string(crop, config=f"--oem 3 --psm {psm}"))
         finally:
             doc.close()
     except Exception:
@@ -245,10 +246,6 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
         prose_blocks.extend({"type": "text", "page": p, "text": x} for x in page_prose if x)
         questions.extend(page_questions)
 
-    # A scanned PDF can have an OCR-derived cache from the structural scan,
-    # but that OCR is optimized for headings rather than small question text.
-    # If native/cached extraction is incomplete, run a higher-resolution,
-    # layout-aware OCR pass specifically over this section.
     if not _qa_for_section(q_range, questions)["ok"] and pdf_path:
         for p in pages:
             for ocr_text in _ocr_page_variants(pdf_path, p):
@@ -256,8 +253,6 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
                 _, ocr_questions = _extract_page(ocr_lines, q_range, mode, p)
                 questions.extend(ocr_questions)
 
-    # Keep one representation of each question. OCR/native results can find
-    # the same number multiple times; retain the version with more text.
     by_question = {}
     for q in questions:
         n = q["question"]
@@ -306,11 +301,7 @@ def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name, force
         out_path = os.path.join(out_dir, f"{test_name}.json")
         if os.path.isfile(out_path) and not force:
             continue
-        content = build_content_for_test(
-            pages_text,
-            cfg,
-            pdf_path=os.path.join(mock_dir, manifest.get("pdf_file", "main.pdf")),
-        )
+        content = build_content_for_test(pages_text, cfg, pdf_path=os.path.join(mock_dir, manifest.get("pdf_file", "main.pdf")))
         if not any(k in content for k in ("reading", "listening")):
             continue
         os.makedirs(out_dir, exist_ok=True)
