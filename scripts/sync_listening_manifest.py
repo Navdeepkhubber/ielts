@@ -24,6 +24,9 @@ from lib.scaffold import _build_listening_block, _discover_test_dirs  # noqa: E4
 _QUESTION_RANGE_RE = re.compile(
     r"[QO]uestions?\s+(\d{1,2})\s*[-–—~]\s*(\d{1,2})", re.IGNORECASE
 )
+# Listening question sheets often expose the numbers as standalone tokens
+# even when OCR misses the word "Questions" or mangles the range heading.
+_QUESTION_NUMBER_RE = re.compile(r"(?m)^\s*(\d{1,2})\s*[.)]\s+")
 _MIN_TEXT_CHARS = 20
 
 
@@ -66,17 +69,37 @@ def _is_non_listening_page(text):
 
 def _question_starts(pages_text, start_page, end_page, audio_count):
     starts = {}
+    candidates = {}
     end_page = min(end_page, len(pages_text))
+
     for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
         if _is_non_listening_page(text):
             continue
+
+        # Strong evidence: an explicit Questions X-Y heading.
         for m in _QUESTION_RANGE_RE.finditer(text):
             s, e = int(m.group(1)), int(m.group(2))
-            if s >= 1 and s <= 40 and e == s + 9:
+            if 1 <= s <= 40 and e == s + 9:
                 part = ((s - 1) // 10) + 1
                 if 1 <= part <= audio_count:
-                    starts.setdefault(part, page)
+                    candidates.setdefault(part, []).append((3, page))
+
+        # Medium evidence: standalone question numbers. Score a page by how
+        # many numbers from a single canonical 10-question block it contains.
+        numbers = {int(m.group(1)) for m in _QUESTION_NUMBER_RE.finditer(text) if 1 <= int(m.group(1)) <= 40}
+        for part in range(1, audio_count + 1):
+            lo, hi = (part - 1) * 10 + 1, part * 10
+            hits = len(numbers & set(range(lo, hi + 1)))
+            if hits >= 2:
+                candidates.setdefault(part, []).append((min(2, hits), page))
+
+    # Prefer explicit ranges, then the page with the strongest concentration
+    # of question numbers. In a tie choose the earliest page. This derives
+    # boundaries from the PDF rather than from a fixed page count.
+    for part, evidence in candidates.items():
+        evidence.sort(key=lambda x: (-x[0], x[1]))
+        starts[part] = evidence[0][1]
     return starts
 
 
@@ -109,8 +132,8 @@ def _derive_parts(pages_text, start_page, end_page, audio_parts):
     starts = _question_starts(pages_text, start_page, end_page, count)
     headings = _heading_part_starts(pages_text, start_page, end_page, count)
 
-    # Question-range evidence is preferred. A heading is useful only for a
-    # part whose question-range heading was not OCR'd.
+    # Question-range/number evidence is preferred. A section heading fills a
+    # gap only when the question sheet itself was not OCR'd reliably.
     for n, page in headings.items():
         starts.setdefault(n, page)
 
