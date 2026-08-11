@@ -33,10 +33,27 @@ _GAP_RE = re.compile(r"\d{1,2}\s*(?:[.…·]{3,}|_{3,})")
 _QUESTION_START_RE = re.compile(r"^\s*(\d{1,2})(?:\s*[.)/:]\s*(.*)|\s+(.+?))\s*$")
 _LONE_QUESTION_NUMBER_RE = re.compile(r"^\s*(\d{1,2})\s*$")
 _EMBEDDED_QUESTION_RE = re.compile(r"(?:^|\s)[\[(]?(\d{1,2})[\])\.]?(?=\s|$)")
+_QUESTION_GROUP_RE = re.compile(
+    r"^\s*(?:questions?|qns?)[\s:]+(\d{1,2})\s*(?:and|&|to|[-–—])\s*(\d{1,2})\b",
+    re.IGNORECASE,
+)
 
 
 def _is_heading_like(line):
     return any(rx.match(line) for rx in _HEADING_LIKE_RES)
+
+
+def _question_group(line, q_from, q_to):
+    """Return a contiguous question group such as 'Questions 11 and 12'."""
+    if not q_range_valid(q_from, q_to):
+        return None
+    m = _QUESTION_GROUP_RE.match(line)
+    if not m:
+        return None
+    start, end = int(m.group(1)), int(m.group(2))
+    if start > end or start < q_from or end > q_to:
+        return None
+    return list(range(start, end + 1))
 
 
 def _question_start(line, q_from, q_to):
@@ -120,7 +137,12 @@ def _extract_page(lines, q_range, mode, page):
             return
         text = _normalise_question(current["lines"], mode)
         if text:
-            questions.append({"page": page, "question": current["question"], "text": text})
+            # A prompt such as "Questions 11 and 12" describes two answer
+            # slots sharing one visual block. Preserve that shared block for
+            # both question records instead of requiring OCR to invent a
+            # separate question number that is not printed.
+            for question in current.get("questions", [current["question"]]):
+                questions.append({"page": page, "question": question, "text": text})
         current = None
 
     def flush_prose():
@@ -137,6 +159,14 @@ def _extract_page(lines, q_range, mode, page):
             else:
                 flush_prose()
             continue
+
+        group = _question_group(line, q_range[0], q_range[1]) if q_range else None
+        if group:
+            flush_prose()
+            flush_question()
+            current = {"question": group[0], "questions": group, "lines": [line]}
+            continue
+
         q = _question_start(line, q_range[0], q_range[1]) if q_range else None
         if q is not None:
             flush_prose()
@@ -223,7 +253,7 @@ def _paddle_page(pdf_path, page_number):
 
 
 def _ocr_page_variants(pdf_path, page_number):
-    """Small Tesseract fallback for a single page when PaddleOCR is unavailable."""
+    """Single-page Tesseract fallback for a scanned page."""
     try:
         import fitz
         import pytesseract
@@ -259,7 +289,7 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
 
     qa = _qa_for_section(q_range, questions)
     if not qa["ok"] and pdf_path:
-        missing = set(qa["missing_questions"])
+        missing_before_ocr = set(qa["missing_questions"])
         for p in pages:
             ocr_lines = _paddle_page(pdf_path, p)
             if not ocr_lines:
@@ -270,7 +300,7 @@ def _section_content(pages_text, pages, mode, q_range, pdf_path=None):
             _, ocr_questions = _extract_page(_clean_lines("\n".join(ocr_lines)), q_range, mode, p)
             questions.extend(ocr_questions)
             by_num = {q["question"] for q in questions}
-            if missing.issubset(by_num):
+            if missing_before_ocr.issubset(by_num):
                 break
 
     by_question = {}
