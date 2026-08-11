@@ -1,9 +1,10 @@
 """Force-regenerate structured Reading/Listening content from existing manifests.
 
 This leaves manifest.json and answers untouched and overwrites only
-content/<Test N>.json. It prints QA summaries and, when PaddleOCR is installed,
-uses its layout-aware OCR as an additional source for scanned pages before the
-existing Tesseract fallback.
+content/<Test N>.json. It prints QA summaries. Scanned pages are OCR'd only
+when the section's native text does not contain all expected questions; OCR is
+performed one page at a time by content_extract so page images are not retained
+across the whole test.
 
 Examples:
     python3 scripts/reextract_content.py
@@ -14,9 +15,7 @@ import argparse
 import copy
 import json
 import os
-import re
 import sys
-import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -133,51 +132,6 @@ def _print_qa(test_name, content):
     return all_ok
 
 
-def _test_pages(cfg):
-    pages = set()
-    for section_name, key in (("reading", "passages"), ("listening", "parts")):
-        for section in cfg.get(section_name, {}).get(key, []):
-            pages.update(int(p) for p in (section.get("pages") or []) if str(p).isdigit())
-    return sorted(pages)
-
-
-def _add_paddle_ocr_text(pdf_path, pages_text, pages):
-    """Append layout-aware PaddleOCR text to selected pages when installed."""
-    try:
-        from lib import paddle_ocr
-        import fitz
-        from PIL import Image
-    except ImportError:
-        return 0
-
-    # Avoid paying the model startup cost if PaddleOCR isn't installed.
-    if paddle_ocr._get_ocr() is None:
-        return 0
-
-    added = 0
-    doc = fitz.open(pdf_path)
-    try:
-        with tempfile.TemporaryDirectory(prefix="ielts-paddle-") as tmp:
-            for page_number in pages:
-                if page_number < 1 or page_number > len(doc):
-                    continue
-                page = doc[page_number - 1]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2.5, 2.5), colorspace=fitz.csRGB, alpha=False)
-                image_path = os.path.join(tmp, f"page-{page_number}.png")
-                pix.save(image_path)
-                lines = paddle_ocr.ocr_page(image_path)
-                if not lines:
-                    continue
-                # Keep native/cached text and append PaddleOCR as an additional
-                # representation. The downstream parser deduplicates question
-                # numbers and chooses the longest question text.
-                pages_text[page_number - 1] = pages_text[page_number - 1].rstrip() + "\n\n" + "\n".join(lines)
-                added += 1
-    finally:
-        doc.close()
-    return added
-
-
 def reextract_mock(mock_name, test_filter=None):
     mock_dir = os.path.join(TESTS_ROOT, mock_name)
     if not os.path.isdir(mock_dir):
@@ -202,9 +156,6 @@ def reextract_mock(mock_name, test_filter=None):
 
     for test_name in selected:
         cfg = _content_cfg(tests[test_name])
-        paddle_pages = _add_paddle_ocr_text(pdf_path, pages_text, _test_pages(cfg))
-        if paddle_pages:
-            print(f"  PaddleOCR: processed {paddle_pages} section pages", flush=True)
         content = content_extract.build_content_for_test(pages_text, cfg, pdf_path=pdf_path)
         path = _write_content(mock_dir, test_name, content)
         print(f"  {test_name}: {path}")
