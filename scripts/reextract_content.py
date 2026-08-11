@@ -1,13 +1,13 @@
 """Force-regenerate structured Reading/Listening content from existing manifests.
 
-This deliberately leaves manifest.json and answers untouched. It is intended
-for development/QA when the extraction logic changes and existing
-content/<Test N>.json files need to be regenerated.
+This leaves manifest.json and answers untouched and overwrites only
+content/<Test N>.json. It also prints a QA summary comparing expected and
+detected question numbers for every Reading passage and Listening part.
 
 Examples:
     python3 scripts/reextract_content.py
-    python3 scripts/reextract_content.py --mock "Cambridge 21 Test 1"
-    python3 scripts/reextract_content.py --mock "Cambridge 21 Test 1" --test "Test 1"
+    python3 scripts/reextract_content.py --mock "Cambridge 21"
+    python3 scripts/reextract_content.py --mock "Cambridge 21" --test "Test 1"
 """
 import argparse
 import json
@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from lib import content_extract, pdf_render, pdf_structure
+from lib import content_extract, pdf_structure
 
 TESTS_ROOT = os.path.join(ROOT, "tests")
 
@@ -32,9 +32,7 @@ def _find_pdf(mock_dir):
         for f in os.listdir(mock_dir)
         if f.lower().endswith(".pdf")
     )
-    if len(pdfs) == 1:
-        return pdfs[0]
-    return None
+    return pdfs[0] if len(pdfs) == 1 else None
 
 
 def _load_manifest(mock_dir):
@@ -55,6 +53,49 @@ def _write_content(mock_dir, test_name, content):
         f.write("\n")
     os.replace(tmp_path, out_path)
     return out_path
+
+
+def _section_summary(label, section):
+    qa = section.get("qa", {})
+    expected = qa.get("expected_count", 0)
+    detected = qa.get("detected_count", 0)
+    missing = qa.get("missing_questions", [])
+    duplicates = qa.get("duplicate_questions", [])
+    unexpected = qa.get("unexpected_questions", [])
+    ok = qa.get("ok", False)
+    marker = "OK" if ok else "CHECK"
+    details = []
+    if missing:
+        details.append("missing=" + ",".join(map(str, missing)))
+    if duplicates:
+        details.append("duplicates=" + ",".join(map(str, duplicates)))
+    if unexpected:
+        details.append("unexpected=" + ",".join(map(str, unexpected)))
+    suffix = f" ({'; '.join(details)})" if details else ""
+    print(f"    {label}: {detected}/{expected} questions [{marker}]{suffix}")
+    return ok
+
+
+def _print_qa(test_name, content):
+    all_ok = True
+    print("  QA:")
+    reading = content.get("reading", {}).get("passages", [])
+    for i, section in enumerate(reading, 1):
+        all_ok = _section_summary(f"Reading Passage {i}", section) and all_ok
+
+    listening = content.get("listening", {}).get("parts", [])
+    for i, section in enumerate(listening, 1):
+        all_ok = _section_summary(f"Listening Part {i}", section) and all_ok
+
+    reading_expected = sum(s.get("qa", {}).get("expected_count", 0) for s in reading)
+    reading_detected = sum(s.get("qa", {}).get("detected_count", 0) for s in reading)
+    listening_expected = sum(s.get("qa", {}).get("expected_count", 0) for s in listening)
+    listening_detected = sum(s.get("qa", {}).get("detected_count", 0) for s in listening)
+    if reading:
+        print(f"    Reading total: {reading_detected}/{reading_expected} {'OK' if reading_detected == reading_expected and all(s.get('qa', {}).get('ok') for s in reading) else 'CHECK'}")
+    if listening:
+        print(f"    Listening total: {listening_detected}/{listening_expected} {'OK' if listening_detected == listening_expected and all(s.get('qa', {}).get('ok') for s in listening) else 'CHECK'}")
+    return all_ok
 
 
 def reextract_mock(mock_name, test_filter=None):
@@ -83,13 +124,8 @@ def reextract_mock(mock_name, test_filter=None):
         cfg = tests[test_name]
         content = content_extract.build_content_for_test(pages_text, cfg)
         path = _write_content(mock_dir, test_name, content)
-        reading_count = sum(len(p.get("questions", [])) for p in content.get("reading", {}).get("passages", []))
-        listening_count = sum(len(p.get("questions", [])) for p in content.get("listening", {}).get("parts", []))
-        print(
-            f"  {test_name}: {path} | reading questions={reading_count}, "
-            f"listening questions={listening_count}",
-            flush=True,
-        )
+        print(f"  {test_name}: {path}")
+        _print_qa(test_name, content)
 
 
 def main():
@@ -101,17 +137,13 @@ def main():
     if args.test_name and not args.mock:
         parser.error("--test requires --mock")
 
-    if args.mock:
-        reextract_mock(args.mock, args.test_name)
-        return
-
-    mock_names = sorted(
+    mock_names = [args.mock] if args.mock else sorted(
         d for d in os.listdir(TESTS_ROOT)
         if os.path.isdir(os.path.join(TESTS_ROOT, d))
     )
     for mock_name in mock_names:
         try:
-            reextract_mock(mock_name)
+            reextract_mock(mock_name, args.test_name)
         except (FileNotFoundError, ValueError) as exc:
             print(f"[{mock_name}] SKIPPED: {exc}", file=sys.stderr)
 
