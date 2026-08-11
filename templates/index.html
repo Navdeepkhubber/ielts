@@ -7,7 +7,6 @@
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-
   gtag('config', 'G-75J12PTY1L');
 </script>
 <meta charset="UTF-8">
@@ -28,6 +27,7 @@
     <nav class="topnav">
       <button data-view="home" class="nav-link active">Tests</button>
       <button data-view="dashboard" class="nav-link">Progress</button>
+      {% if user and user.admin %}<a href="/admin/content-review" class="nav-link admin-nav-link">Content Review</a>{% endif %}
     </nav>
     <div class="topbar-account">
       {% if user %}<a href="/profile" class="account-profile-link">{{ user.name }}</a>{% endif %}
@@ -43,6 +43,7 @@
       <button data-view="home" class="mobile-nav-link active">Tests</button>
       <button data-view="dashboard" class="mobile-nav-link">Progress</button>
       <a href="/profile" class="mobile-nav-link mobile-nav-link-anchor">Profile</a>
+      {% if user and user.admin %}<a href="/admin/content-review" class="mobile-nav-link mobile-nav-link-anchor">Content Review</a>{% endif %}
     </nav>
     <div class="mobile-menu-account">
       {% if user %}<div class="mobile-account-name">{{ user.name }}</div>{% endif %}
