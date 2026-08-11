@@ -1,10 +1,37 @@
 """
-Test-package loader.
+Scans the primary tests folder for "mock" packages and loads their
+manifest + answer keys.
 
-A test package lives under tests/<mock_id> during local authoring and may
-also be mirrored to the optional S3-compatible blob store for deployed
-instances. Request-serving code should use cached_file() so it can work
-with either source transparently.
+Expected folder convention (one folder per mock/book):
+
+tests/                              <- primary root
+  Mock 19/
+    main.pdf                         <- the WHOLE book: all reading passages,
+                                         question sheets, listening question
+                                         sheets, and writing prompts for all
+                                         4 tests, exactly as printed.
+    audio/
+      Test 1/
+        part1.mp3
+        part2.mp3
+        part3.mp3
+        part4.mp3
+      Test 2/
+        ...
+      Test 3/
+      Test 4/
+    answers/
+      Test 1/
+        reading.json                 <- {"1": "TRUE", ...}
+        listening.json
+      Test 2/
+        ...
+    manifest.json                    <- required, maps Test N -> page/audio refs
+
+Only page numbers, file names, and answer keys are read here. No
+passage/question text is ever extracted -- main.pdf pages are rendered as
+images by lib/pdf_render.py and shown as-is, so the platform works with any
+book that follows this same folder convention.
 """
 import json
 import os
@@ -23,16 +50,12 @@ def cached_file(mock_id, relative_path):
     """
     Return a local filesystem path to a test file.
 
-    In normal local development, files are read directly from tests/. If
-    blob storage is configured, remote storage is preferred. When running
-    locally with FLASK_DEBUG enabled, a remote read failure (for example a
-    B2 403 caused by a scoped key without read permission) falls back to
-    the local authoring copy when that copy exists. This keeps local review
-    and authoring usable even when the optional remote storage credentials
-    are stale or intentionally unavailable.
-
-    In non-debug/deployed environments, remote errors are deliberately
-    re-raised rather than silently serving a potentially stale local copy.
+    If blob storage is not configured, read directly from tests/ as before.
+    If it is configured, prefer the remote copy. During local development,
+    however, fall back to the local authoring copy when the remote object
+    cannot be read (for example a Backblaze B2 403 caused by an application
+    key that lacks read permission). In deployed/non-debug environments the
+    remote exception is re-raised so storage problems are not hidden.
     """
     local_path = _local_file(mock_id, relative_path)
 
@@ -106,7 +129,12 @@ def load_test_config(mock_id, test_name):
 
 
 def mock_folder(mock_id):
-    """Local authoring path (tests/<mock_id>) used by local tooling."""
+    """
+    Local authoring path (tests/<mock_id>) -- used only by local tooling
+    (scaffold.py, fill_answer_keys_local.py, diagnose_mock.py, report.py)
+    that works directly against the source folder BEFORE it's uploaded
+    to remote storage. Request-serving code never calls this directly.
+    """
     return os.path.join(TESTS_ROOT, mock_id)
 
 
@@ -137,3 +165,9 @@ def load_answers(mock_id, test_name, section):
         return {}
     with open(path) as f:
         return json.load(f)
+
+
+def answers_exist(mock_id, test_name, section):
+    """True only if answers/<test_name>/<section>.json genuinely exists
+    at the source -- distinct from load_answers() returning {}."""
+    return cached_file(mock_id, os.path.join("answers", test_name, f"{section}.json")) is not None
