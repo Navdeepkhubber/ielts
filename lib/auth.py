@@ -1,10 +1,12 @@
 """
 Account profile storage -- Firestore, keyed directly by Firebase UID.
 
-Firebase Authentication remains the source of truth for credentials and
-verification. Firestore stores the small product profile used by IELTSBand:
-name, email, study target, test type, and optional exam date.
+Firebase Authentication remains the source of truth for production
+credentials and verification. Local development deliberately bypasses
+Firebase so the exam portal can be developed without a local Firebase
+service-account setup.
 """
+import os
 import time
 from functools import wraps
 from flask import session, redirect, url_for, request, jsonify
@@ -12,6 +14,31 @@ from flask import session, redirect, url_for, request, jsonify
 from lib.firebase_admin_setup import db
 
 USERS_COLLECTION = "users"
+LOCAL_DEV_USER_ID = "local-dev"
+
+
+def _local_dev_enabled():
+    """Enable the local-only auth bypass used by the development server.
+
+    Production sets PUBLIC_BASE_DOMAIN, so this cannot accidentally turn on
+    there just because FLASK_DEBUG is enabled. Set LOCAL_DEV=0 explicitly if
+    a local environment needs to exercise the real Firebase login flow.
+    """
+    explicit = os.environ.get("LOCAL_DEV")
+    if explicit is not None:
+        return explicit.strip().lower() in {"1", "true", "yes", "on"}
+    return os.environ.get("PUBLIC_BASE_DOMAIN", "").strip() == "" and os.environ.get("FLASK_DEBUG", "1") == "1"
+
+
+def _local_user():
+    return {
+        "id": LOCAL_DEV_USER_ID,
+        "name": os.environ.get("LOCAL_DEV_NAME", "Local Developer"),
+        "email": os.environ.get("LOCAL_DEV_EMAIL", "local@ieltsband.com").strip().lower(),
+        "target_band": "",
+        "test_type": "",
+        "exam_date": "",
+    }
 
 
 def _clean_profile(data):
@@ -63,6 +90,9 @@ def get_or_create_user(firebase_uid, email, name):
 
 
 def get_user(user_id):
+    if _local_dev_enabled() and user_id == LOCAL_DEV_USER_ID:
+        return _local_user()
+
     snap = db().collection(USERS_COLLECTION).document(user_id).get()
     if not snap.exists:
         return None
@@ -95,6 +125,16 @@ def update_profile(user_id, name, target_band="", test_type="", exam_date=""):
     if len(exam_date) > 10:
         raise ValueError("Invalid exam date.")
 
+    if _local_dev_enabled() and user_id == LOCAL_DEV_USER_ID:
+        user = _local_user()
+        user.update({
+            "name": name,
+            "target_band": target_band,
+            "test_type": test_type,
+            "exam_date": exam_date,
+        })
+        return user
+
     doc_ref = db().collection(USERS_COLLECTION).document(user_id)
     snap = doc_ref.get()
     if not snap.exists:
@@ -111,6 +151,10 @@ def update_profile(user_id, name, target_band="", test_type="", exam_date=""):
 
 
 def current_user():
+    if _local_dev_enabled():
+        session.setdefault("user_id", LOCAL_DEV_USER_ID)
+        return _local_user()
+
     user_id = session.get("user_id")
     if user_id is None:
         return None
@@ -119,11 +163,16 @@ def current_user():
 
 def login_required(view):
     """
-    For page routes: redirects anonymous visitors to /login (keeping the
-    page they wanted via ?next=). For /api/* routes: returns 401 JSON.
+    For local development, automatically use a synthetic local user and do
+    not require Firebase. Production retains the normal session/Firebase
+    authentication requirement.
     """
     @wraps(view)
     def wrapped(*args, **kwargs):
+        if _local_dev_enabled():
+            session.setdefault("user_id", LOCAL_DEV_USER_ID)
+            return view(*args, **kwargs)
+
         if session.get("user_id") is None:
             if request.path.startswith("/api/"):
                 return jsonify({"error": "login required"}), 401
