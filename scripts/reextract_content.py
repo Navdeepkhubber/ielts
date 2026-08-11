@@ -15,6 +15,7 @@ import argparse
 import copy
 import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,6 +25,42 @@ if ROOT not in sys.path:
 from lib import content_extract, pdf_structure
 
 TESTS_ROOT = os.path.join(ROOT, "tests")
+
+# Older Cambridge PDFs commonly print a standalone heading such as
+# "Questions 13:" or "Question 40" immediately before a single MCQ. The
+# structured extractor intentionally treats "Questions ..." headings as
+# non-question prose, so normalize only the *single-number* form here. Ranges
+# and groups such as "Questions 11 and 12" remain untouched.
+_SINGLE_QUESTION_HEADING_RE = re.compile(
+    r"^\s*(?:questions?|qns?)\s+(\d{1,2})\s*:?[ \t]*(.*)$",
+    re.IGNORECASE,
+)
+
+
+def _normalise_single_question_headings(pages_text):
+    """Turn standalone `Questions 13:` / `Question 40` lines into `13.`.
+
+    This is deliberately applied to page text before structured extraction,
+    rather than hard-coding a Cambridge book or question number. It fixes a
+    common scanned/native-text layout where a single question is introduced
+    by a heading and therefore isn't recognized by the normal question-start
+    parser.
+    """
+    normalised = []
+    for text in pages_text:
+        lines = []
+        for raw in text.splitlines():
+            line = raw.strip()
+            m = _SINGLE_QUESTION_HEADING_RE.match(line) if line else None
+            if m:
+                tail = m.group(2).strip()
+                # Never rewrite a group/range accidentally. The regex itself
+                # only captures one number, but guard common OCR variants too.
+                if not re.match(r"^(?:and|&|to|[-–—])\b", tail, re.IGNORECASE):
+                    line = f"{m.group(1)}. {tail}".rstrip()
+            lines.append(line)
+        normalised.append("\n".join(lines))
+    return normalised
 
 
 def _find_pdf(mock_dir):
@@ -147,6 +184,7 @@ def reextract_mock(mock_name, test_filter=None):
 
     print(f"[{mock_name}] reading PDF text/OCR: {os.path.basename(pdf_path)}", flush=True)
     pages_text, _ = pdf_structure._page_texts(pdf_path)
+    pages_text = _normalise_single_question_headings(pages_text)
 
     tests = manifest.get("tests", {})
     selected = [test_filter] if test_filter else list(tests.keys())
