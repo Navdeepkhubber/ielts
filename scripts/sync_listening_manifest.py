@@ -37,12 +37,7 @@ def _test_number(name):
 
 
 def _reading_bounds(manifest, test_name):
-    """Return (search_start, search_end) for a test's Listening pages.
-
-    The Reading pages are a much more reliable boundary than the structural
-    scanner's Test N heading on older scanned Cambridge PDFs. Listening sits
-    immediately before Reading, while Speaking/Writing may sit between tests.
-    """
+    """Return the PDF window immediately before this test's Reading section."""
     cfg = manifest.get("tests", {}).get(test_name, {})
     reading_pages = [
         p
@@ -72,13 +67,17 @@ def _reading_bounds(manifest, test_name):
 
 
 def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
-    """Infer Listening page spans from section headings inside the test window.
+    """Infer Listening page spans using the reliable Reading boundary.
 
-    This fixes older scanned books where the generic structural scanner anchors
-    a Test N boundary too late (often on a page carrying a running header),
-    which can shift Listening pages by several pages. The existing Reading
-    manifest gives us a reliable upper boundary, so we only inspect the pages
-    immediately preceding Reading for this test.
+    Older scanned Cambridge books can have a misleading/missing ``Test N``
+    heading. In that case the generic structural detector can shift the whole
+    Listening section. We instead inspect only the pages between the previous
+    test's Reading and the current test's Reading.
+
+    Question-range starts are preferred over SECTION/PART headings because
+    headings are sometimes missing from the OCR while ``Questions 1-10`` (or
+    ``Questions 11-13``, etc.) is still readable. For each IELTS part we only
+    need the first question-range beginning at 1, 11, 21 or 31.
     """
     bounds = _reading_bounds(manifest, test_name)
     if not bounds:
@@ -86,81 +85,56 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
     start_page, end_page = bounds
     if end_page < start_page:
         return None
+    end_page = min(end_page, len(pages_text))
 
-    candidates = []
-    for page in range(start_page, min(end_page, len(pages_text)) + 1):
+    # First find the first page for each canonical part from a question range
+    # whose START number matches that part. This handles ranges such as
+    # 11-13 / 14-16 / 17-20 and 21-24 / 25-30.
+    part_starts = {}
+    for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
-        for raw in text.splitlines():
-            line = raw.strip()
-            m = _LISTENING_HEADING_RE.match(line)
-            if m:
-                candidates.append((page, int(m.group(1))))
+        for m in _QUESTION_RANGE_RE.finditer(text):
+            s = int(m.group(1))
+            part_num = ((s - 1) // 10) + 1
+            expected_start = (part_num - 1) * 10 + 1
+            if s == expected_start and part_num not in part_starts:
+                part_starts[part_num] = page
 
-    # Collapse repeated OCR/header hits on the same part.
-    collapsed = []
-    for page, part_num in candidates:
-        if not collapsed or collapsed[-1][1] != part_num:
-            collapsed.append((page, part_num))
-
-    if not collapsed:
-        return None
-
-    # Speaking pages can contain "PART 1/2/3" before Listening. The first
-    # genuine Listening heading is the first section heading on a page that
-    # also contains the word LISTENING. Subsequent section headings are then
-    # taken in sequence.
-    first_idx = None
-    for i, (page, part_num) in enumerate(collapsed):
-        text = pages_text[page - 1]
-        if re.search(r"\bLISTENING\b", text, re.IGNORECASE):
-            first_idx = i
-            break
-    if first_idx is None:
-        return None
-    collapsed = collapsed[first_idx:]
-
-    # Keep only the real IELTS sequence 1..4. Ignore later answer-key/tape-
-    # script headings that may fall in a broad page window.
-    valid = []
-    expected = 1
-    for page, part_num in collapsed:
-        if part_num == expected:
-            valid.append((page, part_num))
-            expected += 1
-        elif valid and part_num > expected:
-            break
-    if not valid:
-        return None
+    # If question ranges weren't readable, fall back to explicit SECTION/PART
+    # headings. Do not mix a partial range result with a partial heading result
+    # unless both identify the same part.
+    if len(part_starts) < len(audio_parts):
+        heading_starts = {}
+        for page in range(start_page, end_page + 1):
+            text = pages_text[page - 1]
+            for raw in text.splitlines():
+                m = _LISTENING_HEADING_RE.match(raw.strip())
+                if m:
+                    n = int(m.group(1))
+                    if 1 <= n <= 4 and n not in heading_starts:
+                        heading_starts[n] = page
+        for n, page in heading_starts.items():
+            part_starts.setdefault(n, page)
 
     audio_by_num = {p.get("part_number"): p for p in audio_parts if p.get("part_number") is not None}
+    if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
+        return None
+
     inferred = []
-    for i, (page, part_num) in enumerate(valid):
-        next_page = valid[i + 1][0] if i + 1 < len(valid) else end_page + 1
+    for part_num in range(1, len(audio_parts) + 1):
+        page = part_starts[part_num]
+        next_starts = [p for n, p in part_starts.items() if n > part_num and p > page]
+        next_page = min(next_starts) if next_starts else end_page + 1
         pages = list(range(page, next_page))
-        q_range = None
-        for p in pages:
-            if p > len(pages_text):
-                continue
-            for m in _QUESTION_RANGE_RE.finditer(pages_text[p - 1]):
-                s, e = int(m.group(1)), int(m.group(2))
-                if s == (part_num - 1) * 10 + 1 and e == part_num * 10:
-                    q_range = [s, e]
-                    break
-            if q_range:
-                break
-        if not q_range:
-            q_range = [(part_num - 1) * 10 + 1, part_num * 10]
 
         audio = audio_by_num.get(part_num, {})
         inferred.append({
             "part_number": part_num,
             "files": audio.get("files", []),
-            "questions": q_range,
+            "questions": [(part_num - 1) * 10 + 1, part_num * 10],
             "pages": pages,
         })
 
-    if len(inferred) != len(audio_parts):
-        return None
     return inferred
 
 
@@ -192,25 +166,19 @@ def main():
 
     print(f"[{args.mock}] syncing listening manifest for {len(test_dirs)} audio tests")
 
-    def progress(done, total):
-        if done == 1 or done % 10 == 0 or done == total:
-            print(f"  OCR structure scan: {done}/{total} pages")
-
-    structure = pdf_structure.detect_structure(pdf_path, ocr_progress=progress)
+    # Do not call detect_structure() here. It can perform a full OCR structure
+    # scan and, on older scanned books, can anchor Test N too late. The cached
+    # page text is enough for the targeted Reading-bounded inference.
     pages_text, _ = pdf_structure._page_texts(pdf_path)
-    detected_tests = structure.get("tests", {})
 
     changed = False
     for test_name in test_dirs:
         cfg = manifest.setdefault("tests", {}).setdefault(test_name, {})
-        detected = detected_tests.get(test_name, {})
-        detected_parts = detected.get("listening_parts", [])
         old = cfg.get("listening")
 
-        # Prefer the Reading-bounded inference for older scanned books. Fall
-        # back to the generic structural detector for books where the Reading
-        # block is unavailable or the audio layout is genuinely unusual.
-        generic = _build_listening_block(test_name, audio_root, detected_parts=detected_parts)
+        # Generic audio grouping gives us the actual filenames/part numbers;
+        # Reading-bounded inference supplies the reliable page ranges.
+        generic = _build_listening_block(test_name, audio_root, detected_parts=None)
         inferred_parts = _infer_listening_parts(
             test_name, manifest, pages_text, generic.get("parts", [])
         )
