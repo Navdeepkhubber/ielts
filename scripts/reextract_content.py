@@ -10,8 +10,10 @@ Examples:
     python3 scripts/reextract_content.py --mock "Cambridge 21" --test "Test 1"
 """
 import argparse
+import copy
 import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,6 +55,55 @@ def _write_content(mock_dir, test_name, content):
         f.write("\n")
     os.replace(tmp_path, out_path)
     return out_path
+
+
+def _canonical_questions(section, index, total):
+    """Return the standard IELTS question range for a section.
+
+    Cambridge manifests can contain stale OCR-derived listening ranges (for
+    example Part 3 becoming 61-70). Content extraction must not inherit that
+    corruption. Reading is always 1-13 / 14-26 / 27-40; Listening is 10
+    questions per part starting at 1. This helper only affects the generated
+    content JSON; the source manifest is left untouched.
+    """
+    if section == "reading":
+        ranges = ([1, 13], [14, 26], [27, 40])
+        if total == 3 and index < len(ranges):
+            return ranges[index]
+        return None
+    part_num = None
+    if isinstance(section, dict):
+        try:
+            part_num = int(section.get("part_number"))
+        except (TypeError, ValueError):
+            part_num = None
+    if part_num is None:
+        part_num = index + 1
+    if 1 <= part_num <= 4:
+        start = (part_num - 1) * 10 + 1
+        return [start, start + 9]
+    return None
+
+
+def _content_cfg(cfg):
+    """Deep-copy the manifest config and repair obviously stale ranges."""
+    out = copy.deepcopy(cfg)
+
+    reading = out.get("reading", {})
+    passages = reading.get("passages", [])
+    for i, passage in enumerate(passages):
+        canonical = _canonical_questions("reading", i, len(passages))
+        if canonical:
+            passage["questions"] = canonical
+
+    listening = out.get("listening", {})
+    parts = listening.get("parts", [])
+    for i, part in enumerate(parts):
+        canonical = _canonical_questions(part, i, len(parts))
+        if canonical:
+            part["questions"] = canonical
+
+    return out
 
 
 def _section_summary(label, section):
@@ -121,8 +172,8 @@ def reextract_mock(mock_name, test_filter=None):
         raise ValueError(f"Tests not found in manifest: {', '.join(missing)}")
 
     for test_name in selected:
-        cfg = tests[test_name]
-        content = content_extract.build_content_for_test(pages_text, cfg)
+        cfg = _content_cfg(tests[test_name])
+        content = content_extract.build_content_for_test(pages_text, cfg, pdf_path=pdf_path)
         path = _write_content(mock_dir, test_name, content)
         print(f"  {test_name}: {path}")
         _print_qa(test_name, content)
