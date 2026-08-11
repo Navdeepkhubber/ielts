@@ -2,9 +2,9 @@
 Account profile storage -- Firestore, keyed directly by Firebase UID.
 
 Firebase Authentication remains the source of truth for production
-credentials and verification. Local development deliberately bypasses
-Firebase so the exam portal can be developed without a local Firebase
-service-account setup.
+credentials and verification. Local development can explicitly bypass
+Firebase with LOCAL_DEV=1 so CI and production never accidentally enter
+local-auth mode merely because Flask debug mode is enabled.
 """
 import os
 import time
@@ -18,16 +18,9 @@ LOCAL_DEV_USER_ID = "local-dev"
 
 
 def _local_dev_enabled():
-    """Enable the local-only auth bypass used by the development server.
-
-    Production sets PUBLIC_BASE_DOMAIN, so this cannot accidentally turn on
-    there just because FLASK_DEBUG is enabled. Set LOCAL_DEV=0 explicitly if
-    a local environment needs to exercise the real Firebase login flow.
-    """
-    explicit = os.environ.get("LOCAL_DEV")
-    if explicit is not None:
-        return explicit.strip().lower() in {"1", "true", "yes", "on"}
-    return os.environ.get("PUBLIC_BASE_DOMAIN", "").strip() == "" and os.environ.get("FLASK_DEBUG", "1") == "1"
+    """Enable the local-only auth bypass explicitly with LOCAL_DEV=1."""
+    explicit = os.environ.get("LOCAL_DEV", "")
+    return explicit.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _local_user():
@@ -64,12 +57,7 @@ def get_or_create_user(firebase_uid, email, name):
     if snap.exists:
         doc_ref.update({"name": name, "email": email})
         data = snap.to_dict() or {}
-        return {
-            "id": firebase_uid,
-            "name": name,
-            "email": email,
-            **_clean_profile(data),
-        }
+        return {"id": firebase_uid, "name": name, "email": email, **_clean_profile(data)}
 
     doc_ref.set({
         "name": name,
@@ -98,12 +86,7 @@ def get_user(user_id):
         return None
 
     data = snap.to_dict() or {}
-    return {
-        "id": user_id,
-        "name": data.get("name"),
-        "email": data.get("email"),
-        **_clean_profile(data),
-    }
+    return {"id": user_id, "name": data.get("name"), "email": data.get("email"), **_clean_profile(data)}
 
 
 def update_profile(user_id, name, target_band="", test_type="", exam_date=""):
@@ -127,12 +110,7 @@ def update_profile(user_id, name, target_band="", test_type="", exam_date=""):
 
     if _local_dev_enabled() and user_id == LOCAL_DEV_USER_ID:
         user = _local_user()
-        user.update({
-            "name": name,
-            "target_band": target_band,
-            "test_type": test_type,
-            "exam_date": exam_date,
-        })
+        user.update({"name": name, "target_band": target_band, "test_type": test_type, "exam_date": exam_date})
         return user
 
     doc_ref = db().collection(USERS_COLLECTION).document(user_id)
@@ -140,13 +118,7 @@ def update_profile(user_id, name, target_band="", test_type="", exam_date=""):
     if not snap.exists:
         raise ValueError("User profile not found.")
 
-    doc_ref.update({
-        "name": name,
-        "target_band": target_band,
-        "test_type": test_type,
-        "exam_date": exam_date,
-    })
-
+    doc_ref.update({"name": name, "target_band": target_band, "test_type": test_type, "exam_date": exam_date})
     return get_user(user_id)
 
 
@@ -162,11 +134,7 @@ def current_user():
 
 
 def login_required(view):
-    """
-    For local development, automatically use a synthetic local user and do
-    not require Firebase. Production retains the normal session/Firebase
-    authentication requirement.
-    """
+    """Require a real session unless LOCAL_DEV=1 is explicitly enabled."""
     @wraps(view)
     def wrapped(*args, **kwargs):
         if _local_dev_enabled():
