@@ -1,7 +1,8 @@
 /* Structured content renderer.
  * Loaded after app.js so the existing exam flow remains unchanged. The
- * backend's schema_version=2 content is flattened only at the UI boundary:
- * prose stays prose, while each detected question gets its own card.
+ * backend's structured content (schema_version >= 2) is flattened only at
+ * the UI boundary: prose stays prose, while each detected question gets
+ * its own card.
  */
 
 (function installStructuredContentStyles() {
@@ -39,7 +40,7 @@ function _structuredQuestionText(section) {
 const _legacyFetchContent = fetchContent;
 async function fetchContent(mockId, testName) {
   const content = await _legacyFetchContent(mockId, testName);
-  if (!content || content.schema_version !== 2) return content;
+  if (!content || !Number.isFinite(content.schema_version) || content.schema_version < 2) return content;
 
   for (const section of [
     ...(content.reading?.passages || []),
