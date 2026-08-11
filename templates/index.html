@@ -25,213 +25,84 @@
       <span class="wordmark-badge">IB</span>
       <span class="wordmark-text">IELTSBand</span>
     </div>
-
     <nav class="topnav">
       <button data-view="home" class="nav-link active">Tests</button>
       <button data-view="dashboard" class="nav-link">Progress</button>
     </nav>
-
     <div class="topbar-account">
-      {% if user %}
-        <a href="/profile" class="account-profile-link">{{ user.name }}</a>
-      {% endif %}
-      <form method="POST" action="/logout" id="logout-form" style="display:inline">
-        <button type="submit" class="account-logout">Log out</button>
-      </form>
+      {% if user %}<a href="/profile" class="account-profile-link">{{ user.name }}</a>{% endif %}
+      <form method="POST" action="/logout" id="logout-form" style="display:inline"><button type="submit" class="account-logout">Log out</button></form>
     </div>
-
-    <button
-      class="topbar-menu-toggle"
-      id="topbar-menu-toggle"
-      type="button"
-      aria-label="Open menu"
-      aria-expanded="false"
-      aria-controls="mobile-menu"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
+    <button class="topbar-menu-toggle" id="topbar-menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
   </header>
-
   <div class="mobile-menu-backdrop" id="mobile-menu-backdrop"></div>
-
   <aside class="mobile-menu" id="mobile-menu" aria-hidden="true">
     <nav class="mobile-menu-links" aria-label="Dashboard navigation">
       <button data-view="home" class="mobile-nav-link active">Tests</button>
       <button data-view="dashboard" class="mobile-nav-link">Progress</button>
       <a href="/profile" class="mobile-nav-link mobile-nav-link-anchor">Profile</a>
     </nav>
-
     <div class="mobile-menu-account">
       {% if user %}<div class="mobile-account-name">{{ user.name }}</div>{% endif %}
-      <form method="POST" action="/logout" id="mobile-logout-form">
-        <button type="submit" class="mobile-account-logout">Log out</button>
-      </form>
+      <form method="POST" action="/logout" id="mobile-logout-form"><button type="submit" class="mobile-account-logout">Log out</button></form>
     </div>
   </aside>
-
   <main id="app"></main>
-
   <div id="modal-root"></div>
-
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
   <script src="/static/js/firebase-config.js"></script>
-
   <script>
-    // Clear the Firebase client session before the server-side one, so a
-    // logged-out visitor who returns to /login doesn't get silently
-    // signed back in via Firebase's own persisted session.
     (function () {
       function wireLogout(formId) {
-        var form = document.getElementById(formId);
-        if (!form) return;
-
+        var form = document.getElementById(formId); if (!form) return;
         form.addEventListener('submit', function (e) {
-          e.preventDefault();
-          firebase.auth().signOut().finally(function () {
-            form.submit();
-          });
+          e.preventDefault(); firebase.auth().signOut().finally(function () { form.submit(); });
         });
       }
-
-      wireLogout('logout-form');
-      wireLogout('mobile-logout-form');
+      wireLogout('logout-form'); wireLogout('mobile-logout-form');
     })();
   </script>
-
   <script>
-    // Same fade-while-scrolling-down / instant-restore-on-any-scroll-up
-    // behavior as the marketing page's nav -- applied here too so it's
-    // consistent across the whole site.
     (function () {
-      var topbar = document.getElementById('topbar');
-      if (!topbar) return;
-
-      var lastY = window.scrollY;
-      var ticking = false;
-
+      var topbar = document.getElementById('topbar'); if (!topbar) return;
+      var lastY = window.scrollY, ticking = false;
       function onScroll() {
         var y = window.scrollY;
-
-        if (y < 40) {
-          topbar.classList.remove('faded');
-        } else if (y < lastY) {
-          topbar.classList.remove('faded');
-        } else if (y > lastY) {
-          topbar.classList.add('faded');
-        }
-
-        lastY = y;
-        ticking = false;
+        if (y < 40 || y < lastY) topbar.classList.remove('faded');
+        else if (y > lastY) topbar.classList.add('faded');
+        lastY = y; ticking = false;
       }
-
-      window.addEventListener('scroll', function () {
-        if (!ticking) {
-          requestAnimationFrame(onScroll);
-          ticking = true;
-        }
-      }, { passive: true });
+      window.addEventListener('scroll', function () { if (!ticking) { requestAnimationFrame(onScroll); ticking = true; } }, { passive: true });
     })();
   </script>
-
   <script>
-    // Mobile dashboard navigation.
-    // Desktop navigation remains unchanged; on small screens the same
-    // two views are exposed through a slide-out hamburger menu.
     (function () {
-      var topbar = document.getElementById('topbar');
-      var toggle = document.getElementById('topbar-menu-toggle');
-      var menu = document.getElementById('mobile-menu');
-      var backdrop = document.getElementById('mobile-menu-backdrop');
-
+      var topbar = document.getElementById('topbar'), toggle = document.getElementById('topbar-menu-toggle'), menu = document.getElementById('mobile-menu'), backdrop = document.getElementById('mobile-menu-backdrop');
       if (!topbar || !toggle || !menu || !backdrop) return;
-
-      var menuIcon = [
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"',
-        ' stroke-width="2" stroke-linecap="round" aria-hidden="true">',
-        '<line x1="3" y1="6" x2="21" y2="6"/>',
-        '<line x1="3" y1="12" x2="21" y2="12"/>',
-        '<line x1="3" y1="18" x2="21" y2="18"/>',
-        '</svg>'
-      ].join('');
-
-      var closeIcon = [
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"',
-        ' stroke-width="2" stroke-linecap="round" aria-hidden="true">',
-        '<line x1="5" y1="5" x2="19" y2="19"/>',
-        '<line x1="19" y1="5" x2="5" y2="19"/>',
-        '</svg>'
-      ].join('');
-
       function setOpen(isOpen) {
-        menu.classList.toggle('open', isOpen);
-        backdrop.classList.toggle('open', isOpen);
-        topbar.classList.toggle('menu-open', isOpen);
-
-        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        toggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
-        menu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-        toggle.innerHTML = isOpen ? closeIcon : menuIcon;
+        menu.classList.toggle('open', isOpen); backdrop.classList.toggle('open', isOpen); topbar.classList.toggle('menu-open', isOpen);
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false'); toggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu'); menu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
       }
-
-      toggle.addEventListener('click', function () {
-        setOpen(!menu.classList.contains('open'));
-      });
-
-      backdrop.addEventListener('click', function () {
-        setOpen(false);
-      });
-
+      toggle.addEventListener('click', function () { setOpen(!menu.classList.contains('open')); });
+      backdrop.addEventListener('click', function () { setOpen(false); });
       menu.querySelectorAll('[data-view]').forEach(function (button) {
         button.addEventListener('click', function () {
           var view = button.dataset.view;
-
-          menu.querySelectorAll('.mobile-nav-link').forEach(function (item) {
-            item.classList.toggle('active', item.dataset.view === view);
-          });
-
-          document.querySelectorAll('.topnav .nav-link').forEach(function (item) {
-            item.classList.toggle('active', item.dataset.view === view);
-          });
-
-          if (typeof navigateTo === 'function') {
-            navigateTo(view);
-          }
-
-          setOpen(false);
+          menu.querySelectorAll('.mobile-nav-link').forEach(function (item) { item.classList.toggle('active', item.dataset.view === view); });
+          document.querySelectorAll('.topnav .nav-link').forEach(function (item) { item.classList.toggle('active', item.dataset.view === view); });
+          if (typeof navigateTo === 'function') navigateTo(view); setOpen(false);
         });
       });
-
-      menu.querySelectorAll('.mobile-nav-link-anchor').forEach(function (link) {
-        link.addEventListener('click', function () {
-          setOpen(false);
-        });
-      });
-
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && menu.classList.contains('open')) {
-          setOpen(false);
-        }
-      });
-
-      window.addEventListener('resize', function () {
-        if (window.innerWidth > 720 && menu.classList.contains('open')) {
-          setOpen(false);
-        }
-      });
-
-      window.addEventListener('scroll', function () {
-        if (menu.classList.contains('open')) {
-          setOpen(false);
-        }
-      }, { passive: true });
+      menu.querySelectorAll('.mobile-nav-link-anchor').forEach(function (link) { link.addEventListener('click', function () { setOpen(false); }); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && menu.classList.contains('open')) setOpen(false); });
+      window.addEventListener('resize', function () { if (window.innerWidth > 720) setOpen(false); });
+      window.addEventListener('scroll', function () { if (menu.classList.contains('open')) setOpen(false); }, { passive: true });
     })();
   </script>
-
   <script src="/static/js/app.js"></script>
+  <script src="/static/js/structured-content.js"></script>
 </body>
 </html>
