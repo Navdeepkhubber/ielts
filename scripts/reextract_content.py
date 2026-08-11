@@ -1,8 +1,9 @@
 """Force-regenerate structured Reading/Listening content from existing manifests.
 
 This leaves manifest.json and answers untouched and overwrites only
-content/<Test N>.json. It also prints a QA summary comparing expected and
-detected question numbers for every Reading passage and Listening part.
+content/<Test N>.json. It prints QA summaries and, when PaddleOCR is installed,
+uses its layout-aware OCR as an additional source for scanned pages before the
+existing Tesseract fallback.
 
 Examples:
     python3 scripts/reextract_content.py
@@ -15,6 +16,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -58,35 +60,21 @@ def _write_content(mock_dir, test_name, content):
 
 
 def _canonical_questions(section, index, total):
-    """Return the standard IELTS question range for a section.
+    """Return standard ranges only for the normal three-passage Reading layout.
 
-    Cambridge manifests can contain stale OCR-derived listening ranges (for
-    example Part 3 becoming 61-70). Content extraction must not inherit that
-    corruption. Reading is always 1-13 / 14-26 / 27-40; Listening is 10
-    questions per part starting at 1. This helper only affects the generated
-    content JSON; the source manifest is left untouched.
+    Listening ranges are deliberately left untouched because some Cambridge
+    manifests represent multiple audio segments in ways that don't map 1:1 to
+    the printed question ranges. We should not infer those ranges from audio
+    filenames during content extraction.
     """
     if section == "reading":
         ranges = ([1, 13], [14, 26], [27, 40])
         if total == 3 and index < len(ranges):
             return ranges[index]
-        return None
-    part_num = None
-    if isinstance(section, dict):
-        try:
-            part_num = int(section.get("part_number"))
-        except (TypeError, ValueError):
-            part_num = None
-    if part_num is None:
-        part_num = index + 1
-    if 1 <= part_num <= 4:
-        start = (part_num - 1) * 10 + 1
-        return [start, start + 9]
     return None
 
 
 def _content_cfg(cfg):
-    """Deep-copy the manifest config and repair obviously stale ranges."""
     out = copy.deepcopy(cfg)
 
     reading = out.get("reading", {})
@@ -96,13 +84,9 @@ def _content_cfg(cfg):
         if canonical:
             passage["questions"] = canonical
 
-    listening = out.get("listening", {})
-    parts = listening.get("parts", [])
-    for i, part in enumerate(parts):
-        canonical = _canonical_questions(part, i, len(parts))
-        if canonical:
-            part["questions"] = canonical
-
+    # Preserve Listening ranges from the source manifest. A single IELTS
+    # section may be represented by multiple audio files, so filenames are not
+    # a safe basis for rewriting its question numbers.
     return out
 
 
@@ -149,6 +133,51 @@ def _print_qa(test_name, content):
     return all_ok
 
 
+def _test_pages(cfg):
+    pages = set()
+    for section_name, key in (("reading", "passages"), ("listening", "parts")):
+        for section in cfg.get(section_name, {}).get(key, []):
+            pages.update(int(p) for p in (section.get("pages") or []) if str(p).isdigit())
+    return sorted(pages)
+
+
+def _add_paddle_ocr_text(pdf_path, pages_text, pages):
+    """Append layout-aware PaddleOCR text to selected pages when installed."""
+    try:
+        from lib import paddle_ocr
+        import fitz
+        from PIL import Image
+    except ImportError:
+        return 0
+
+    # Avoid paying the model startup cost if PaddleOCR isn't installed.
+    if paddle_ocr._get_ocr() is None:
+        return 0
+
+    added = 0
+    doc = fitz.open(pdf_path)
+    try:
+        with tempfile.TemporaryDirectory(prefix="ielts-paddle-") as tmp:
+            for page_number in pages:
+                if page_number < 1 or page_number > len(doc):
+                    continue
+                page = doc[page_number - 1]
+                pix = page.get_pixmap(matrix=fitz.Matrix(2.5, 2.5), colorspace=fitz.csRGB, alpha=False)
+                image_path = os.path.join(tmp, f"page-{page_number}.png")
+                pix.save(image_path)
+                lines = paddle_ocr.ocr_page(image_path)
+                if not lines:
+                    continue
+                # Keep native/cached text and append PaddleOCR as an additional
+                # representation. The downstream parser deduplicates question
+                # numbers and chooses the longest question text.
+                pages_text[page_number - 1] = pages_text[page_number - 1].rstrip() + "\n\n" + "\n".join(lines)
+                added += 1
+    finally:
+        doc.close()
+    return added
+
+
 def reextract_mock(mock_name, test_filter=None):
     mock_dir = os.path.join(TESTS_ROOT, mock_name)
     if not os.path.isdir(mock_dir):
@@ -173,6 +202,9 @@ def reextract_mock(mock_name, test_filter=None):
 
     for test_name in selected:
         cfg = _content_cfg(tests[test_name])
+        paddle_pages = _add_paddle_ocr_text(pdf_path, pages_text, _test_pages(cfg))
+        if paddle_pages:
+            print(f"  PaddleOCR: processed {paddle_pages} section pages", flush=True)
         content = content_extract.build_content_for_test(pages_text, cfg, pdf_path=pdf_path)
         path = _write_content(mock_dir, test_name, content)
         print(f"  {test_name}: {path}")
