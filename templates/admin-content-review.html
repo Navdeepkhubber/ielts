@@ -26,7 +26,10 @@
   .review-question { display:grid; grid-template-columns:42px minmax(0,1fr); gap:10px; border:1px solid var(--line); border-radius:8px; padding:12px; margin:0 0 10px; background:#fff; }
   .review-question-num { font-weight:800; font-family:var(--font-mono); color:var(--navy-btn); }
   .review-question-body { white-space:pre-wrap; }
-  .review-question[data-status="suspect"] { border-color:#d88a35; background:#fffaf2; }
+  .qa-badge { font-size:.76rem; font-family:var(--font-mono); font-weight:700; padding:4px 8px; border-radius:999px; }
+  .qa-ok { background:#e9f7ee; color:#146c35; }
+  .qa-check { background:#fff0df; color:#8a4b08; }
+  .qa-detail { font-size:.78rem; color:var(--ink-soft); margin:0 0 12px; }
   .review-empty { padding:30px; text-align:center; color:var(--ink-soft); }
   .status { font-size:.78rem; color:var(--ink-soft); }
   @media (max-width:900px) { .review-layout { grid-template-columns:1fr; } .pane-body { max-height:none; } }
@@ -35,50 +38,33 @@
 <body>
   <div class="review-page">
     <div class="review-head">
-      <div>
-        <h1>Content Review</h1>
-        <p>Compare the original PDF page with the extracted text and question boundaries.</p>
-      </div>
+      <div><h1>Content Review</h1><p>Compare the original PDF page with extracted text and question boundaries.</p></div>
       <div class="review-controls">
         <select id="mockSelect"><option>Loading mocks…</option></select>
         <select id="testSelect"><option>Select test…</option></select>
         <select id="sectionSelect"><option value="reading">Reading</option><option value="listening">Listening</option></select>
-        <button id="prevBtn">← Previous</button>
-        <button id="nextBtn">Next →</button>
+        <button id="prevBtn">← Previous</button><button id="nextBtn">Next →</button>
       </div>
     </div>
-    <div class="review-controls" style="margin-bottom:12px">
-      <button id="textMode" class="active">Structured text</button>
-      <button id="rawMode">Raw extracted text</button>
-      <span id="status" class="status"></span>
-    </div>
+    <div class="review-controls" style="margin-bottom:12px"><button id="textMode" class="active">Structured text</button><button id="rawMode">Raw extracted text</button><span id="status" class="status"></span></div>
     <div class="review-layout">
-      <section class="review-pane">
-        <div class="pane-head"><strong>Original book</strong><span id="pageLabel"></span></div>
-        <div class="pane-body book-pages" id="bookPane"></div>
-      </section>
-      <section class="review-pane">
-        <div class="pane-head"><strong id="textTitle">Extracted content</strong><span id="questionLabel"></span></div>
-        <div class="pane-body text-section" id="textPane"></div>
-      </section>
+      <section class="review-pane"><div class="pane-head"><strong>Original book</strong><span id="pageLabel"></span></div><div class="pane-body book-pages" id="bookPane"></div></section>
+      <section class="review-pane"><div class="pane-head"><strong id="textTitle">Extracted content</strong><span id="questionLabel"></span></div><div class="pane-body text-section" id="textPane"></div></section>
     </div>
   </div>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
   let mocks = [], current = null, sectionData = [], index = 0, mode = 'structured';
-
   async function api(path) { const r = await fetch(path); if (!r.ok) throw new Error(await r.text()); return r.json(); }
   function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
   async function loadMocks() {
     mocks = await api('/api/mocks');
     $('mockSelect').innerHTML = mocks.map(m => `<option value="${esc(m.id || m.mock_id || m.name)}">${esc(m.name || m.id || m.mock_id)}</option>`).join('');
     await loadTests();
   }
   async function loadTests() {
-    const id = $('mockSelect').value;
-    const cfg = await api('/api/mocks/' + encodeURIComponent(id));
+    const id = $('mockSelect').value, cfg = await api('/api/mocks/' + encodeURIComponent(id));
     const tests = Object.keys(cfg.tests || {});
     $('testSelect').innerHTML = tests.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
     await loadSection();
@@ -102,21 +88,18 @@
     $('textTitle').textContent = `${s.label} · ${mode === 'structured' ? 'Structured text' : 'Raw extracted text'}`;
     $('status').textContent = `${index+1} / ${sectionData.length}`;
     $('bookPane').innerHTML = (s.pages || []).map(p => `<img src="/api/mocks/${encodeURIComponent(current.mock)}/page?page=${p}" alt="Original PDF page ${p}">`).join('') || '<div class="review-empty">No page numbers configured.</div>';
-    if (mode === 'raw') {
-      $('textPane').innerHTML = `<pre style="white-space:pre-wrap;font:inherit;margin:0">${esc(s.text || '')}</pre>`;
-      return;
-    }
+    if (mode === 'raw') { $('textPane').innerHTML = `<pre style="white-space:pre-wrap;font:inherit;margin:0">${esc(s.text || '')}</pre>`; return; }
+    const qa = s.qa || {};
+    const badge = `<span class="qa-badge ${qa.ok ? 'qa-ok' : 'qa-check'}">${qa.ok ? 'PASS' : 'CHECK'} · ${qa.detected_count || 0}/${qa.expected_count || 0}</span>`;
+    const details = [(qa.missing_questions || []).length ? `Missing: ${qa.missing_questions.join(', ')}` : '', (qa.duplicate_questions || []).length ? `Duplicates: ${qa.duplicate_questions.join(', ')}` : '', (qa.unexpected_questions || []).length ? `Unexpected: ${qa.unexpected_questions.join(', ')}` : ''].filter(Boolean).join(' · ');
+    const qaHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>${esc(s.label)}</strong>${badge}</div>${details ? `<div class="qa-detail">${esc(details)}</div>` : ''}`;
     const prose = (s.blocks || []).map(b => `<p>${esc(b.text)}</p>`).join('');
     const qs = (s.questions || []).map(q => `<div class="review-question"><div class="review-question-num">${esc(q.question)}</div><div class="review-question-body">${esc(q.text)}</div></div>`).join('');
-    $('textPane').innerHTML = prose + qs || `<div class="review-empty">No structured blocks detected.</div>`;
+    $('textPane').innerHTML = qaHtml + (prose + qs || '<div class="review-empty">No structured blocks detected.</div>');
   }
-  $('mockSelect').addEventListener('change', loadTests);
-  $('testSelect').addEventListener('change', loadSection);
-  $('sectionSelect').addEventListener('change', loadSection);
-  $('prevBtn').addEventListener('click', () => { if (index > 0) { index--; render(); } });
-  $('nextBtn').addEventListener('click', () => { if (index + 1 < sectionData.length) { index++; render(); } });
-  $('textMode').addEventListener('click', () => { mode='structured'; $('textMode').classList.add('active'); $('rawMode').classList.remove('active'); render(); });
-  $('rawMode').addEventListener('click', () => { mode='raw'; $('rawMode').classList.add('active'); $('textMode').classList.remove('active'); render(); });
+  $('mockSelect').addEventListener('change', loadTests); $('testSelect').addEventListener('change', loadSection); $('sectionSelect').addEventListener('change', loadSection);
+  $('prevBtn').addEventListener('click', () => { if (index > 0) { index--; render(); } }); $('nextBtn').addEventListener('click', () => { if (index + 1 < sectionData.length) { index++; render(); } });
+  $('textMode').addEventListener('click', () => { mode='structured'; $('textMode').classList.add('active'); $('rawMode').classList.remove('active'); render(); }); $('rawMode').addEventListener('click', () => { mode='raw'; $('rawMode').classList.add('active'); $('textMode').classList.remove('active'); render(); });
   loadMocks().catch(e => { $('status').textContent = 'Error: ' + e.message; });
 })();
 </script>
