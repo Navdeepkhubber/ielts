@@ -83,50 +83,50 @@ def _find_part_starts(pages_text, start_page, end_page, audio_count):
     end_page = min(end_page, len(pages_text))
     part_starts = {}
 
+    # Canonical question ranges are the strongest signal. These are the
+    # actual question groups printed in the IELTS paper and do not depend on
+    # a fixed page count.
     for page in range(start_page, end_page + 1):
         text = pages_text[page - 1]
         if _is_non_listening_page(text):
             continue
         for m in _QUESTION_RANGE_RE.finditer(text):
-            s = int(m.group(1))
+            s, e = int(m.group(1)), int(m.group(2))
             part_num = ((s - 1) // 10) + 1
             expected_start = (part_num - 1) * 10 + 1
-            if 1 <= part_num <= audio_count and s == expected_start:
+            expected_end = part_num * 10
+            if (
+                1 <= part_num <= audio_count
+                and s == expected_start
+                and e == expected_end
+            ):
                 part_starts.setdefault(part_num, page)
 
-    if len(part_starts) < audio_count:
-        for page in range(start_page, end_page + 1):
-            text = pages_text[page - 1]
-            if _is_non_listening_page(text):
+    # Explicit SECTION/PART headings are a second evidence source, but only
+    # when they occur inside the already identified Listening section.
+    for page in range(start_page, end_page + 1):
+        text = pages_text[page - 1]
+        if _is_non_listening_page(text):
+            continue
+        for raw in text.splitlines():
+            m = _LISTENING_HEADING_RE.match(raw.strip())
+            if not m:
                 continue
-            for raw in text.splitlines():
-                m = _LISTENING_HEADING_RE.match(raw.strip())
-                if m:
-                    n = int(m.group(1))
-                    if 1 <= n <= audio_count:
-                        part_starts.setdefault(n, page)
+            n = int(m.group(1))
+            if 1 <= n <= audio_count:
+                part_starts.setdefault(n, page)
 
     return part_starts
 
 
-def _infer_listening_start_fallback(start_page, end_page, audio_count):
-    """Infer Listening start when OCR cannot identify the section title.
-
-    For four-part IELTS tests the Listening section is normally the final
-    eight PDF pages immediately before Reading. This is used only when OCR
-    cannot identify the actual Listening start. It deliberately takes the
-    final eight pages of a larger pre-Reading window so Speaking pages at the
-    beginning of that window are not mistaken for Listening.
-    """
-    if audio_count != 4:
-        return None
-    window = end_page - start_page + 1
-    if window >= 8:
-        return end_page - 7
-    return None
-
-
 def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
+    """Infer parts only from evidence in the PDF.
+
+    There are deliberately no page-count or Cambridge-book-specific fallbacks.
+    If the PDF does not provide enough evidence to determine a boundary, the
+    function returns None and the caller keeps the audio-only scaffold rather
+    than silently creating a potentially wrong manifest.
+    """
     bounds = _reading_bounds(manifest, test_name)
     if not bounds or not audio_parts:
         return None
@@ -139,22 +139,17 @@ def _infer_listening_parts(test_name, manifest, pages_text, audio_parts):
         pages_text, window_start, end_page
     )
     if listening_start is None:
-        listening_start = _infer_listening_start_fallback(
-            window_start, end_page, len(audio_parts)
-        )
-    if listening_start is None:
         return None
 
     part_starts = _find_part_starts(
         pages_text, listening_start, end_page, len(audio_parts)
     )
-    part_starts[1] = listening_start
 
-    for n in range(2, len(audio_parts) + 1):
-        if n not in part_starts:
-            candidate = listening_start + (n - 1) * 2
-            if candidate <= end_page:
-                part_starts[n] = candidate
+    # The actual Listening heading establishes Part 1 only if the page also
+    # contains evidence that it is the first question group. Do not invent a
+    # Part 1 start merely from the location of the word LISTENING.
+    if 1 not in part_starts:
+        return None
 
     if any(n not in part_starts for n in range(1, len(audio_parts) + 1)):
         return None
@@ -261,23 +256,23 @@ def main():
         if old != new:
             cfg["listening"] = new
             changed = True
-            print(f"  {test_name}: listening parts={len(new['parts'])}")
-            for part in new["parts"]:
+            print(f"  {test_name}: listening parts={len(new.get('parts', []))}")
+            for part in new.get("parts", []):
                 print(
-                    f"    Part {part.get('part_number', '?')}: "
-                    f"questions={part['questions']}, pages={part['pages']}"
+                    f"    Part {part.get('part_number')}: "
+                    f"questions={part.get('questions')}, "
+                    f"pages={part.get('pages', [])}"
                 )
         else:
             print(f"  {test_name}: listening already up to date")
 
-    if not changed:
+    if changed:
+        with open(manifest_path, "w") as f:
+            json.dump(manifest, f, indent=2)
+            f.write("\n")
+        print(f"Updated: {manifest_path}")
+    else:
         print("No manifest changes needed.")
-        return
-
-    with open(manifest_path, "w") as f:
-        json.dump(manifest, f, indent=2)
-        f.write("\n")
-    print(f"Updated: {manifest_path}")
 
 
 if __name__ == "__main__":
