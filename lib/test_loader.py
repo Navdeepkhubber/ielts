@@ -46,18 +46,35 @@ def _local_file(mock_id, relative_path):
     return local_path if os.path.isfile(local_path) else None
 
 
+def _local_mock_ids():
+    if not os.path.isdir(TESTS_ROOT):
+        return []
+    return sorted(
+        name for name in os.listdir(TESTS_ROOT)
+        if os.path.isfile(os.path.join(TESTS_ROOT, name, "manifest.json"))
+    )
+
+
+def _local_dev():
+    return os.environ.get("FLASK_DEBUG", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def cached_file(mock_id, relative_path):
     """
     Return a local filesystem path to a test file.
 
-    If blob storage is not configured, read directly from tests/ as before.
-    If it is configured, prefer the remote copy. During local development,
-    however, fall back to the local authoring copy when the remote object
-    cannot be read (for example a Backblaze B2 403 caused by an application
-    key that lacks read permission). In deployed/non-debug environments the
-    remote exception is re-raised so storage problems are not hidden.
+    Local development prefers the local authoring copy when it exists. This
+    is important when B2/blob storage is configured in a shared .env: localhost
+    should not silently read a stale/missing remote copy while the developer
+    is editing tests/.
+
+    If no local copy exists, configured blob storage is used. In deployed
+    environments remote storage remains authoritative.
     """
     local_path = _local_file(mock_id, relative_path)
+
+    if _local_dev() and local_path is not None:
+        return local_path
 
     if not blob_storage.is_configured():
         return local_path
@@ -65,7 +82,7 @@ def cached_file(mock_id, relative_path):
     try:
         return blob_storage.fetch_cached(os.path.join(mock_id, relative_path))
     except Exception:
-        if os.environ.get("FLASK_DEBUG", "1") == "1" and local_path is not None:
+        if _local_dev() and local_path is not None:
             return local_path
         raise
 
@@ -73,29 +90,28 @@ def cached_file(mock_id, relative_path):
 def list_mocks():
     """Return a summary list of every valid mock package found."""
     out = []
-    if blob_storage.is_configured():
+
+    # Localhost should enumerate the actual local authoring tree first. This
+    # avoids an empty B2 listing hiding valid mocks under tests/ when B2 is
+    # configured but has a different prefix or contains an older library.
+    local_ids = _local_mock_ids() if _local_dev() else []
+    if local_ids:
+        mock_ids = local_ids
+    elif blob_storage.is_configured():
         try:
             mock_ids = blob_storage.list_mock_ids()
         except Exception:
-            if os.environ.get("FLASK_DEBUG", "1") != "1" or not os.path.isdir(TESTS_ROOT):
+            if not _local_dev():
                 raise
-            mock_ids = sorted(
-                name for name in os.listdir(TESTS_ROOT)
-                if os.path.isfile(os.path.join(TESTS_ROOT, name, "manifest.json"))
-            )
+            mock_ids = local_ids
     else:
-        if not os.path.isdir(TESTS_ROOT):
-            return out
-        mock_ids = sorted(
-            name for name in os.listdir(TESTS_ROOT)
-            if os.path.isfile(os.path.join(TESTS_ROOT, name, "manifest.json"))
-        )
+        mock_ids = local_ids
 
     for name in mock_ids:
         manifest_path = cached_file(name, "manifest.json")
         if manifest_path is None:
             continue
-        with open(manifest_path) as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
         tests = {}
         for test_name, cfg in manifest.get("tests", {}).items():
@@ -116,7 +132,7 @@ def load_manifest(mock_id):
     path = cached_file(mock_id, "manifest.json")
     if path is None:
         raise FileNotFoundError(f"No manifest.json for mock '{mock_id}'")
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -163,7 +179,7 @@ def load_answers(mock_id, test_name, section):
     path = cached_file(mock_id, os.path.join("answers", test_name, f"{section}.json"))
     if path is None:
         return {}
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
