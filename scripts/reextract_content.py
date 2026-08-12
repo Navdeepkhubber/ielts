@@ -26,11 +26,6 @@ from lib import content_extract, pdf_structure
 
 TESTS_ROOT = os.path.join(ROOT, "tests")
 
-# Older Cambridge PDFs commonly print a standalone heading such as
-# "Questions 13:" or "Question 40" immediately before a single MCQ. The
-# structured extractor intentionally treats "Questions ..." headings as
-# non-question prose, so normalize only the *single-number* form here. Ranges
-# and groups such as "Questions 11 and 12" remain untouched.
 _SINGLE_QUESTION_HEADING_RE = re.compile(
     r"^\s*(?:questions?|qns?)\s+(\d{1,2})\s*:?[ \t]*(.*)$",
     re.IGNORECASE,
@@ -38,14 +33,7 @@ _SINGLE_QUESTION_HEADING_RE = re.compile(
 
 
 def _normalise_single_question_headings(pages_text):
-    """Turn standalone `Questions 13:` / `Question 40` lines into `13.`.
-
-    This is deliberately applied to page text before structured extraction,
-    rather than hard-coding a Cambridge book or question number. It fixes a
-    common scanned/native-text layout where a single question is introduced
-    by a heading and therefore isn't recognized by the normal question-start
-    parser.
-    """
+    """Turn standalone `Questions 13:` / `Question 40` lines into `13.`."""
     normalised = []
     for text in pages_text:
         lines = []
@@ -54,8 +42,6 @@ def _normalise_single_question_headings(pages_text):
             m = _SINGLE_QUESTION_HEADING_RE.match(line) if line else None
             if m:
                 tail = m.group(2).strip()
-                # Never rewrite a group/range accidentally. The regex itself
-                # only captures one number, but guard common OCR variants too.
                 if not re.match(r"^(?:and|&|to|[-–—])\b", tail, re.IGNORECASE):
                     line = f"{m.group(1)}. {tail}".rstrip()
             lines.append(line)
@@ -96,13 +82,6 @@ def _write_content(mock_dir, test_name, content):
 
 
 def _canonical_questions(section, index, total):
-    """Return standard ranges only for the normal three-passage Reading layout.
-
-    Listening ranges are deliberately left untouched because some Cambridge
-    manifests represent multiple audio segments in ways that don't map 1:1 to
-    the printed question ranges. We should not infer those ranges from audio
-    filenames during content extraction.
-    """
     if section == "reading":
         ranges = ([1, 13], [14, 26], [27, 40])
         if total == 3 and index < len(ranges):
@@ -112,18 +91,103 @@ def _canonical_questions(section, index, total):
 
 def _content_cfg(cfg):
     out = copy.deepcopy(cfg)
-
     reading = out.get("reading", {})
     passages = reading.get("passages", [])
     for i, passage in enumerate(passages):
         canonical = _canonical_questions("reading", i, len(passages))
         if canonical:
             passage["questions"] = canonical
-
-    # Preserve Listening ranges from the source manifest. A single IELTS
-    # section may be represented by multiple audio files, so filenames are not
-    # a safe basis for rewriting its question numbers.
     return out
+
+
+def _expected_range(value):
+    if not value or len(value) != 2:
+        return []
+    start, end = int(value[0]), int(value[1])
+    return list(range(start, end + 1)) if start <= end else []
+
+
+_GROUP_RE = re.compile(
+    r"^\s*(?:questions?|qns?)\s+(\d{1,2})\s*(?:to|[-–—]|and|&)\s*(\d{1,2})\b",
+    re.IGNORECASE,
+)
+_NUMBER_RE = re.compile(
+    r"(?:^|\s)[|¦©®™*•·\-–—:;]*(\d{1,2})\s*(?:[.)/:]|(?=\s))\s+"
+)
+
+
+def _split_explicit_group_numbers(text, start, end):
+    """Split a grouped OCR block only where real numbered boundaries exist."""
+    body = re.sub(
+        r"^\s*(?:questions?|qns?)\s+\d{1,2}\s*(?:to|[-–—]|and|&)\s*\d{1,2}\b",
+        "",
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    ).strip()
+    matches = []
+    for match in _NUMBER_RE.finditer(body):
+        number = int(match.group(1))
+        if start <= number <= end:
+            matches.append((number, match.start(), match.end()))
+    matches.sort(key=lambda item: item[1])
+    if len(matches) < 2:
+        return None
+    result = []
+    for index, (number, _, end_pos) in enumerate(matches):
+        next_pos = matches[index + 1][1] if index + 1 < len(matches) else len(body)
+        chunk = body[end_pos:next_pos].strip(" \t\r\n-–—:*;")
+        if chunk:
+            result.append({"question": number, "text": chunk})
+    return result or None
+
+
+def _repair_grouped_questions(section):
+    """Remove the fatal same-group-text-copied-N-times representation."""
+    questions = section.get("questions") or []
+    if len(questions) < 2:
+        return False
+    configured = section.get("question_range") or section.get("questions_range")
+    expected = _expected_range(configured)
+    if not expected:
+        return False
+    groups = {}
+    for q in questions:
+        text = re.sub(r"\s+", " ", str(q.get("text", "")).strip())
+        groups.setdefault(text, []).append(q)
+    repaired = []
+    changed = False
+    for text, members in groups.items():
+        heading = _GROUP_RE.match(text)
+        if len(members) < 2 or not heading:
+            repaired.extend(members)
+            continue
+        start, end = int(heading.group(1)), int(heading.group(2))
+        split = _split_explicit_group_numbers(text, start, end)
+        if split:
+            page = members[0].get("page")
+            repaired.extend({"page": page, **item} for item in split)
+        else:
+            repaired.append({
+                "page": members[0].get("page"),
+                "question": start,
+                "question_group": [n for n in expected if start <= n <= end],
+                "text": text,
+            })
+        changed = True
+    if changed:
+        repaired.sort(key=lambda item: int(item.get("question", 0)))
+        section["questions"] = repaired
+    return changed
+
+
+def _repair_content(content):
+    changed = False
+    for section in content.get("reading", {}).get("passages", []):
+        changed = _repair_grouped_questions(section) or changed
+    for section in content.get("listening", {}).get("parts", []):
+        changed = _repair_grouped_questions(section) or changed
+    return changed
 
 
 def _section_summary(label, section):
@@ -153,11 +217,9 @@ def _print_qa(test_name, content):
     reading = content.get("reading", {}).get("passages", [])
     for i, section in enumerate(reading, 1):
         all_ok = _section_summary(f"Reading Passage {i}", section) and all_ok
-
     listening = content.get("listening", {}).get("parts", [])
     for i, section in enumerate(listening, 1):
         all_ok = _section_summary(f"Listening Part {i}", section) and all_ok
-
     reading_expected = sum(s.get("qa", {}).get("expected_count", 0) for s in reading)
     reading_detected = sum(s.get("qa", {}).get("detected_count", 0) for s in reading)
     listening_expected = sum(s.get("qa", {}).get("expected_count", 0) for s in listening)
@@ -173,28 +235,24 @@ def reextract_mock(mock_name, test_filter=None):
     mock_dir = os.path.join(TESTS_ROOT, mock_name)
     if not os.path.isdir(mock_dir):
         raise FileNotFoundError(f"Mock folder not found: {mock_dir}")
-
     manifest = _load_manifest(mock_dir)
     if not manifest:
         raise FileNotFoundError(f"manifest.json not found for {mock_name}")
-
     pdf_path = _find_pdf(mock_dir)
     if not pdf_path:
         raise FileNotFoundError(f"Could not identify a PDF for {mock_name}")
-
     print(f"[{mock_name}] reading PDF text/OCR: {os.path.basename(pdf_path)}", flush=True)
     pages_text, _ = pdf_structure._page_texts(pdf_path)
     pages_text = _normalise_single_question_headings(pages_text)
-
     tests = manifest.get("tests", {})
     selected = [test_filter] if test_filter else list(tests.keys())
     missing = [name for name in selected if name not in tests]
     if missing:
         raise ValueError(f"Tests not found in manifest: {', '.join(missing)}")
-
     for test_name in selected:
         cfg = _content_cfg(tests[test_name])
         content = content_extract.build_content_for_test(pages_text, cfg, pdf_path=pdf_path)
+        _repair_content(content)
         path = _write_content(mock_dir, test_name, content)
         print(f"  {test_name}: {path}")
         _print_qa(test_name, content)
@@ -205,10 +263,8 @@ def main():
     parser.add_argument("--mock", help="Exact mock directory name under tests/")
     parser.add_argument("--test", dest="test_name", help="Exact test name from manifest.json, e.g. 'Test 1'")
     args = parser.parse_args()
-
     if args.test_name and not args.mock:
         parser.error("--test requires --mock")
-
     mock_names = [args.mock] if args.mock else sorted(
         d for d in os.listdir(TESTS_ROOT)
         if os.path.isdir(os.path.join(TESTS_ROOT, d))
