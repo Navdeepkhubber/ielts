@@ -1,0 +1,11 @@
+# Optional layout-aware OCR for scanned IELTS question pages.
+# Install the PaddleOCR inference package:
+paddleocr>=3.5,<3.6
+
+# PaddlePaddle is platform-specific and is intentionally not pinned here.
+# macOS Apple Silicon (CPU):
+#   python3 -m pip install paddlepaddle==3.3.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+# Linux CPU:
+#   python3 -m pip install paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+# Then run:
+#   python3 scripts/reextract_content.py --mock "Cambridge 14" --test "Test 1"

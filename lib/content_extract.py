@@ -1,83 +1,111 @@
+"""Structured text extraction for IELTS reading/listening content.
+
+Keeps the existing `text` field for backwards compatibility while adding
+`blocks`, `questions`, and QA metadata. Question boundaries are constrained
+by the manifest question range. Scanned pages use a memory-bounded, page-at-a-time
+Tesseract pass first, with PaddleOCR as a layout-aware fallback.
 """
-Extracts the actual text of each test section (listening question sheets,
-reading passages + questions) from the book PDF into a local content.json
-per test, so the portal can render selectable, properly typeset text with
-inline answer boxes instead of page images.
-
-This is for a PRIVATE, LOCAL study portal working on the user's own copy
-of the book -- the extracted text lives only in the local mock folder,
-next to the PDF it came from.
-
-Text is cleaned of page furniture: running headers ("Test 1", section
-names), lone page numbers, and scan watermarks. The original page images
-remain available in the UI ("Book view") since diagrams/maps don't
-survive text extraction and OCR text from scanned books has errors.
-
-Files are never overwritten once created, so hand-corrections to OCR
-typos are safe.
-"""
+import gc
+import io
 import json
 import os
 import re
+import tempfile
 
 _NOISE_RES = [
-    re.compile(r"^\s*Test\s+\d+\s*$", re.IGNORECASE),           # running header
+    re.compile(r"^\s*Test\s+\d+\s*$", re.IGNORECASE),
     re.compile(r"^\s*(LISTENING|READING|WRITING|ACADEMIC READING)\s*$", re.IGNORECASE),
-    re.compile(r"^\s*\d{1,3}\s*$"),                              # lone page number
-    re.compile(r"^\s*@\w+\s*$"),                                 # scan watermark handles
-    re.compile(r"^\s*[|>_\-~•·=]{1,4}\s*$"),                     # OCR artifacts
+    re.compile(r"^\s*@\w+\s*$"),
+    re.compile(r"^\s*[|>_\-~•·=]{1,4}\s*$"),
     re.compile(r"^\s*IELTS\s+\d+\s*$", re.IGNORECASE),
 ]
-
-# Lines that are structural on their own (never merged into flowing prose):
 _HEADING_LIKE_RES = [
-    re.compile(r"^\s*[QO]uestions?\s+\d+.*$", re.IGNORECASE),               # "Questions 1-10"
+    re.compile(r"^\s*[QO]uestions?\s+\d+.*$", re.IGNORECASE),
     re.compile(r"^\s*READING PASSAGE\s+\d+.*$", re.IGNORECASE),
     re.compile(r"^\s*(?:SECTION|PART)\s+\d+\s*$", re.IGNORECASE),
-    re.compile(r"^\s*[A-H]\s*$"),                                            # lone paragraph-letter marker (A, B, C...)
-    re.compile(r"^\s*[A-Z][A-Z\s'.,\-]{3,60}$"),                             # short ALL-CAPS instruction line
-    re.compile(r"^\s*Complete the .{3,60}$", re.IGNORECASE),
-    re.compile(r"^\s*Choose .{3,60}$", re.IGNORECASE),
-    re.compile(r"^\s*Write (?:ONE|NO MORE|TRUE|FALSE) .{0,60}$", re.IGNORECASE),
-    re.compile(r"^\s*\d{1,2}[.)]\s+\S.*$"),                                  # numbered list item "1. ..." / "1) ..."
+    re.compile(r"^\s*[A-H]\s*$"),
+    re.compile(r"^\s*[A-Z][A-Z\s'.,\-]{3,60}$"),
+    re.compile(r"^\s*Complete the .{3,80}$", re.IGNORECASE),
+    re.compile(r"^\s*Choose .{3,80}$", re.IGNORECASE),
+    re.compile(r"^\s*Write (?:ONE|NO MORE|TRUE|FALSE) .{0,80}$", re.IGNORECASE),
 ]
-
-
 _GAP_RE = re.compile(r"\d{1,2}\s*(?:[.…·]{3,}|_{3,})")
+_QUESTION_START_RE = re.compile(r"^\s*(\d{1,2})(?:\s*[.)/:]\s*(.*)|\s+(.+?))\s*$")
+_LONE_QUESTION_NUMBER_RE = re.compile(r"^\s*(\d{1,2})\s*$")
+_EMBEDDED_QUESTION_RE = re.compile(r"(?:^|\s)[\[(]?(\d{1,2})[\])\.]?(?=\s|$)")
+_QUESTION_GROUP_RE = re.compile(
+    r"^\s*(?:questions?|qns?)[\s:]+(\d{1,2})\s*(?:and|&|to|[-–—])\s*(\d{1,2})\b",
+    re.IGNORECASE,
+)
+_FORM_NUMBER_GAP_RE = re.compile(r"^\s*(\d{1,2})\s*(?:[.…·]{2,}|_{2,})")
+_FORM_BLANK_RE = re.compile(
+    r"^\s*(?:\d{1,2}\s*)?(?:[A-Za-z][A-Za-z0-9'()/,&\- ]{0,55})?\s*(?:_{3,}|[.…·]{4,})\s*$"
+)
 
 
 def _is_heading_like(line):
     return any(rx.match(line) for rx in _HEADING_LIKE_RES)
 
 
-def _reflow_paragraphs(lines, mode):
-    """
-    mode="prose": merges printed-line-wrap fragments into flowing
-    paragraphs (reading passages) -- everything not heading-like or
-    gapped gets joined, since real prose has no reason to break lines
-    except where the PDF happened to wrap them.
+def _question_group(line, q_from, q_to):
+    """Return a contiguous question group such as 'Questions 11 and 12'."""
+    if not q_range_valid(q_from, q_to):
+        return None
+    m = _QUESTION_GROUP_RE.match(line)
+    if not m:
+        return None
+    start, end = int(m.group(1)), int(m.group(2))
+    if start > end or start < q_from or end > q_to:
+        return None
+    return list(range(start, end + 1))
 
-    mode="list": listening question sheets (notes/table/summary
-    completion, matching, multiple choice) are inherently structured --
-    each printed line is already a complete bullet/field, not a wrapped
-    sentence fragment. Merging them produces an unreadable wall of text,
-    so list mode keeps one line per block and only strips noise.
 
-    Both modes handle hyphenated line-end word breaks when merging
-    ("environ-" + "ment" -> "environment").
-    """
+def _question_start(line, q_from, q_to):
+    if not q_range_valid(q_from, q_to):
+        return None
+    m = _QUESTION_START_RE.match(line)
+    if m:
+        q = int(m.group(1))
+        if q_from <= q <= q_to:
+            return q
+    m = _LONE_QUESTION_NUMBER_RE.match(line)
+    if m:
+        q = int(m.group(1))
+        if q_from <= q <= q_to:
+            return q
+    for m in _EMBEDDED_QUESTION_RE.finditer(line):
+        q = int(m.group(1))
+        if q_from <= q <= q_to:
+            prefix = line[:m.start(1)].strip()
+            if not prefix or len(prefix) <= 4:
+                return q
+    return None
+
+
+def q_range_valid(q_from, q_to):
+    return isinstance(q_from, int) and isinstance(q_to, int) and q_from <= q_to
+
+
+def _clean_lines(text):
+    return [
+        line
+        for raw in text.splitlines()
+        for line in [raw.rstrip()]
+        if not any(rx.match(line) for rx in _NOISE_RES)
+    ]
+
+
+def _reflow(lines, mode):
     if mode == "list":
         return [ln.strip() for ln in lines if ln.strip()]
-
-    blocks = []
-    buf = []
+    blocks, buf = [], []
 
     def flush():
         if not buf:
             return
         text = ""
         for ln in buf:
-            if text.endswith("-") and text[:-1] and text[-2:-1].isalpha():
+            if text.endswith("-") and len(text) > 1 and text[-2].isalpha():
                 text = text[:-1] + ln
             elif text:
                 text += " " + ln
@@ -94,87 +122,336 @@ def _reflow_paragraphs(lines, mode):
         if _is_heading_like(line) or _GAP_RE.search(line):
             flush()
             blocks.append(line)
-            continue
-        buf.append(line)
+        else:
+            buf.append(line)
     flush()
     return [b for b in blocks if b]
 
 
-def _clean_page_text(text, mode="prose"):
-    lines = []
-    for raw in text.splitlines():
-        line = raw.rstrip()
-        if any(rx.match(line) for rx in _NOISE_RES):
-            continue
-        lines.append(line)
-    paragraphs = _reflow_paragraphs(lines, mode)
-    return "\n\n".join(paragraphs)
+def _normalise_question(lines, mode):
+    return "\n".join(x.strip() for x in lines if x.strip()) if mode == "list" else "\n\n".join(_reflow(lines, "prose"))
 
 
-def _pages_to_text(pages_text, page_numbers, mode="prose"):
-    """page_numbers are 1-indexed. mode: "prose" (reading) or "list" (listening)."""
-    chunks = []
-    for p in page_numbers:
-        if 1 <= p <= len(pages_text):
-            t = _clean_page_text(pages_text[p - 1], mode=mode)
-            if t:
-                chunks.append(t)
-    return "\n\n".join(chunks)
+def _extract_page(lines, q_range, mode, page):
+    prose_lines, prose_blocks, questions, current = [], [], [], None
 
-
-def build_content_for_test(pages_text, test_cfg):
-    """
-    test_cfg: one test's manifest entry (with listening/reading blocks).
-    Returns {"listening": {"parts": [{"text": ...}]},
-             "reading": {"passages": [{"text": ...}]}}
-    including only sections that have pages configured.
-    """
-    content = {}
-    listening = test_cfg.get("listening", {})
-    parts = []
-    any_listening_pages = False
-    for part in listening.get("parts", []):
-        pages = part.get("pages") or []
-        text = _pages_to_text(pages_text, pages, mode="list") if pages else ""
+    def flush_question():
+        nonlocal current
+        if not current:
+            return
+        text = _normalise_question(current["lines"], mode)
         if text:
-            any_listening_pages = True
-        parts.append({"text": text})
-    if any_listening_pages:
+            for question in current.get("questions", [current["question"]]):
+                questions.append({"page": page, "question": question, "text": text})
+        current = None
+
+    def flush_prose():
+        if not prose_lines:
+            return
+        prose_blocks.extend(_reflow(prose_lines, mode))
+        prose_lines.clear()
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            if current:
+                current["lines"].append("")
+            else:
+                flush_prose()
+            continue
+
+        group = _question_group(line, q_range[0], q_range[1]) if q_range else None
+        if group:
+            flush_prose()
+            flush_question()
+            current = {"question": group[0], "questions": group, "lines": [line]}
+            continue
+
+        q = _question_start(line, q_range[0], q_range[1]) if q_range else None
+        if q is not None:
+            flush_prose()
+            flush_question()
+            current = {"question": q, "lines": [line]}
+            continue
+        if current:
+            current["lines"].append(line)
+        else:
+            prose_lines.append(line)
+
+    flush_question()
+    flush_prose()
+    return prose_blocks, questions
+
+
+def _extract_form_slots(lines, q_range, page):
+    """Infer numbered answer slots from a form/note layout.
+
+    This is restricted to the IELTS Listening form-style parts where question
+    numbers are often printed beside blanks rather than as normal question
+    lines. Explicit numbers remain authoritative; missing numbers can only be
+    assigned when the complete set of answer rows is present.
+    """
+    if not q_range_valid(*q_range):
+        return []
+    start, end = q_range
+    expected_count = end - start + 1
+    candidates = []
+    explicit = set()
+
+    for idx, raw in enumerate(lines):
+        line = raw.strip()
+        if not line:
+            continue
+
+        m = _FORM_NUMBER_GAP_RE.match(line)
+        if m:
+            q = int(m.group(1))
+            if start <= q <= end and q not in explicit:
+                candidates.append((q, line, idx))
+                explicit.add(q)
+                continue
+
+        m = _LONE_QUESTION_NUMBER_RE.match(line)
+        if m:
+            q = int(m.group(1))
+            if start <= q <= end and q not in explicit:
+                next_line = lines[idx + 1].strip() if idx + 1 < len(lines) else ""
+                if next_line and (_FORM_BLANK_RE.match(next_line) or _GAP_RE.search(next_line)):
+                    candidates.append((q, f"{line} {next_line}", idx))
+                    explicit.add(q)
+
+    slot_rows = []
+    seen_indexes = set()
+    for q, text, idx in candidates:
+        slot_rows.append((idx, q, text))
+        seen_indexes.add(idx)
+
+    for idx, raw in enumerate(lines):
+        line = raw.strip()
+        if not line or idx in seen_indexes or _QUESTION_GROUP_RE.match(line):
+            continue
+        if _FORM_BLANK_RE.search(line) or _GAP_RE.search(line):
+            slot_rows.append((idx, None, line))
+
+    slot_rows.sort(key=lambda item: item[0])
+
+    if len(slot_rows) == expected_count:
+        used = {q for _, q, _ in slot_rows if q is not None}
+        missing_numbers = [q for q in range(start, end + 1) if q not in used]
+        missing_iter = iter(missing_numbers)
+        inferred = []
+        for _, q, text in slot_rows:
+            assigned = q if q is not None else next(missing_iter)
+            inferred.append({"page": page, "question": assigned, "text": text})
+        return inferred
+
+    return []
+
+
+def _expected_questions(q_range):
+    if not q_range or len(q_range) != 2:
+        return []
+    try:
+        start, end = int(q_range[0]), int(q_range[1])
+    except (TypeError, ValueError):
+        return []
+    return list(range(start, end + 1)) if start <= end else []
+
+
+def _qa_for_section(q_range, questions):
+    expected = _expected_questions(q_range)
+    detected = [q["question"] for q in questions]
+    seen = set()
+    duplicates = []
+    for n in detected:
+        if n in seen:
+            duplicates.append(n)
+        seen.add(n)
+    expected_set = set(expected)
+    missing = [n for n in expected if n not in seen]
+    unexpected = [n for n in detected if n not in expected_set]
+    ordered = detected == sorted(detected) and len(detected) == len(set(detected))
+    return {
+        "expected_count": len(expected), "detected_count": len(detected),
+        "expected_questions": expected, "detected_questions": detected,
+        "missing_questions": missing, "duplicate_questions": duplicates,
+        "unexpected_questions": unexpected, "ordered": ordered,
+        "ok": bool(expected) and len(detected) == len(expected) and not missing and not duplicates and not unexpected and ordered,
+    }
+
+
+def _paddle_page(pdf_path, page_number):
+    """Render and OCR one page, never retaining page images across iterations."""
+    try:
+        import fitz
+        from lib import paddle_ocr
+    except ImportError:
+        return []
+    if not paddle_ocr._get_ocr():
+        return []
+
+    tmp = None
+    doc = None
+    try:
+        doc = fitz.open(pdf_path)
+        page = doc[page_number - 1]
+        pix = page.get_pixmap(matrix=fitz.Matrix(1.75, 1.75), colorspace=fitz.csRGB, alpha=False)
+        fd, tmp = tempfile.mkstemp(suffix=".png", prefix="ielts-ocr-")
+        os.close(fd)
+        with open(tmp, "wb") as f:
+            f.write(pix.tobytes("png"))
+        del pix
+        lines = paddle_ocr.ocr_page(tmp)
+        return lines
+    except Exception as exc:
+        print(f"      PaddleOCR page {page_number}: {exc}", flush=True)
+        return []
+    finally:
+        if doc is not None:
+            doc.close()
+        if tmp and os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        gc.collect()
+
+
+def _ocr_page_variants(pdf_path, page_number, form_mode=False):
+    """Single-page Tesseract OCR; form pages get a small layout-aware retry."""
+    try:
+        import fitz
+        import pytesseract
+        from PIL import Image, ImageOps, ImageFilter
+    except ImportError:
+        return []
+    try:
+        doc = fitz.open(pdf_path)
+        try:
+            page = doc[page_number - 1]
+            pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), colorspace=fitz.csGRAY, alpha=False)
+            image = ImageOps.autocontrast(Image.open(io.BytesIO(pix.tobytes("png")))).filter(ImageFilter.SHARPEN)
+            os.environ.setdefault("OMP_THREAD_LIMIT", "1")
+            configs = ["--oem 3 --psm 3"]
+            if form_mode:
+                configs += ["--oem 3 --psm 6", "--oem 3 --psm 11"]
+            texts = [pytesseract.image_to_string(image, config=config) for config in configs]
+            del image, pix
+            return texts
+        finally:
+            doc.close()
+            gc.collect()
+    except Exception:
+        return []
+
+
+def _merge_question_candidates(questions):
+    by_question = {}
+    for q in questions:
+        n = q["question"]
+        existing = by_question.get(n)
+        if existing is None or len(q.get("text", "")) > len(existing.get("text", "")):
+            by_question[n] = q
+    return [by_question[n] for n in sorted(by_question)]
+
+
+def _section_content(pages_text, pages, mode, q_range, pdf_path=None, form_mode=False):
+    prose_blocks, questions = [], []
+    for p in pages:
+        if not 1 <= p <= len(pages_text):
+            continue
+        native_lines = _clean_lines(pages_text[p - 1])
+        page_prose, page_questions = _extract_page(native_lines, q_range, mode, p)
+        prose_blocks.extend({"type": "text", "page": p, "text": x} for x in page_prose if x)
+        questions.extend(page_questions)
+
+    questions = _merge_question_candidates(questions)
+    qa = _qa_for_section(q_range, questions)
+    if not qa["ok"] and pdf_path:
+        initial_missing = set(qa["missing_questions"])
+        for p in pages:
+            ocr_texts = _ocr_page_variants(pdf_path, p, form_mode=form_mode)
+            ocr_lines = [line for text in ocr_texts for line in text.splitlines()]
+            if ocr_lines:
+                cleaned_ocr = _clean_lines("\n".join(ocr_lines))
+                _, ocr_questions = _extract_page(cleaned_ocr, q_range, mode, p)
+                questions = _merge_question_candidates(questions + ocr_questions)
+
+                if form_mode:
+                    form_questions = _extract_form_slots(cleaned_ocr, q_range, p)
+                    questions = _merge_question_candidates(questions + form_questions)
+
+                qa = _qa_for_section(q_range, questions)
+                if qa["ok"]:
+                    break
+
+            if initial_missing - {q["question"] for q in questions}:
+                paddle_lines = _paddle_page(pdf_path, p)
+                if paddle_lines:
+                    _, paddle_questions = _extract_page(paddle_lines, q_range, mode, p)
+                    questions = _merge_question_candidates(questions + paddle_questions)
+                    if form_mode:
+                        form_questions = _extract_form_slots(paddle_lines, q_range, p)
+                        questions = _merge_question_candidates(questions + form_questions)
+                    qa = _qa_for_section(q_range, questions)
+                    if qa["ok"]:
+                        break
+
+    unique_questions = _merge_question_candidates(questions)
+    qa = _qa_for_section(q_range, unique_questions)
+    return {
+        "text": "\n\n".join(x["text"] for x in prose_blocks + [{"text": q["text"]} for q in unique_questions]),
+        "blocks": prose_blocks, "questions": unique_questions,
+        "question_range": list(q_range) if q_range else None, "qa": qa,
+    }
+
+
+def build_content_for_test(pages_text, test_cfg, pdf_path=None):
+    content = {"schema_version": 3}
+    listening = test_cfg.get("listening", {})
+    parts, any_listening = [], False
+    for index, part in enumerate(listening.get("parts", [])):
+        pages = part.get("pages") or []
+        # Listening parts can use forms, notes, tables, or standard numbered
+        # layouts. Extra OCR is enabled for every part only when its initial
+        # extraction is incomplete, so already-good sections are unaffected.
+        form_mode = True
+        section = _section_content(
+            pages_text, pages, "list", part.get("questions"),
+            pdf_path=pdf_path, form_mode=form_mode
+        )
+        any_listening = any_listening or bool(section["text"])
+        parts.append(section)
+    if any_listening:
         content["listening"] = {"parts": parts}
 
     reading = test_cfg.get("reading", {})
-    passages = []
-    any_reading = False
+    passages, any_reading = [], False
     for passage in reading.get("passages", []):
         pages = passage.get("pages") or []
-        text = _pages_to_text(pages_text, pages, mode="prose") if pages else ""
-        if text:
-            any_reading = True
-        passages.append({"text": text})
+        section = _section_content(pages_text, pages, "prose", passage.get("questions"), pdf_path=pdf_path)
+        any_reading = any_reading or bool(section["text"])
+        passages.append(section)
     if any_reading:
         content["reading"] = {"passages": passages}
     return content
 
 
-def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name):
-    """
-    Writes content/<Test N>.json for each test that doesn't have one yet.
-    Never overwrites -- hand-fixed OCR typos stay fixed.
-    """
+def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name, force=False):
     for test_name, cfg in manifest.get("tests", {}).items():
         out_dir = os.path.join(mock_dir, "content")
         out_path = os.path.join(out_dir, f"{test_name}.json")
-        if os.path.isfile(out_path):
+        if os.path.isfile(out_path) and not force:
             continue
-        content = build_content_for_test(pages_text, cfg)
-        if not content:
+        content = build_content_for_test(pages_text, cfg, pdf_path=os.path.join(mock_dir, manifest.get("pdf_file", "main.pdf")))
+        if not any(k in content for k in ("reading", "listening")):
             continue
         os.makedirs(out_dir, exist_ok=True)
-        with open(out_path, "w") as f:
+        with open(out_path, "w", encoding="utf-8") as f:
             json.dump(content, f, indent=2, ensure_ascii=False)
-        secs = " + ".join(sorted(content.keys()))
-        log.append(
-            f"[{mock_name}/{test_name}] extracted {secs} text into content/{test_name}.json "
-            f"-- the portal will show selectable text with inline answer boxes "
-            f"(use the Book view toggle for diagrams/maps; hand-fix any OCR typos in that file)."
-        )
+        sections = []
+        for kind, key in (("reading", "passages"), ("listening", "parts")):
+            for i, section in enumerate(content.get(kind, {}).get(key, []), 1):
+                qa = section.get("qa", {})
+                sections.append(f"{kind.title()} {i}: {qa.get('detected_count', 0)}/{qa.get('expected_count', 0)}")
+        log.append(f"[{mock_name}/{test_name}] extracted {' + '.join(sections) or 'no sections'}.")

@@ -7,7 +7,6 @@
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-
   gtag('config', 'G-75J12PTY1L');
 </script>
 <meta charset="UTF-8">
@@ -29,9 +28,7 @@
       </a>
       <h1>Welcome back</h1>
       <p class="lp-auth-sub">Log in to reach your mock tests and progress.</p>
-
       <div id="notice"></div>
-
       <button type="button" id="google-btn" class="lp-btn-google">
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
           <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/>
@@ -41,9 +38,7 @@
         </svg>
         Continue with Google
       </button>
-
       <div class="lp-divider">or</div>
-
       <form id="login-form">
         <div class="lp-field">
           <label for="email">Email</label>
@@ -57,34 +52,23 @@
           <div class="lp-password-wrap">
             <input type="password" id="password" name="password" required autocomplete="current-password">
             <button type="button" class="lp-password-toggle" id="password-toggle" aria-label="Show password">
-              <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg id="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 1 11s4 7 11 7a9.26 9.26 0 0 0 5.39-1.61M1 1l22 22"/>
-                <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/>
-              </svg>
+              <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 1 11s4 7 11 7a9.26 9.26 0 0 0 5.39-1.61M1 1l22 22"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/></svg>
             </button>
           </div>
         </div>
         <button type="submit" id="submit-btn" class="lp-btn lp-btn-primary">Log in</button>
       </form>
-
       <p class="lp-auth-switch">New here? <a href="/signup">Create an account</a></p>
       <p class="lp-auth-contact">Need help? <a href="mailto:contact@ieltsband.com">contact@ieltsband.com</a></p>
     </div>
   </div>
-
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
   <script src="/static/js/firebase-config.js"></script>
   <script>
     if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) {
-      document.getElementById('notice').innerHTML =
-        '<div class="lp-auth-notice info">Firebase isn\'t configured yet. Open the browser console ' +
-        'for the real error (usually a syntax mistake in static/js/firebase-config.js), fix it, ' +
-        'then reload this page. See SETUP.md.</div>';
+      document.getElementById('notice').innerHTML = '<div class="lp-auth-notice info">Firebase isn\'t configured yet. Open the browser console for the real error (usually a syntax mistake in static/js/firebase-config.js), fix it, then reload this page. See SETUP.md.</div>';
       document.getElementById('google-btn').disabled = true;
     }
   </script>
@@ -96,7 +80,6 @@
     const submitBtn = document.getElementById('submit-btn');
     const forgotLink = document.getElementById('forgot-link');
     const passwordInput = document.getElementById('password');
-
     const toggleBtn = document.getElementById('password-toggle');
     const eyeIcon = document.getElementById('eye-icon');
     const eyeOffIcon = document.getElementById('eye-off-icon');
@@ -107,105 +90,58 @@
       eyeOffIcon.style.display = showing ? 'none' : '';
       toggleBtn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
     });
-
     forgotLink.addEventListener('click', async () => {
       clearNotice();
       const email = document.getElementById('email').value.trim();
-      if (!email) {
-        showNotice('info', 'Enter your email above first, then click "Forgot password?" again.');
-        return;
-      }
+      if (!email) { showNotice('info', 'Enter your email above first, then click "Forgot password?" again.'); return; }
       forgotLink.disabled = true;
-      try {
-        await firebase.auth().sendPasswordResetEmail(email);
-        showNotice('success', `Password reset email sent to ${email} — check your inbox.`);
-      } catch (err) {
-        // Firebase deliberately won't say "no account with that email" here in
-        // newer SDK versions (email enumeration protection) -- same message either way.
-        showNotice('info', err.message || 'Could not send a reset email. Please try again.');
-      } finally {
-        forgotLink.disabled = false;
-      }
+      try { await firebase.auth().sendPasswordResetEmail(email); showNotice('success', `Password reset email sent to ${email} — check your inbox.`); }
+      catch (err) { showNotice('info', err.message || 'Could not send a reset email. Please try again.'); }
+      finally { forgotLink.disabled = false; }
     });
-
-    function showNotice(kind, html) {
-      noticeEl.innerHTML = `<div class="lp-auth-notice ${kind}">${html}</div>`;
-    }
+    function showNotice(kind, html) { noticeEl.innerHTML = `<div class="lp-auth-notice ${kind}">${html}</div>`; }
     function clearNotice() { noticeEl.innerHTML = ''; }
-
     function safeNext() {
-      if (typeof nextPath === 'string' && nextPath.startsWith('/') && !nextPath.startsWith('//')) {
-        return nextPath;
-      }
+      // Localhost must always return to the actual Flask app route. A local
+      // environment can still have PUBLIC_BASE_DOMAIN in a shared .env;
+      // the production '/' dashboard must never leak into local navigation.
+      const host = window.location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') return '/app';
+      if (typeof nextPath === 'string' && nextPath.startsWith('/') && !nextPath.startsWith('//')) return nextPath;
       return '/app';
     }
-
     async function postSession(idToken) {
-      const res = await fetch('/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-      if (res.ok) {
-        window.location.href = safeNext();
-        return;
-      }
+      const res = await fetch('/auth/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
+      if (res.ok) { window.location.href = safeNext(); return; }
       const data = await res.json().catch(() => ({}));
       showNotice('info', data.error || "Something went wrong logging you in. Please try again.");
     }
-
     googleBtn.addEventListener('click', async () => {
-      clearNotice();
-      googleBtn.disabled = true;
-      try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        const result = await firebase.auth().signInWithPopup(provider);
-        const idToken = await result.user.getIdToken();
-        await postSession(idToken);
-      } catch (err) {
-        showNotice('info', err.message || 'Google sign-in failed.');
-      } finally {
-        googleBtn.disabled = false;
-      }
+      clearNotice(); googleBtn.disabled = true;
+      try { const provider = new firebase.auth.GoogleAuthProvider(); const result = await firebase.auth().signInWithPopup(provider); const idToken = await result.user.getIdToken(); await postSession(idToken); }
+      catch (err) { showNotice('info', err.message || 'Google sign-in failed.'); }
+      finally { googleBtn.disabled = false; }
     });
-
     form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearNotice();
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Logging in…';
+      e.preventDefault(); clearNotice(); submitBtn.disabled = true; submitBtn.textContent = 'Logging in…';
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       try {
         const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
         if (!cred.user.emailVerified) {
           await firebase.auth().signOut();
-          showNotice('info',
-            "Your email isn't verified yet. Check your inbox for the link, or " +
-            '<button type="button" class="linklike" id="resend-btn">resend it</button>.');
+          showNotice('info', "Your email isn't verified yet. Check your inbox for the link, or <button type=\"button\" class=\"linklike\" id=\"resend-btn\">resend it</button>.");
           document.getElementById('resend-btn').addEventListener('click', async (ev) => {
             ev.preventDefault();
-            try {
-              // Sign in again briefly just to get a user object to resend from --
-              // Firebase requires an authenticated user to call sendEmailVerification.
-              const cred2 = await firebase.auth().signInWithEmailAndPassword(email, password);
-              await cred2.user.sendEmailVerification();
-              await firebase.auth().signOut();
-              showNotice('success', 'Verification email sent — check your inbox.');
-            } catch (err2) {
-              showNotice('info', err2.message || 'Could not resend the email. Try again shortly.');
-            }
+            try { const cred2 = await firebase.auth().signInWithEmailAndPassword(email, password); await cred2.user.sendEmailVerification(); await firebase.auth().signOut(); showNotice('success', 'Verification email sent — check your inbox.'); }
+            catch (err2) { showNotice('info', err2.message || 'Could not resend the email. Try again shortly.'); }
           });
           return;
         }
         const idToken = await cred.user.getIdToken();
         await postSession(idToken);
-      } catch (err) {
-        showNotice('info', 'Incorrect email or password.');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Log in';
-      }
+      } catch (err) { showNotice('info', 'Incorrect email or password.'); }
+      finally { submitBtn.disabled = false; submitBtn.textContent = 'Log in'; }
     });
   </script>
 </body>

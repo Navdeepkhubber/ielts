@@ -28,53 +28,10 @@ tests/                              <- primary root
         ...
     manifest.json                    <- required, maps Test N -> page/audio refs
 
-manifest.json shape:
-{
-  "mock_name": "Cambridge Mock 19",
-  "pdf_file": "main.pdf",
-  "tests": {
-    "Test 1": {
-      "variant": "academic",   // optional: "academic" (default) or "general".
-                               // GT uses a stricter Reading band table.
-      "reading": {
-        "duration_minutes": 60,
-        "passages": [
-          {"pages": [5, 6, 7], "questions": [1, 13]},
-          {"pages": [8, 9, 10], "questions": [14, 26]},
-          {"pages": [11, 12, 13, 14], "questions": [27, 40]}
-        ]
-      },
-      "listening": {
-        "audio_folder": "Test 1",
-        "parts": [
-          {"file": "part1.mp3", "questions": [1, 10], "pages": [15, 16]},
-          {"file": "part2.mp3", "questions": [11, 20], "pages": [17, 18]},
-          {"file": "part3.mp3", "questions": [21, 30], "pages": [19, 20]},
-          {"file": "part4.mp3", "questions": [31, 40], "pages": [21, 22]}
-        ]
-      },
-      "writing": {
-        "task1": {"page": 20, "duration_minutes": 20},
-        "task2": {"page": 21, "duration_minutes": 40}
-      }
-    },
-    "Test 2": { ... },
-    "Test 3": { ... },
-    "Test 4": { ... }
-  }
-}
-
 Only page numbers, file names, and answer keys are read here. No
 passage/question text is ever extracted -- main.pdf pages are rendered as
 images by lib/pdf_render.py and shown as-is, so the platform works with any
 book that follows this same folder convention.
-
-`pages` on a listening part works exactly like `pages` on a reading
-passage: 1-indexed page numbers within main.pdf covering that part's
-printed question sheet (diagrams, multiple-choice options, map labels,
-etc.). It's optional/omittable while you're still filling in a manifest,
-but without it a test-taker only hears the audio and never sees the
-question sheet -- which for listening is essential, not cosmetic.
 """
 import json
 import os
@@ -84,42 +41,77 @@ from lib import blob_storage
 TESTS_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tests")
 
 
+def _local_file(mock_id, relative_path):
+    local_path = os.path.join(TESTS_ROOT, mock_id, relative_path)
+    return local_path if os.path.isfile(local_path) else None
+
+
+def _local_mock_ids():
+    if not os.path.isdir(TESTS_ROOT):
+        return []
+    return sorted(
+        name for name in os.listdir(TESTS_ROOT)
+        if os.path.isfile(os.path.join(TESTS_ROOT, name, "manifest.json"))
+    )
+
+
+def _local_dev():
+    return os.environ.get("FLASK_DEBUG", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def cached_file(mock_id, relative_path):
     """
-    Returns a local filesystem path to tests/<mock_id>/<relative_path>,
-    or None if that file doesn't exist at the source.
+    Return a local filesystem path to a test file.
 
-    When remote blob storage isn't configured (the default, and always
-    true for local dev), this is just a thin existence check against the
-    local tests/ folder -- nothing changes from before. When configured
-    (see lib/blob_storage.py / SETUP.md), it fetches from the bucket on
-    first access and caches the download locally, so repeat requests
-    for the same page/audio file don't re-download it.
+    Local development prefers the local authoring copy when it exists. This
+    is important when B2/blob storage is configured in a shared .env: localhost
+    should not silently read a stale/missing remote copy while the developer
+    is editing tests/.
+
+    If no local copy exists, configured blob storage is used. In deployed
+    environments remote storage remains authoritative.
     """
+    local_path = _local_file(mock_id, relative_path)
+
+    if _local_dev() and local_path is not None:
+        return local_path
+
     if not blob_storage.is_configured():
-        local_path = os.path.join(TESTS_ROOT, mock_id, relative_path)
-        return local_path if os.path.isfile(local_path) else None
-    return blob_storage.fetch_cached(os.path.join(mock_id, relative_path))
+        return local_path
+
+    try:
+        return blob_storage.fetch_cached(os.path.join(mock_id, relative_path))
+    except Exception:
+        if _local_dev() and local_path is not None:
+            return local_path
+        raise
 
 
 def list_mocks():
     """Return a summary list of every valid mock package found."""
     out = []
-    if blob_storage.is_configured():
-        mock_ids = blob_storage.list_mock_ids()
+
+    # Localhost should enumerate the actual local authoring tree first. This
+    # avoids an empty B2 listing hiding valid mocks under tests/ when B2 is
+    # configured but has a different prefix or contains an older library.
+    local_ids = _local_mock_ids() if _local_dev() else []
+    if local_ids:
+        mock_ids = local_ids
+    elif blob_storage.is_configured():
+        try:
+            mock_ids = blob_storage.list_mock_ids()
+        except Exception:
+            if not _local_dev():
+                raise
+            mock_ids = local_ids
     else:
-        if not os.path.isdir(TESTS_ROOT):
-            return out
-        mock_ids = sorted(
-            name for name in os.listdir(TESTS_ROOT)
-            if os.path.isfile(os.path.join(TESTS_ROOT, name, "manifest.json"))
-        )
+        mock_ids = local_ids
 
     for name in mock_ids:
         manifest_path = cached_file(name, "manifest.json")
         if manifest_path is None:
             continue
-        with open(manifest_path) as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
         tests = {}
         for test_name, cfg in manifest.get("tests", {}).items():
@@ -140,7 +132,7 @@ def load_manifest(mock_id):
     path = cached_file(mock_id, "manifest.json")
     if path is None:
         raise FileNotFoundError(f"No manifest.json for mock '{mock_id}'")
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -157,9 +149,7 @@ def mock_folder(mock_id):
     Local authoring path (tests/<mock_id>) -- used only by local tooling
     (scaffold.py, fill_answer_keys_local.py, diagnose_mock.py, report.py)
     that works directly against the source folder BEFORE it's uploaded
-    to remote storage. Request-serving code never calls this directly
-    -- see cached_file() instead, which is the one that's actually aware
-    of remote storage.
+    to remote storage. Request-serving code never calls this directly.
     """
     return os.path.join(TESTS_ROOT, mock_id)
 
@@ -189,12 +179,11 @@ def load_answers(mock_id, test_name, section):
     path = cached_file(mock_id, os.path.join("answers", test_name, f"{section}.json"))
     if path is None:
         return {}
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def answers_exist(mock_id, test_name, section):
     """True only if answers/<test_name>/<section>.json genuinely exists
-    at the source -- distinct from load_answers() returning {}, which
-    also happens for a file that exists but is legitimately blank."""
+    at the source -- distinct from load_answers() returning {}."""
     return cached_file(mock_id, os.path.join("answers", test_name, f"{section}.json")) is not None

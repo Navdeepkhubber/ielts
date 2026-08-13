@@ -1,0 +1,280 @@
+"""Force-regenerate structured Reading/Listening content from existing manifests.
+
+This leaves manifest.json and answers untouched and overwrites only
+content/<Test N>.json. It prints QA summaries. Scanned pages are OCR'd only
+when the section's native text does not contain all expected questions; OCR is
+performed one page at a time by content_extract so page images are not retained
+across the whole test.
+
+Examples:
+    python3 scripts/reextract_content.py
+    python3 scripts/reextract_content.py --mock "Cambridge 21"
+    python3 scripts/reextract_content.py --mock "Cambridge 21" --test "Test 1"
+"""
+import argparse
+import copy
+import json
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from lib import content_extract, pdf_structure
+
+TESTS_ROOT = os.path.join(ROOT, "tests")
+
+_SINGLE_QUESTION_HEADING_RE = re.compile(
+    r"^\s*(?:questions?|qns?)\s+(\d{1,2})\s*:?[ \t]*(.*)$",
+    re.IGNORECASE,
+)
+
+
+def _normalise_single_question_headings(pages_text):
+    """Turn standalone `Questions 13:` / `Question 40` lines into `13.`."""
+    normalised = []
+    for text in pages_text:
+        lines = []
+        for raw in text.splitlines():
+            line = raw.strip()
+            m = _SINGLE_QUESTION_HEADING_RE.match(line) if line else None
+            if m:
+                tail = m.group(2).strip()
+                if not re.match(r"^(?:and|&|to|[-–—])\b", tail, re.IGNORECASE):
+                    line = f"{m.group(1)}. {tail}".rstrip()
+            lines.append(line)
+        normalised.append("\n".join(lines))
+    return normalised
+
+
+def _find_pdf(mock_dir):
+    main = os.path.join(mock_dir, "main.pdf")
+    if os.path.isfile(main):
+        return main
+    pdfs = sorted(
+        os.path.join(mock_dir, f)
+        for f in os.listdir(mock_dir)
+        if f.lower().endswith(".pdf")
+    )
+    return pdfs[0] if len(pdfs) == 1 else None
+
+
+def _load_manifest(mock_dir):
+    path = os.path.join(mock_dir, "manifest.json")
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _write_content(mock_dir, test_name, content):
+    out_dir = os.path.join(mock_dir, "content")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{test_name}.json")
+    tmp_path = out_path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(content, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    os.replace(tmp_path, out_path)
+    return out_path
+
+
+def _canonical_questions(section, index, total):
+    if section == "reading":
+        ranges = ([1, 13], [14, 26], [27, 40])
+        if total == 3 and index < len(ranges):
+            return ranges[index]
+    return None
+
+
+def _content_cfg(cfg):
+    out = copy.deepcopy(cfg)
+    reading = out.get("reading", {})
+    passages = reading.get("passages", [])
+    for i, passage in enumerate(passages):
+        canonical = _canonical_questions("reading", i, len(passages))
+        if canonical:
+            passage["questions"] = canonical
+    return out
+
+
+def _expected_range(value):
+    if not value or len(value) != 2:
+        return []
+    start, end = int(value[0]), int(value[1])
+    return list(range(start, end + 1)) if start <= end else []
+
+
+_GROUP_RE = re.compile(
+    r"^\s*(?:questions?|qns?)\s+(\d{1,2})\s*(?:to|[-–—]|and|&)\s*(\d{1,2})\b",
+    re.IGNORECASE,
+)
+_NUMBER_RE = re.compile(
+    r"(?:^|\s)[|¦©®™*•·\-–—:;]*(\d{1,2})\s*(?:[.)/:]|(?=\s))\s+"
+)
+
+
+def _split_explicit_group_numbers(text, start, end):
+    """Split a grouped OCR block only where real numbered boundaries exist."""
+    body = re.sub(
+        r"^\s*(?:questions?|qns?)\s+\d{1,2}\s*(?:to|[-–—]|and|&)\s*\d{1,2}\b",
+        "",
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    ).strip()
+    matches = []
+    for match in _NUMBER_RE.finditer(body):
+        number = int(match.group(1))
+        if start <= number <= end:
+            matches.append((number, match.start(), match.end()))
+    matches.sort(key=lambda item: item[1])
+    if len(matches) < 2:
+        return None
+    result = []
+    for index, (number, _, end_pos) in enumerate(matches):
+        next_pos = matches[index + 1][1] if index + 1 < len(matches) else len(body)
+        chunk = body[end_pos:next_pos].strip(" \t\r\n-–—:*;")
+        if chunk:
+            result.append({"question": number, "text": chunk})
+    return result or None
+
+
+def _repair_grouped_questions(section):
+    """Remove the fatal same-group-text-copied-N-times representation."""
+    questions = section.get("questions") or []
+    if len(questions) < 2:
+        return False
+    configured = section.get("question_range") or section.get("questions_range")
+    expected = _expected_range(configured)
+    if not expected:
+        return False
+    groups = {}
+    for q in questions:
+        text = re.sub(r"\s+", " ", str(q.get("text", "")).strip())
+        groups.setdefault(text, []).append(q)
+    repaired = []
+    changed = False
+    for text, members in groups.items():
+        heading = _GROUP_RE.match(text)
+        if len(members) < 2 or not heading:
+            repaired.extend(members)
+            continue
+        start, end = int(heading.group(1)), int(heading.group(2))
+        split = _split_explicit_group_numbers(text, start, end)
+        if split:
+            page = members[0].get("page")
+            repaired.extend({"page": page, **item} for item in split)
+        else:
+            repaired.append({
+                "page": members[0].get("page"),
+                "question": start,
+                "question_group": [n for n in expected if start <= n <= end],
+                "text": text,
+            })
+        changed = True
+    if changed:
+        repaired.sort(key=lambda item: int(item.get("question", 0)))
+        section["questions"] = repaired
+    return changed
+
+
+def _repair_content(content):
+    changed = False
+    for section in content.get("reading", {}).get("passages", []):
+        changed = _repair_grouped_questions(section) or changed
+    for section in content.get("listening", {}).get("parts", []):
+        changed = _repair_grouped_questions(section) or changed
+    return changed
+
+
+def _section_summary(label, section):
+    qa = section.get("qa", {})
+    expected = qa.get("expected_count", 0)
+    detected = qa.get("detected_count", 0)
+    missing = qa.get("missing_questions", [])
+    duplicates = qa.get("duplicate_questions", [])
+    unexpected = qa.get("unexpected_questions", [])
+    ok = qa.get("ok", False)
+    marker = "OK" if ok else "CHECK"
+    details = []
+    if missing:
+        details.append("missing=" + ",".join(map(str, missing)))
+    if duplicates:
+        details.append("duplicates=" + ",".join(map(str, duplicates)))
+    if unexpected:
+        details.append("unexpected=" + ",".join(map(str, unexpected)))
+    suffix = f" ({'; '.join(details)})" if details else ""
+    print(f"    {label}: {detected}/{expected} questions [{marker}]{suffix}")
+    return ok
+
+
+def _print_qa(test_name, content):
+    all_ok = True
+    print("  QA:")
+    reading = content.get("reading", {}).get("passages", [])
+    for i, section in enumerate(reading, 1):
+        all_ok = _section_summary(f"Reading Passage {i}", section) and all_ok
+    listening = content.get("listening", {}).get("parts", [])
+    for i, section in enumerate(listening, 1):
+        all_ok = _section_summary(f"Listening Part {i}", section) and all_ok
+    reading_expected = sum(s.get("qa", {}).get("expected_count", 0) for s in reading)
+    reading_detected = sum(s.get("qa", {}).get("detected_count", 0) for s in reading)
+    listening_expected = sum(s.get("qa", {}).get("expected_count", 0) for s in listening)
+    listening_detected = sum(s.get("qa", {}).get("detected_count", 0) for s in listening)
+    if reading:
+        print(f"    Reading total: {reading_detected}/{reading_expected} {'OK' if reading_detected == reading_expected and all(s.get('qa', {}).get('ok') for s in reading) else 'CHECK'}")
+    if listening:
+        print(f"    Listening total: {listening_detected}/{listening_expected} {'OK' if listening_detected == listening_expected and all(s.get('qa', {}).get('ok') for s in listening) else 'CHECK'}")
+    return all_ok
+
+
+def reextract_mock(mock_name, test_filter=None):
+    mock_dir = os.path.join(TESTS_ROOT, mock_name)
+    if not os.path.isdir(mock_dir):
+        raise FileNotFoundError(f"Mock folder not found: {mock_dir}")
+    manifest = _load_manifest(mock_dir)
+    if not manifest:
+        raise FileNotFoundError(f"manifest.json not found for {mock_name}")
+    pdf_path = _find_pdf(mock_dir)
+    if not pdf_path:
+        raise FileNotFoundError(f"Could not identify a PDF for {mock_name}")
+    print(f"[{mock_name}] reading PDF text/OCR: {os.path.basename(pdf_path)}", flush=True)
+    pages_text, _ = pdf_structure._page_texts(pdf_path)
+    pages_text = _normalise_single_question_headings(pages_text)
+    tests = manifest.get("tests", {})
+    selected = [test_filter] if test_filter else list(tests.keys())
+    missing = [name for name in selected if name not in tests]
+    if missing:
+        raise ValueError(f"Tests not found in manifest: {', '.join(missing)}")
+    for test_name in selected:
+        cfg = _content_cfg(tests[test_name])
+        content = content_extract.build_content_for_test(pages_text, cfg, pdf_path=pdf_path)
+        _repair_content(content)
+        path = _write_content(mock_dir, test_name, content)
+        print(f"  {test_name}: {path}")
+        _print_qa(test_name, content)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Force-regenerate structured mock content without changing manifests or answers.")
+    parser.add_argument("--mock", help="Exact mock directory name under tests/")
+    parser.add_argument("--test", dest="test_name", help="Exact test name from manifest.json, e.g. 'Test 1'")
+    args = parser.parse_args()
+    if args.test_name and not args.mock:
+        parser.error("--test requires --mock")
+    mock_names = [args.mock] if args.mock else sorted(
+        d for d in os.listdir(TESTS_ROOT)
+        if os.path.isdir(os.path.join(TESTS_ROOT, d))
+    )
+    for mock_name in mock_names:
+        try:
+            reextract_mock(mock_name, args.test_name)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"[{mock_name}] SKIPPED: {exc}", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()
