@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ieltsband.com/schemas/ielts-content.v3.json",
+  "title": "IELTSBand Structured Content v3",
+  "type": "object",
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": { "const": 3 },
+    "reading": {
+      "type": "object",
+      "properties": {
+        "passages": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/section" }
+        }
+      }
+    },
+    "listening": {
+      "type": "object",
+      "properties": {
+        "parts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/section" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "required": ["text", "blocks", "questions", "question_range", "qa"],
+      "properties": {
+        "text": { "type": "string" },
+        "question_range": {
+          "type": ["array", "null"],
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "page", "text"],
+            "properties": {
+              "type": { "type": "string" },
+              "page": { "type": "integer", "minimum": 1 },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["page", "question", "text"],
+            "properties": {
+              "page": { "type": "integer", "minimum": 1 },
+              "question": { "type": "integer", "minimum": 1 },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        "qa": {
+          "type": "object",
+          "required": ["expected_count", "detected_count", "missing_questions", "duplicate_questions", "unexpected_questions", "ordered", "ok"]
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
