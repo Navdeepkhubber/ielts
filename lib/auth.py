@@ -2,9 +2,10 @@
 Account profile storage -- Firestore, keyed directly by Firebase UID.
 
 Firebase Authentication remains the source of truth for production
-credentials and verification. Local development can explicitly bypass
-Firebase with LOCAL_DEV=1 so CI and production never accidentally enter
-local-auth mode merely because Flask debug mode is enabled.
+credentials and verification. Local development bypasses Firebase only for
+localhost/127.0.0.1 (or when LOCAL_DEV=1 is explicitly set), so normal
+production hosts can never enter local-auth mode merely because Flask debug
+mode is enabled.
 """
 import os
 import time
@@ -17,10 +18,16 @@ USERS_COLLECTION = "users"
 LOCAL_DEV_USER_ID = "local-dev"
 
 
+def _is_localhost_request():
+    """Return True only for loopback/local development hosts."""
+    host = (request.host.split(":", 1)[0] if request else "").strip().lower()
+    return host in {"localhost", "127.0.0.1", "::1"}
+
+
 def _local_dev_enabled():
-    """Enable the local-only auth bypass explicitly with LOCAL_DEV=1."""
+    """Enable local auth on localhost, or explicitly via LOCAL_DEV=1."""
     explicit = os.environ.get("LOCAL_DEV", "")
-    return explicit.strip().lower() in {"1", "true", "yes", "on"}
+    return _is_localhost_request() or explicit.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _local_user():
@@ -139,7 +146,7 @@ def current_user():
 
 
 def login_required(view):
-    """Require a real session unless LOCAL_DEV=1 is explicitly enabled."""
+    """Require a real session unless this request is local development."""
     @wraps(view)
     def wrapped(*args, **kwargs):
         if _local_dev_enabled():
@@ -154,7 +161,7 @@ def login_required(view):
 
 
 def admin_required(view):
-    """Require an admin profile in production; local dev is always allowed."""
+    """Require an admin profile in production; localhost is always allowed."""
     @wraps(view)
     def wrapped(*args, **kwargs):
         if _local_dev_enabled():
