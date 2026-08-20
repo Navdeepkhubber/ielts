@@ -1,10 +1,12 @@
 """
 Account profile storage -- Firestore, keyed directly by Firebase UID.
 
-Firebase Authentication remains the source of truth for credentials and
-verification. Firestore stores the small product profile used by IELTSBand:
-name, email, study target, test type, and optional exam date.
+Firebase Authentication remains the source of truth for production
+credentials and verification. Local development can explicitly bypass
+Firebase with LOCAL_DEV=1 so CI and production never accidentally enter
+local-auth mode merely because Flask debug mode is enabled.
 """
+import os
 import time
 from functools import wraps
 from flask import session, redirect, url_for, request, jsonify
@@ -12,6 +14,25 @@ from flask import session, redirect, url_for, request, jsonify
 from lib.firebase_admin_setup import db
 
 USERS_COLLECTION = "users"
+LOCAL_DEV_USER_ID = "local-dev"
+
+
+def _local_dev_enabled():
+    """Enable the local-only auth bypass explicitly with LOCAL_DEV=1."""
+    explicit = os.environ.get("LOCAL_DEV", "")
+    return explicit.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _local_user():
+    return {
+        "id": LOCAL_DEV_USER_ID,
+        "name": os.environ.get("LOCAL_DEV_NAME", "Local Developer"),
+        "email": os.environ.get("LOCAL_DEV_EMAIL", "local@ieltsband.com").strip().lower(),
+        "admin": True,
+        "target_band": "",
+        "test_type": "",
+        "exam_date": "",
+    }
 
 
 def _clean_profile(data):
@@ -24,29 +45,27 @@ def _clean_profile(data):
 
 
 def get_or_create_user(firebase_uid, email, name):
-    """
-    Looks up the profile doc for this Firebase UID, creating one on first
-    sign-in. Name/email are kept in sync with Firebase on every login.
-    Existing study preferences are preserved.
-    """
+    """Create/sync the application profile for a verified Firebase user."""
     name = (name or (email.split("@")[0] if email else "") or "Student").strip()
     email = (email or "").strip().lower()
     doc_ref = db().collection(USERS_COLLECTION).document(firebase_uid)
     snap = doc_ref.get()
 
     if snap.exists:
-        doc_ref.update({"name": name, "email": email})
         data = snap.to_dict() or {}
+        doc_ref.update({"name": name, "email": email})
         return {
             "id": firebase_uid,
             "name": name,
             "email": email,
+            "admin": bool(data.get("admin", False)),
             **_clean_profile(data),
         }
 
     doc_ref.set({
         "name": name,
         "email": email,
+        "admin": False,
         "created_at": time.time(),
         "target_band": "",
         "test_type": "",
@@ -56,6 +75,7 @@ def get_or_create_user(firebase_uid, email, name):
         "id": firebase_uid,
         "name": name,
         "email": email,
+        "admin": False,
         "target_band": "",
         "test_type": "",
         "exam_date": "",
@@ -63,6 +83,9 @@ def get_or_create_user(firebase_uid, email, name):
 
 
 def get_user(user_id):
+    if _local_dev_enabled() and user_id == LOCAL_DEV_USER_ID:
+        return _local_user()
+
     snap = db().collection(USERS_COLLECTION).document(user_id).get()
     if not snap.exists:
         return None
@@ -72,6 +95,7 @@ def get_user(user_id):
         "id": user_id,
         "name": data.get("name"),
         "email": data.get("email"),
+        "admin": bool(data.get("admin", False)),
         **_clean_profile(data),
     }
 
@@ -84,33 +108,30 @@ def update_profile(user_id, name, target_band="", test_type="", exam_date=""):
 
     if not name:
         raise ValueError("Name is required.")
-
-    allowed_bands = {"", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5", "9.0"}
-    if target_band not in allowed_bands:
+    if target_band not in {"", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5", "9.0"}:
         raise ValueError("Invalid target band.")
-
     if test_type not in {"", "Academic", "General Training"}:
         raise ValueError("Invalid test type.")
-
     if len(exam_date) > 10:
         raise ValueError("Invalid exam date.")
+
+    if _local_dev_enabled() and user_id == LOCAL_DEV_USER_ID:
+        user = _local_user()
+        user.update({"name": name, "target_band": target_band, "test_type": test_type, "exam_date": exam_date})
+        return user
 
     doc_ref = db().collection(USERS_COLLECTION).document(user_id)
     snap = doc_ref.get()
     if not snap.exists:
         raise ValueError("User profile not found.")
-
-    doc_ref.update({
-        "name": name,
-        "target_band": target_band,
-        "test_type": test_type,
-        "exam_date": exam_date,
-    })
-
+    doc_ref.update({"name": name, "target_band": target_band, "test_type": test_type, "exam_date": exam_date})
     return get_user(user_id)
 
 
 def current_user():
+    if _local_dev_enabled():
+        session.setdefault("user_id", LOCAL_DEV_USER_ID)
+        return _local_user()
     user_id = session.get("user_id")
     if user_id is None:
         return None
@@ -118,15 +139,33 @@ def current_user():
 
 
 def login_required(view):
-    """
-    For page routes: redirects anonymous visitors to /login (keeping the
-    page they wanted via ?next=). For /api/* routes: returns 401 JSON.
-    """
+    """Require a real session unless LOCAL_DEV=1 is explicitly enabled."""
     @wraps(view)
     def wrapped(*args, **kwargs):
+        if _local_dev_enabled():
+            session.setdefault("user_id", LOCAL_DEV_USER_ID)
+            return view(*args, **kwargs)
         if session.get("user_id") is None:
             if request.path.startswith("/api/"):
                 return jsonify({"error": "login required"}), 401
             return redirect(url_for("login", next=request.path))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def admin_required(view):
+    """Require an admin profile in production; local dev is always allowed."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if _local_dev_enabled():
+            session.setdefault("user_id", LOCAL_DEV_USER_ID)
+            return view(*args, **kwargs)
+
+        user = current_user()
+        if not user or not user.get("admin", False):
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "admin access required"}), 403
+            abort = __import__("flask").abort
+            abort(403)
         return view(*args, **kwargs)
     return wrapped
