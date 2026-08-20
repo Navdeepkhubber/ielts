@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ieltsband.com/schemas/ielts-content.v2.json",
+  "title": "IELTSBand Structured Content v2",
+  "type": "object",
+  "required": ["schema_version", "content_schema", "test", "sections"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "content_schema": {"const": "ieltsband.content.v2"},
+    "test": {"type": "string"},
+    "variant": {"type": "string", "enum": ["academic", "general"]},
+    "rendering": {"type": "object"},
+    "source_document": {"type": "object"},
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "title"],
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string", "enum": ["listening", "reading", "writing", "speaking"]},
+          "title": {"type": "string"},
+          "duration_minutes": {"type": "integer", "minimum": 0},
+          "parts": {"type": "array"},
+          "passages": {"type": "array"},
+          "tasks": {"type": "array"}
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
