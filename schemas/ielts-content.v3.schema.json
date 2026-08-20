@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ieltsband.com/schemas/ielts-content.v3.json",
+  "title": "IELTSBand Cambridge content v3",
+  "type": "object",
+  "required": ["schema_version", "content_schema", "test", "variant", "sections"],
+  "properties": {
+    "schema_version": { "const": 3 },
+    "content_schema": { "const": "ieltsband.content.v3" },
+    "test": { "type": "string" },
+    "variant": { "enum": ["academic", "general"] },
+    "source_document": { "type": "object" },
+    "rendering": { "type": "object" },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "title"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "enum": ["listening", "reading", "writing", "speaking"] },
+          "title": { "type": "string" },
+          "duration_minutes": { "type": "number" },
+          "parts": { "type": "array" },
+          "passages": { "type": "array" },
+          "tasks": { "type": "array" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
