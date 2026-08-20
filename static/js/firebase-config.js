@@ -15,6 +15,17 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-// Initialize Firebase
-// const app = initializeApp(firebaseConfig);
-// const analytics = getAnalytics(app);
+// Cambridge IELTS 21 v3 is deliberately loaded after the main application
+// script has been parsed so it can safely replace only the section-start
+// routes. The renderer is independent of the legacy OCR renderer.
+window.addEventListener("load", function () {
+  var style = document.createElement("link");
+  style.rel = "stylesheet";
+  style.href = "/static/css/cambridge21-content.css?v=1";
+  document.head.appendChild(style);
+
+  var script = document.createElement("script");
+  script.src = "/static/js/cambridge21-content.js?v=1";
+  script.async = false;
+  document.body.appendChild(script);
+});
