@@ -1,8 +1,4 @@
-/* IELTSBand structured-content v2 renderer.
- * Loaded after app.js so the existing exam shell, timer, answer handling and
- * result submission remain reusable. New content is rendered from
- * sections[].pages[].blocks instead of regex-parsing a flattened OCR blob.
- */
+/* IELTSBand structured-content v2 renderer. Loaded after app.js. */
 (function () {
   "use strict";
 
@@ -16,9 +12,7 @@
     try {
       var data = await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/content`);
       return data && data.schema_version === 2 ? data : null;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) { return null; }
   }
 
   function sectionOf(content, type) {
@@ -33,14 +27,12 @@
     return esc2(text).replace(/\b(\d{1,2})\s*(?:[.…·]{3,}|_{3,})/g, function (match, n) {
       var q = Number(n);
       if (q < from || q > to) return match;
-      return `<span class="inline-q"><span class="inline-qnum">${q}</span><input class="inline-input" data-inline-q="${q}" data-prefix="${esc2(prefix)}" autocomplete="off" spellcheck="false" aria-label="Answer for question ${q}"></span>`;
+      return `<span class="inline-q"><span class="inline-qnum">${q}</span><input class="inline-input" data-inline-q="${q}" data-prefix="${prefix}" autocomplete="off" spellcheck="false" aria-label="Answer for question ${q}"></span>`;
     });
   }
 
   function renderBlock(block, prefix, range) {
-    var text = block.text || "";
-    var from = range[0], to = range[1];
-    var body = inlineGaps(text, prefix, from, to);
+    var body = inlineGaps(block.text || "", prefix, range[0], range[1]);
     switch (block.type) {
       case "heading": return `<h4 class="structured-heading">${body}</h4>`;
       case "question_group_heading": return `<h5 class="structured-q-heading">${body}</h5>`;
@@ -52,15 +44,11 @@
     }
   }
 
-  function renderPages(mockId, pages, prefix, range, includeImages) {
+  function renderPages(mockId, pages, prefix, range) {
     var text = (pages || []).map(function (page) {
-      var blocks = page.blocks || [];
-      var blockHtml = blocks.map(function (b) { return renderBlock(b, prefix, range); }).join("");
-      return `<article class="structured-page-text" data-pdf-page="${page.pdf_page}">${blockHtml}</article>`;
+      return `<article class="structured-page-text" data-pdf-page="${page.pdf_page}">${(page.blocks || []).map(function (b) { return renderBlock(b, prefix, range); }).join("")}</article>`;
     }).join("");
-    var images = includeImages ? (pages || []).map(function (page) {
-      return pageImage(mockId, page.pdf_page, `Book page ${page.pdf_page}`);
-    }).join("") : "";
+    var images = (pages || []).map(function (page) { return pageImage(mockId, page.pdf_page, `Book page ${page.pdf_page}`); }).join("");
     return `<div class="structured-text-view">${text}</div><div class="structured-book-view">${images}</div>`;
   }
 
@@ -86,26 +74,17 @@
       var q = inp.dataset.inlineQ, prefix = inp.dataset.prefix;
       var sheet = document.getElementById(`${prefix}-${q}`);
       if (!sheet) return;
-      inp.addEventListener("input", function () {
-        sheet.value = inp.value;
-        sheet.dispatchEvent(new Event("input"));
-      });
-      sheet.addEventListener("input", function () {
-        if (document.activeElement !== inp) inp.value = sheet.value;
-      });
+      inp.addEventListener("input", function () { sheet.value = inp.value; sheet.dispatchEvent(new Event("input")); });
+      sheet.addEventListener("input", function () { if (document.activeElement !== inp) inp.value = sheet.value; });
       inp.addEventListener("focus", function () { syncNavCurrent(prefix, q); });
     });
   }
 
-  function groupsFor(items, prefixLabel) {
+  function groupsFor(items) {
     return (items || []).map(function (item, i) {
       var r = item.question_range || [1, 10];
-      return { label: `${prefixLabel} ${item.number || i + 1}`, from: r[0], to: r[1] };
+      return { label: `Passage ${item.number || i + 1}`, from: r[0], to: r[1] };
     });
-  }
-
-  function pageListForListening(part) {
-    return part.pages || [];
   }
 
   async function startReadingV2(mockId, testName) {
@@ -113,24 +92,24 @@
     var cfg = await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}`);
     var rcfg = cfg.reading;
     if (!rcfg) return startReading(mockId, testName);
+
+    /* Check content before creating an attempt, so old v1 mocks fall back
+       without creating a second attempt. */
+    var content = await contentV2(mockId, testName);
+    var section = sectionOf(content, "reading");
+    if (!section) return startReading(mockId, testName);
+
     var totalSeconds = rcfg.duration_minutes * 60;
     var attempt = await api("/api/attempts/start", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "reading", time_allowed_seconds: totalSeconds })
     });
-    var content = await contentV2(mockId, testName);
-    if (!content) return startReadingLegacyAfterAttempt(attempt, mockId, testName, cfg);
-    var section = sectionOf(content, "reading");
-    if (!section) return startReadingLegacyAfterAttempt(attempt, mockId, testName, cfg);
 
-    var groups = groupsFor(section.passages, "Passage");
+    var groups = groupsFor(section.passages);
     var material = section.passages.map(function (p, i) {
-      var range = p.question_range || groups[i] && [groups[i].from, groups[i].to] || [1, 40];
-      var body = p.body_pages || [];
-      var questions = p.question_pages || [];
-      var all = body.concat(questions);
-      var visual = (questions || []).some(function (x) { return x.visual_fallback; });
-      return `<section class="structured-passage"><div class="structured-passage-head"><span>Reading Passage ${p.number || i + 1}</span><span class="structured-type">${esc2((p.question_types || []).join(" · "))}</span></div>${renderPages(mockId, all, "ans", range, true)}</section>`;
+      var range = p.question_range || [groups[i].from, groups[i].to];
+      var pages = (p.body_pages || []).concat(p.question_pages || []);
+      return `<section class="structured-passage"><div class="structured-passage-head"><span>Reading Passage ${p.number || i + 1}</span><span class="structured-type">${esc2((p.question_types || []).join(" · "))}</span></div>${renderPages(mockId, pages, "ans", range)}</section>`;
     }).join("");
 
     app.innerHTML = `${examBarHtml("Reading", { mockId })}${viewToggle2()}<div class="exam-shell structured-exam-shell"><div class="exam-material">${material}</div><div class="exam-answers"><h3>Answer sheet</h3>${answerSheetHtml(groups, "ans")}<div class="submit-area"><button class="btn btn-primary" id="submitBtn">Submit reading</button></div></div></div>${navBarHtml(groups, "ans")}`;
@@ -141,7 +120,7 @@
     wireStructuredInline(app);
     wireStructuredToggle(app);
     syncNavAnswered("ans");
-    document.getElementById("answeredCount").textContent = `0 / ${groups.reduce((n,g) => n + g.to - g.from + 1, 0)} answered`;
+    document.getElementById("answeredCount").textContent = `0 / ${groups.reduce(function (n, g) { return n + g.to - g.from + 1; }, 0)} answered`;
 
     var doSubmit = function (auto) { submitSection({ attemptId: attempt.attempt_id, mockId: mockId, testName: testName, section: "reading", prefix: "ans", label: "Reading", auto: auto, groups: groups }); };
     document.getElementById("submitBtn").addEventListener("click", function () {
@@ -152,21 +131,6 @@
     startTimer(totalSeconds, function (r) { tickTimer(r, 300); }, function () { doSubmit(true); });
   }
 
-  async function startReadingLegacyAfterAttempt(attempt, mockId, testName, cfg) {
-    /* The fallback exists for older mocks whose content file is still v1.
-       The attempt has already been started, so this is only used on old
-       content during migration. */
-    return startReading(mockId, testName);
-  }
-
-  async function startListeningV2(mockId, testName) {
-    /* Keep the proven existing audio/timer implementation for listening.
-       The v2 JSON is also backward-compatible with listening.parts[].text,
-       so no exam functionality is lost while the new question-sheet renderer
-       is rolled out. Reading is switched to the structured renderer above. */
-    return startListening(mockId, testName);
-  }
-
   routes.startReading = function (d) { startReadingV2(d.mock, d.test); };
-  routes.startListening = function (d) { startListeningV2(d.mock, d.test); };
+  routes.startListening = function (d) { startListening(d.mock, d.test); };
 })();
