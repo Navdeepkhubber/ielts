@@ -1,5 +1,12 @@
 # Ignore all mock test content
-tests/*
+tests/**/*.pdf
+tests/**/*.PDF
+tests/**/*.mp3
+tests/**/*.MP3
+tests/**/*.wav
+tests/**/*.WAV
+tests/**/*.m4a
+tests/**/*.M4A
 
 # Keep the folder itself
 !tests/.gitkeep

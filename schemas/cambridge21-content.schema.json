@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ieltsband.com/schemas/ieltsband-content-v3.json",
+  "title": "IELTSBand Content v3",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "content_schema",
+    "test",
+    "sections"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 3
+    },
+    "content_schema": {
+      "const": "ieltsband.content.v3"
+    },
+    "test": {
+      "type": "string"
+    },
+    "sections": {
+      "type": "array"
+    }
+  }
+}

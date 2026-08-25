@@ -1,0 +1,504 @@
+{
+  "schema_version": 3,
+  "content_schema": "ieltsband.content.v3",
+  "mock_name": "IELTS Academic 21",
+  "book": {
+    "title": "IELTS Academic 21",
+    "variant": "academic",
+    "pdf_file": "main.pdf"
+  },
+  "pdf_file": "main.pdf",
+  "tests": {
+    "Test 1": {
+      "variant": "academic",
+      "content_file": "content/Test 1.json",
+      "listening": {
+        "duration_minutes": 40,
+        "audio_folder": "Test 1",
+        "parts": [
+          {
+            "part": 1,
+            "part_number": 1,
+            "files": [
+              "part1.mp3"
+            ],
+            "questions": [
+              1,
+              10
+            ],
+            "pages": [
+              11
+            ]
+          },
+          {
+            "part": 2,
+            "part_number": 2,
+            "files": [
+              "part2.mp3"
+            ],
+            "questions": [
+              11,
+              20
+            ],
+            "pages": [
+              12,
+              13
+            ]
+          },
+          {
+            "part": 3,
+            "part_number": 3,
+            "files": [
+              "part3.mp3"
+            ],
+            "questions": [
+              21,
+              30
+            ],
+            "pages": [
+              14,
+              15
+            ]
+          },
+          {
+            "part": 4,
+            "part_number": 4,
+            "files": [
+              "part4.mp3"
+            ],
+            "questions": [
+              31,
+              40
+            ],
+            "pages": [
+              16
+            ]
+          }
+        ]
+      },
+      "reading": {
+        "duration_minutes": 60,
+        "passages": [
+          {
+            "passage": 1,
+            "id": "passage-1",
+            "title": "The Davies Sisters",
+            "pages": [
+              17,
+              18
+            ],
+            "questions": [
+              1,
+              13
+            ]
+          },
+          {
+            "passage": 2,
+            "id": "passage-2",
+            "title": "Why we need silence",
+            "pages": [
+              21,
+              22
+            ],
+            "questions": [
+              14,
+              26
+            ]
+          },
+          {
+            "passage": 3,
+            "id": "passage-3",
+            "title": "Book review: The World of Sugar by Ulbe Bosma",
+            "pages": [
+              26,
+              27
+            ],
+            "questions": [
+              27,
+              39
+            ]
+          }
+        ]
+      },
+      "writing": {
+        "task1": {
+          "page": 30,
+          "duration_minutes": 20
+        },
+        "task2": {
+          "page": 31,
+          "duration_minutes": 40
+        }
+      }
+    },
+    "Test 2": {
+      "variant": "academic",
+      "content_file": "content/Test 2.json",
+      "listening": {
+        "duration_minutes": 40,
+        "audio_folder": "Test 2",
+        "parts": [
+          {
+            "part": 1,
+            "part_number": 1,
+            "files": [
+              "part1.mp3"
+            ],
+            "questions": [
+              1,
+              10
+            ],
+            "pages": [
+              33
+            ]
+          },
+          {
+            "part": 2,
+            "part_number": 2,
+            "files": [
+              "part2.mp3"
+            ],
+            "questions": [
+              11,
+              20
+            ],
+            "pages": [
+              34,
+              35
+            ]
+          },
+          {
+            "part": 3,
+            "part_number": 3,
+            "files": [
+              "part3.mp3"
+            ],
+            "questions": [
+              21,
+              30
+            ],
+            "pages": [
+              36,
+              37
+            ]
+          },
+          {
+            "part": 4,
+            "part_number": 4,
+            "files": [
+              "part4.mp3"
+            ],
+            "questions": [
+              31,
+              40
+            ],
+            "pages": [
+              38
+            ]
+          }
+        ]
+      },
+      "reading": {
+        "duration_minutes": 60,
+        "passages": [
+          {
+            "passage": 1,
+            "id": "passage-1",
+            "title": "Do animals dream?",
+            "pages": [
+              39,
+              40
+            ],
+            "questions": [
+              1,
+              13
+            ]
+          },
+          {
+            "passage": 2,
+            "id": "passage-2",
+            "title": "Mapungubwe",
+            "pages": [
+              43,
+              44
+            ],
+            "questions": [
+              14,
+              26
+            ]
+          },
+          {
+            "passage": 3,
+            "id": "passage-3",
+            "title": "Artificial Intelligence",
+            "pages": [
+              47,
+              48
+            ],
+            "questions": [
+              27,
+              40
+            ]
+          }
+        ]
+      },
+      "writing": {
+        "task1": {
+          "page": 52,
+          "duration_minutes": 20
+        },
+        "task2": {
+          "page": 53,
+          "duration_minutes": 40
+        }
+      }
+    },
+    "Test 3": {
+      "variant": "academic",
+      "content_file": "content/Test 3.json",
+      "listening": {
+        "duration_minutes": 40,
+        "audio_folder": "Test 3",
+        "parts": [
+          {
+            "part": 1,
+            "part_number": 1,
+            "files": [
+              "part1.mp3"
+            ],
+            "questions": [
+              1,
+              10
+            ],
+            "pages": [
+              55
+            ]
+          },
+          {
+            "part": 2,
+            "part_number": 2,
+            "files": [
+              "part2.mp3"
+            ],
+            "questions": [
+              11,
+              20
+            ],
+            "pages": [
+              56,
+              57
+            ]
+          },
+          {
+            "part": 3,
+            "part_number": 3,
+            "files": [
+              "part3.mp3"
+            ],
+            "questions": [
+              21,
+              30
+            ],
+            "pages": [
+              58,
+              59
+            ]
+          },
+          {
+            "part": 4,
+            "part_number": 4,
+            "files": [
+              "part4.mp3"
+            ],
+            "questions": [
+              31,
+              40
+            ],
+            "pages": [
+              60
+            ]
+          }
+        ]
+      },
+      "reading": {
+        "duration_minutes": 60,
+        "passages": [
+          {
+            "passage": 1,
+            "id": "passage-1",
+            "title": "Saving the saiga",
+            "pages": [
+              61,
+              62
+            ],
+            "questions": [
+              1,
+              13
+            ]
+          },
+          {
+            "passage": 2,
+            "id": "passage-2",
+            "title": "The problems of getting around the city of Dar es Salaam",
+            "pages": [
+              65,
+              66
+            ],
+            "questions": [
+              14,
+              26
+            ]
+          },
+          {
+            "passage": 3,
+            "id": "passage-3",
+            "title": "Rethinking the Past",
+            "pages": [
+              69,
+              70
+            ],
+            "questions": [
+              27,
+              39
+            ]
+          }
+        ]
+      },
+      "writing": {
+        "task1": {
+          "page": 73,
+          "duration_minutes": 20
+        },
+        "task2": {
+          "page": 74,
+          "duration_minutes": 40
+        }
+      }
+    },
+    "Test 4": {
+      "variant": "academic",
+      "content_file": "content/Test 4.json",
+      "listening": {
+        "duration_minutes": 40,
+        "audio_folder": "Test 4",
+        "parts": [
+          {
+            "part": 1,
+            "part_number": 1,
+            "files": [
+              "part1.mp3"
+            ],
+            "questions": [
+              1,
+              10
+            ],
+            "pages": [
+              76
+            ]
+          },
+          {
+            "part": 2,
+            "part_number": 2,
+            "files": [
+              "part2.mp3"
+            ],
+            "questions": [
+              11,
+              20
+            ],
+            "pages": [
+              77,
+              78
+            ]
+          },
+          {
+            "part": 3,
+            "part_number": 3,
+            "files": [
+              "part3.mp3"
+            ],
+            "questions": [
+              21,
+              30
+            ],
+            "pages": [
+              79,
+              80
+            ]
+          },
+          {
+            "part": 4,
+            "part_number": 4,
+            "files": [
+              "part4.mp3"
+            ],
+            "questions": [
+              31,
+              40
+            ],
+            "pages": [
+              81
+            ]
+          }
+        ]
+      },
+      "reading": {
+        "duration_minutes": 60,
+        "passages": [
+          {
+            "passage": 1,
+            "id": "passage-1",
+            "title": "The problems and benefits created by the spread of the water hyacinth in Kenya",
+            "pages": [
+              82,
+              83
+            ],
+            "questions": [
+              1,
+              13
+            ]
+          },
+          {
+            "passage": 2,
+            "id": "passage-2",
+            "title": "How could multilingualism benefit India’s poorest schoolchildren?",
+            "pages": [
+              86,
+              87
+            ],
+            "questions": [
+              14,
+              26
+            ]
+          },
+          {
+            "passage": 3,
+            "id": "passage-3",
+            "title": "The Globemakers: The Curious Story of an Ancient Craft",
+            "pages": [
+              90,
+              91
+            ],
+            "questions": [
+              27,
+              39
+            ]
+          }
+        ]
+      },
+      "writing": {
+        "task1": {
+          "page": 95,
+          "duration_minutes": 20
+        },
+        "task2": {
+          "page": 96,
+          "duration_minutes": 40
+        }
+      },
+      "speaking": {
+        "page": 97
+      }
+    }
+  }
+}

@@ -1,0 +1,1426 @@
+{
+  "schema_version": 3,
+  "content_schema": "ieltsband.content.v3",
+  "test": "Test 2",
+  "variant": "academic",
+  "source_document": {
+    "pdf_file": "main.pdf",
+    "source": "Cambridge IELTS 21 PDF provided for this task",
+    "generation": "fresh extraction from source PDF; no repository content files consumed"
+  },
+  "rendering": {
+    "primary": "semantic structured blocks",
+    "visual_fallback": "source_pdf_page",
+    "question_text_policy": "question groups are explicitly typed; individual question text remains source-page-bound when layout OCR is not reliable"
+  },
+  "sections": [
+    {
+      "id": "listening",
+      "type": "listening",
+      "title": "LISTENING",
+      "duration_minutes": 40,
+      "parts": [
+        {
+          "id": "listening-part-1",
+          "number": 1,
+          "title": "PART 1",
+          "question_range": [
+            1,
+            10
+          ],
+          "source_pages": [
+            33
+          ],
+          "question_groups": [
+            {
+              "id": "qgroup-1-10",
+              "question_range": [
+                1,
+                10
+              ],
+              "question_type": "table_completion",
+              "source_pages": [
+                33
+              ],
+              "raw_text": "PART 1 Questions 1-10\nComplete the table below.\nWrite ONE WORD AND/OR A NUMBER for each answer.\nOne-day classes at Steynford College\n[course [date cost [Notes |\nVietnamese food It provides information\n‘on the use of herbs.\nThere are no places at\npresent.\nBread making 20 March There is also an extra\ncharge for ingredients.\nParticipants make white\nbread, sourdough and\n3 :\n23February | £35 The teacher trained in\nBring a 5\n£52 Only7\ningredients are used.\nThe candles can be used\nas presents.\n9 4\nDIY for beginners | 24 February Learn how to\n+ use a drill, saw and\nTO veesosersene«\n* put up a shelf\nn>",
+              "questions": [
+                {
+                  "number": 1,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 2,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 3,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 4,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 5,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 6,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 7,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 8,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 9,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 10,
+                  "source_pages": [
+                    33
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            }
+          ],
+          "pages": [
+            {
+              "pdf_page": 33,
+              "printed_page": 32,
+              "role": "listening_question_sheet",
+              "text": "PART 1 Questions 1-10\nComplete the table below.\nWrite ONE WORD AND/OR A NUMBER for each answer.\nOne-day classes at Steynford College\n[course [date cost [Notes |\nVietnamese food It provides information\n‘on the use of herbs.\nThere are no places at\npresent.\nBread making 20 March There is also an extra\ncharge for ingredients.\nParticipants make white\nbread, sourdough and\n3 :\n23February | £35 The teacher trained in\nBring a 5\n£52 Only7\ningredients are used.\nThe candles can be used\nas presents.\n9 4\nDIY for beginners | 24 February Learn how to\n+ use a drill, saw and\nTO veesosersene«\n* put up a shelf\nn>",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "PART 1 Questions 1-10"
+                },
+                {
+                  "type": "instruction",
+                  "text": "Complete the table below. Write ONE WORD AND/OR A NUMBER for each answer. One-day classes at Steynford College [course [date cost [Notes | Vietnamese food It provides information ‘on the use of herbs. There are no places at present. Bread making 20 March There is also an extra charge for ingredients. Participants make white bread, sourdough and 3 : 23February | £35 The teacher trained in Bring a 5 £52 Only7 ingredients are used. The candles can be used as presents. 9 4 DIY for beginners | 24 February Learn how to + use a drill, saw and TO veesosersene« * put up a shelf n>"
+                }
+              ],
+              "visual_fallback": true
+            }
+          ]
+        },
+        {
+          "id": "listening-part-2",
+          "number": 2,
+          "title": "PART 2",
+          "question_range": [
+            11,
+            20
+          ],
+          "source_pages": [
+            34,
+            35
+          ],
+          "question_groups": [
+            {
+              "id": "qgroup-11-12",
+              "question_range": [
+                11,
+                12
+              ],
+              "question_type": "multiple_choice_multiple",
+              "source_pages": [
+                34
+              ],
+              "raw_text": "PART 2 Questions 11-20\nQuestions 11 and 12\nChoose TWO letters, A-E.\nWhich TWO pieces of advice are given about the Marsden Coastal Walk?\n‘A. Stop for lunch in an ancient town.\nB Don't miss the ruins of a certain building.\nCatch a boat to the start of this walk.\nD__ Be careful of the steep and rocky paths.\nE Don't worry about getting lost.\nQuestions 13 and 14\nChoose TWO letters, A-E.\nWhich TWO things are said about the Melby Heritage Walk?\nA. This walk is mostly downhill.\nB_ The paths can get busy during the day.\nThis a circular walk\nDA tower stands on the site of an older structure.\nE There are far-reaching views the whole way.",
+              "questions": [
+                {
+                  "number": 11,
+                  "source_pages": [
+                    34
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 12,
+                  "source_pages": [
+                    34
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-13-14",
+              "question_range": [
+                13,
+                14
+              ],
+              "question_type": "multiple_choice_multiple",
+              "source_pages": [
+                34
+              ],
+              "raw_text": "PART 2 Questions 11-20\nQuestions 11 and 12\nChoose TWO letters, A-E.\nWhich TWO pieces of advice are given about the Marsden Coastal Walk?\n‘A. Stop for lunch in an ancient town.\nB Don't miss the ruins of a certain building.\nCatch a boat to the start of this walk.\nD__ Be careful of the steep and rocky paths.\nE Don't worry about getting lost.\nQuestions 13 and 14\nChoose TWO letters, A-E.\nWhich TWO things are said about the Melby Heritage Walk?\nA. This walk is mostly downhill.\nB_ The paths can get busy during the day.\nThis a circular walk\nDA tower stands on the site of an older structure.\nE There are far-reaching views the whole way.",
+              "questions": [
+                {
+                  "number": 13,
+                  "source_pages": [
+                    34
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 14,
+                  "source_pages": [
+                    34
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-15-20",
+              "question_range": [
+                15,
+                20
+              ],
+              "question_type": "map_label",
+              "source_pages": [
+                35
+              ],
+              "raw_text": "Questions 15-20\nLabel the map below.\nWrite the correct letter, A-I, next to Questions 15-20.\nMelby Coal Mine\n, lenennenennn= Covered\ni\n®\n© | © | Sac f-\n15 Exhibition\n16 Baths\n17 Tools -\n18 Vehicles —\n19 Ponies -\n20 Education centre\n34 9[p. 119]",
+              "questions": [
+                {
+                  "number": 15,
+                  "source_pages": [
+                    35
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 16,
+                  "source_pages": [
+                    35
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 17,
+                  "source_pages": [
+                    35
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 18,
+                  "source_pages": [
+                    35
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 19,
+                  "source_pages": [
+                    35
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 20,
+                  "source_pages": [
+                    35
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            }
+          ],
+          "pages": [
+            {
+              "pdf_page": 34,
+              "printed_page": 33,
+              "role": "listening_question_sheet",
+              "text": "PART 2 Questions 11-20\nQuestions 11 and 12\nChoose TWO letters, A-E.\nWhich TWO pieces of advice are given about the Marsden Coastal Walk?\n‘A. Stop for lunch in an ancient town.\nB Don't miss the ruins of a certain building.\nCatch a boat to the start of this walk.\nD__ Be careful of the steep and rocky paths.\nE Don't worry about getting lost.\nQuestions 13 and 14\nChoose TWO letters, A-E.\nWhich TWO things are said about the Melby Heritage Walk?\nA. This walk is mostly downhill.\nB_ The paths can get busy during the day.\nThis a circular walk\nDA tower stands on the site of an older structure.\nE There are far-reaching views the whole way.",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "PART 2 Questions 11-20"
+                },
+                {
+                  "type": "heading",
+                  "text": "Questions 11 and 12"
+                },
+                {
+                  "type": "instruction",
+                  "text": "Choose TWO letters, A-E. Which TWO pieces of advice are given about the Marsden Coastal Walk? ‘A. Stop for lunch in an ancient town. B Don't miss the ruins of a certain building. Catch a boat to the start of this walk. D__ Be careful of the steep and rocky paths. E Don't worry about getting lost."
+                },
+                {
+                  "type": "heading",
+                  "text": "Questions 13 and 14"
+                },
+                {
+                  "type": "instruction",
+                  "text": "Choose TWO letters, A-E. Which TWO things are said about the Melby Heritage Walk? A. This walk is mostly downhill. B_ The paths can get busy during the day. This a circular walk DA tower stands on the site of an older structure. E There are far-reaching views the whole way."
+                }
+              ],
+              "visual_fallback": true
+            },
+            {
+              "pdf_page": 35,
+              "printed_page": 34,
+              "role": "listening_question_sheet",
+              "text": "Questions 15-20\nLabel the map below.\nWrite the correct letter, A-I, next to Questions 15-20.\nMelby Coal Mine\n, lenennenennn= Covered\ni\n®\n© | © | Sac f-\n15 Exhibition\n16 Baths\n17 Tools -\n18 Vehicles —\n19 Ponies -\n20 Education centre\n34 9[p. 119]",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "Questions 15-20"
+                },
+                {
+                  "type": "instruction",
+                  "text": "Label the map below. Write the correct letter, A-I, next to Questions 15-20. Melby Coal Mine , lenennenennn= Covered i ® © | © | Sac f15 Exhibition 16 Baths 17 Tools - 18 Vehicles — 19 Ponies - 20 Education centre 34 9[p. 119]"
+                }
+              ],
+              "visual_fallback": true
+            }
+          ]
+        },
+        {
+          "id": "listening-part-3",
+          "number": 3,
+          "title": "PART 3",
+          "question_range": [
+            21,
+            30
+          ],
+          "source_pages": [
+            36,
+            37
+          ],
+          "question_groups": [
+            {
+              "id": "qgroup-21-22",
+              "question_range": [
+                21,
+                22
+              ],
+              "question_type": "multiple_choice_multiple",
+              "source_pages": [
+                36
+              ],
+              "raw_text": "PART 3 Questions 21-30\nQuestions 21 and 22\nChoose TWO letters, A-E.\nWhich TWO facts in the sessions on food safety were new information for Nadia\nand Fergus?\n‘A the amount of plastic in the ocean\nB__ the number of diseases caused by contaminated food\nC the amount of food that is wasted\nD the number of people who are obese\nE the result of treating animals with antibiotics\n‘Questions 23 and 24\nChoose TWO letters, A-E.\nWhich TWO features of a project aiming to prevent food fraud impressed Fergus?\nA. the new technology it used\nB the publicity it received\nC the use of multiple tests on food items\nD__ the variety of dietary requirements included\nE the way information was made widely accessible\nQuestions 25 and 26\nChoose TWO letters, A-E.\nWhich TWO topics do both students recommend should be included in the course?\n‘A sustainable fishing\nB targeted nutrition\nC global differences in consumption\nD sustainable agriculture\nE digital technology and food",
+              "questions": [
+                {
+                  "number": 21,
+                  "source_pages": [
+                    36
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 22,
+                  "source_pages": [
+                    36
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-23-26",
+              "question_range": [
+                23,
+                26
+              ],
+              "question_type": "multiple_choice",
+              "source_pages": [
+                36
+              ],
+              "raw_text": "PART 3 Questions 21-30\nQuestions 21 and 22\nChoose TWO letters, A-E.\nWhich TWO facts in the sessions on food safety were new information for Nadia\nand Fergus?\n‘A the amount of plastic in the ocean\nB__ the number of diseases caused by contaminated food\nC the amount of food that is wasted\nD the number of people who are obese\nE the result of treating animals with antibiotics\n‘Questions 23 and 24\nChoose TWO letters, A-E.\nWhich TWO features of a project aiming to prevent food fraud impressed Fergus?\nA. the new technology it used\nB the publicity it received\nC the use of multiple tests on food items\nD__ the variety of dietary requirements included\nE the way information was made widely accessible\nQuestions 25 and 26\nChoose TWO letters, A-E.\nWhich TWO topics do both students recommend should be included in the course?\n‘A sustainable fishing\nB targeted nutrition\nC global differences in consumption\nD sustainable agriculture\nE digital technology and food",
+              "questions": [
+                {
+                  "number": 23,
+                  "source_pages": [
+                    36
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 24,
+                  "source_pages": [
+                    36
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 25,
+                  "source_pages": [
+                    36
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 26,
+                  "source_pages": [
+                    36
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-27-30",
+              "question_range": [
+                27,
+                30
+              ],
+              "question_type": "flow_chart",
+              "source_pages": [
+                37
+              ],
+              "raw_text": "Questions 27-30\nComplete the flow-chart below.\nChoose FOUR answers from the box and write the correct letter, A-F, next to\n‘Questions 27-30.\n‘A. This was challenging but enjoyable.\nB This led to some disagreement.\nC This was easy to decide on.\nD This was helped by the guidelines provided.\nE This seemed like an unnecessary stage.\nF This involved selecting a new ingredient.\nStudent project: developing a new food product\nInitial aim\nLiterature review\nDBorccsornnes\nProduct development\nWorcoesnrsnee\nProduct production,\nBW sgreccarer\n36 9[Op.19",
+              "questions": [
+                {
+                  "number": 27,
+                  "source_pages": [
+                    37
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 28,
+                  "source_pages": [
+                    37
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 29,
+                  "source_pages": [
+                    37
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 30,
+                  "source_pages": [
+                    37
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            }
+          ],
+          "pages": [
+            {
+              "pdf_page": 36,
+              "printed_page": 35,
+              "role": "listening_question_sheet",
+              "text": "PART 3 Questions 21-30\nQuestions 21 and 22\nChoose TWO letters, A-E.\nWhich TWO facts in the sessions on food safety were new information for Nadia\nand Fergus?\n‘A the amount of plastic in the ocean\nB__ the number of diseases caused by contaminated food\nC the amount of food that is wasted\nD the number of people who are obese\nE the result of treating animals with antibiotics\n‘Questions 23 and 24\nChoose TWO letters, A-E.\nWhich TWO features of a project aiming to prevent food fraud impressed Fergus?\nA. the new technology it used\nB the publicity it received\nC the use of multiple tests on food items\nD__ the variety of dietary requirements included\nE the way information was made widely accessible\nQuestions 25 and 26\nChoose TWO letters, A-E.\nWhich TWO topics do both students recommend should be included in the course?\n‘A sustainable fishing\nB targeted nutrition\nC global differences in consumption\nD sustainable agriculture\nE digital technology and food",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "PART 3 Questions 21-30"
+                },
+                {
+                  "type": "heading",
+                  "text": "Questions 21 and 22"
+                },
+                {
+                  "type": "instruction",
+                  "text": "Choose TWO letters, A-E. Which TWO facts in the sessions on food safety were new information for Nadia and Fergus? ‘A the amount of plastic in the ocean B__ the number of diseases caused by contaminated food C the amount of food that is wasted D the number of people who are obese E the result of treating animals with antibiotics ‘Questions 23 and 24 Choose TWO letters, A-E. Which TWO features of a project aiming to prevent food fraud impressed Fergus? A. the new technology it used B the publicity it received C the use of multiple tests on food items D__ the variety of dietary requirements included E the way information was made widely accessible"
+                },
+                {
+                  "type": "heading",
+                  "text": "Questions 25 and 26"
+                },
+                {
+                  "type": "instruction",
+                  "text": "Choose TWO letters, A-E. Which TWO topics do both students recommend should be included in the course? ‘A sustainable fishing B targeted nutrition C global differences in consumption D sustainable agriculture E digital technology and food"
+                }
+              ],
+              "visual_fallback": true
+            },
+            {
+              "pdf_page": 37,
+              "printed_page": 36,
+              "role": "listening_question_sheet",
+              "text": "Questions 27-30\nComplete the flow-chart below.\nChoose FOUR answers from the box and write the correct letter, A-F, next to\n‘Questions 27-30.\n‘A. This was challenging but enjoyable.\nB This led to some disagreement.\nC This was easy to decide on.\nD This was helped by the guidelines provided.\nE This seemed like an unnecessary stage.\nF This involved selecting a new ingredient.\nStudent project: developing a new food product\nInitial aim\nLiterature review\nDBorccsornnes\nProduct development\nWorcoesnrsnee\nProduct production,\nBW sgreccarer\n36 9[Op.19",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "Questions 27-30"
+                },
+                {
+                  "type": "instruction",
+                  "text": "Complete the flow-chart below. Choose FOUR answers from the box and write the correct letter, A-F, next to ‘Questions 27-30. ‘A. This was challenging but enjoyable. B This led to some disagreement. C This was easy to decide on. D This was helped by the guidelines provided. E This seemed like an unnecessary stage. F This involved selecting a new ingredient. Student project: developing a new food product Initial aim Literature review DBorccsornnes Product development Worcoesnrsnee Product production, BW sgreccarer 36 9[Op.19"
+                }
+              ],
+              "visual_fallback": true
+            }
+          ]
+        },
+        {
+          "id": "listening-part-4",
+          "number": 4,
+          "title": "PART 4",
+          "question_range": [
+            31,
+            40
+          ],
+          "source_pages": [
+            38
+          ],
+          "question_groups": [
+            {
+              "id": "qgroup-31-40",
+              "question_range": [
+                31,
+                40
+              ],
+              "question_type": "notes_completion",
+              "source_pages": [
+                38
+              ],
+              "raw_text": "PART 4 Questions 31-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nChallenges facing the cruise ship industry\nProblems with overtourism\n© 31 enmnnnmnnmnmnn if One Of the worst problems.\n© A tourist 32 nsnsnnnnnsnenis being introduced in some cities to reduce\nnumbers, e.g. Barcelona.\n* Bruges: action was taken to limit day trips from the nearby port because the\ncity was becoming a ‘theme park’ (e.g. many shops were only stocking\n33 = and souvenirs).\n‘* Dubrovnik: limits the number of tourists by managing the 34 nnn\nof cruise ship arrivals.\nProblems of perception\n+ Cruises are generally associated with the elderly.\nThere is an assumption about the 35 no-no OF cruises.\n* People think there may be too many 36 a\nSolutions\nCruise lines are attracting younger customers by:\n* becoming more sustainable e.g. using hybrid engines.\n* having a wide range of activities €.9. boxing, 37 smmnnnnenmmnnn and well-\nbeing programmes.\n* offering a diverse selection of food including 38 nme Options,\n© providing reliable 39 nnn\n‘+ improving marketing on social media with high quality 40 nnn\n(0 p. 119) 37",
+              "questions": [
+                {
+                  "number": 31,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 32,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 33,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 34,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 35,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 36,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 37,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 38,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 39,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 40,
+                  "source_pages": [
+                    38
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            }
+          ],
+          "pages": [
+            {
+              "pdf_page": 38,
+              "printed_page": 37,
+              "role": "listening_question_sheet",
+              "text": "PART 4 Questions 31-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nChallenges facing the cruise ship industry\nProblems with overtourism\n© 31 enmnnnmnnmnmnn if One Of the worst problems.\n© A tourist 32 nsnsnnnnnsnenis being introduced in some cities to reduce\nnumbers, e.g. Barcelona.\n* Bruges: action was taken to limit day trips from the nearby port because the\ncity was becoming a ‘theme park’ (e.g. many shops were only stocking\n33 = and souvenirs).\n‘* Dubrovnik: limits the number of tourists by managing the 34 nnn\nof cruise ship arrivals.\nProblems of perception\n+ Cruises are generally associated with the elderly.\nThere is an assumption about the 35 no-no OF cruises.\n* People think there may be too many 36 a\nSolutions\nCruise lines are attracting younger customers by:\n* becoming more sustainable e.g. using hybrid engines.\n* having a wide range of activities €.9. boxing, 37 smmnnnnenmmnnn and well-\nbeing programmes.\n* offering a diverse selection of food including 38 nme Options,\n© providing reliable 39 nnn\n‘+ improving marketing on social media with high quality 40 nnn\n(0 p. 119) 37",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "PART 4 Questions 31-40"
+                },
+                {
+                  "type": "instruction",
+                  "text": "Complete the notes below. Write ONE WORD ONLY for each answer. Challenges facing the cruise ship industry Problems with overtourism © 31 enmnnnmnnmnmnn if One Of the worst problems. © A tourist 32 nsnsnnnnnsnenis being introduced in some cities to reduce numbers, e.g. Barcelona. * Bruges: action was taken to limit day trips from the nearby port because the city was becoming a ‘theme park’ (e.g. many shops were only stocking 33 = and souvenirs). ‘* Dubrovnik: limits the number of tourists by managing the 34 nnn of cruise ship arrivals. Problems of perception + Cruises are generally associated with the elderly. There is an assumption about the 35 no-no OF cruises. * People think there may be too many 36 a Solutions Cruise lines are attracting younger customers by: * becoming more sustainable e.g. using hybrid engines. * having a wide range of activities €.9. boxing, 37 smmnnnnenmmnnn and wellbeing programmes. * offering a diverse selection of food including 38 nme Options, © providing reliable 39 nnn ‘+ improving marketing on social media with high quality 40 nnn (0 p. 119) 37"
+                }
+              ],
+              "visual_fallback": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reading",
+      "type": "reading",
+      "title": "READING",
+      "duration_minutes": 60,
+      "passages": [
+        {
+          "id": "reading-passage-1",
+          "type": "passage",
+          "number": 1,
+          "title": "Do animals dream?",
+          "source_pages": [
+            39,
+            40
+          ],
+          "body_pages": [
+            {
+              "pdf_page": 39,
+              "printed_page": 38,
+              "role": "reading_passage",
+              "text": "READING PASSAGE 1\nYou should spend about 20 minutes on Questions 1-13, which are based on Reading\nPassage 1 below.\n\nDo animals dream?\nStudies using electrodes attached to the heads of sleepers have shown that when we\nsleep, we do so in two ways that alternate throughout the night. The first is rapid eye\nmovement (REM) or active sleep. During this stage our eyes move, even though our\neyelids are closed. Our muscles also twitch slightly, though they are largely paralysed\nso we don't hurt ourselves. In contrast, we also engage in non-REM sleep, during\nwhich we barely move at all. Most dream states, and certainly those with the most vivid\ndreams, happen during REM sleep.\nThere's some evidence that other mammals may also dream. For example, researchers\n‘compared the brain patterns of rats running through a maze when awake with their\nbrain patterns during REM sleep. They found the patterns were very similar and\nconcluded that the sleeping rats were dreaming about going through the maze.\nBut finding evidence of dreaming in non-mammals has proved more difficult. Their\nbrains are very different from those of humans, and it can often be difficult to record\ntheir activity while they are sleeping. Recently, however, researchers succeeded in\nrecording brain activity in sleeping pigeons. As in mammals, the recordings revealed\nboth REM and non-REM sleep. Intriguingly, REM sleep activity was high in brain\nregions involved in processing visual information, especially images related to physical\nactivities such as flying, which suggests that this may possibly be what the pigeons\nwere dreaming about.\nThat said, dreaming and REM sleep are unlikely to be universal in the animal kingdom.\nFor example, sponges don’t have brains, so they lack the machinery for dreaming.\nThere are also some animals with unusual sleep patterns. These include whales and\ndolphins, which do not shut down their entire brain when they sleep, but only half of\nit, keeping the rest awake. They also show no sign of REM sleep, suggesting that they\nmay only experience non-REM dreams, which are less vivid. This is surprising because\nwe tend to think of whales and dolphins as having complex inner lives. It’s thought\nthat they don’t experience REM sleep because during REM sleep animals are more\nvwuiherable to extremes of temperature.",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "READING PASSAGE 1"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "You should spend about 20 minutes on Questions 1-13, which are based on Reading Passage 1 below."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Do animals dream? Studies using electrodes attached to the heads of sleepers have shown that when we sleep, we do so in two ways that alternate throughout the night. The first is rapid eye movement (REM) or active sleep. During this stage our eyes move, even though our eyelids are closed. Our muscles also twitch slightly, though they are largely paralysed so we don't hurt ourselves. In contrast, we also engage in non-REM sleep, during which we barely move at all. Most dream states, and certainly those with the most vivid dreams, happen during REM sleep. There's some evidence that other mammals may also dream. For example, researchers ‘compared the brain patterns of rats running through a maze when awake with their brain patterns during REM sleep. They found the patterns were very similar and concluded that the sleeping rats were dreaming about going through the maze. But finding evidence of dreaming in non-mammals has proved more difficult. Their brains are very different from those of humans, and it can often be difficult to record their activity while they are sleeping. Recently, however, researchers succeeded in recording brain activity in sleeping pigeons. As in mammals, the recordings revealed both REM and non-REM sleep. Intriguingly, REM sleep activity was high in brain regions involved in processing visual information, especially images related to physical activities such as flying, which suggests that this may possibly be what the pigeons were dreaming about. That said, dreaming and REM sleep are unlikely to be universal in the animal kingdom. For example, sponges don’t have brains, so they lack the machinery for dreaming. There are also some animals with unusual sleep patterns. These include whales and dolphins, which do not shut down their entire brain when they sleep, but only half of it, keeping the rest awake. They also show no sign of REM sleep, suggesting that they may only experience non-REM dreams, which are less vivid. This is surprising because we tend to think of whales and dolphins as having complex inner lives. It’s thought that they don’t experience REM sleep because during REM sleep animals are more vwuiherable to extremes of temperature."
+                }
+              ],
+              "visual_fallback": false
+            },
+            {
+              "pdf_page": 40,
+              "printed_page": 39,
+              "role": "reading_passage",
+              "text": "Nevertheless, in many cases REM sleep does seem to have benefits. Growing evidence\nfrom birds and mammals suggests that REM sleep and dreaming are important for\nforming memories and learning. Its believed that when events are replayed in dreams,\nthis helps to integrate memories into longer-term storage. As soon as animals evolved\nmoderately complex lifestyles, they would have needed to dream in order to manage\nthese lifestyles.\nHowever, we still don’t understand how this outward behaviour relates to internal\nexperience. It seems impossible to know what its like to be a rat or a pigeon, let\nalone imagine their dreamscapes. We are quick to interpret the twitching limbs and\nquiet barks of sleeping dogs, but the truth is that we don’t know if there is an internal\n‘experience of chasing rabbits that comes along with that.\nAnother non-human dreamer offers insight here. In 2019, while making a documentary,\nDavid Scheel of Alaska Pacific University in the USA housed an octopus named Heidi\nin a tank in his living room. At one point, in the middle of the night, Heidi seemed to\ndream: her limbs and head moved, and her skin rapidly changed colour, as though she\nwas pursuing a crab.\nSimilarly, a report recently emerged of a sleeping octopus apparently having a\nnightmare. Costello, as the octopus was called, thrashed around, extended his mantle\nas if trying to make himself look bigger, and squirted ink as though he were being\nattacked by a predator. The nightmare study is intriguing, says Scheel, but is only\nbased on one animal. He argues that as well as outward behaviour, brain imaging is\nneeded to show that the octopuses are replaying sequences of activities from their\nwaking lives in dreams,\nThe trouble is that we will never be able to experience any animal's dreams. That goes\nfor other humans’ dreams too. But we can try to imagine what these dreamscapes are\nlike by meeting animals on their own terms. For example, vision is the dominant sense\nfor many humans, and so our dreams are heavily visual too. Dogs primarily navigate the\nworld using smell while spiders rely much more on vibrations.\nItis likely that dreaming has served multiple purposes since the first complex animals\n‘evolved. And if this is the case, itis possible that better understanding of these\nPurposes might shed light on the true purpose of our own dreams.",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Nevertheless, in many cases REM sleep does seem to have benefits. Growing evidence from birds and mammals suggests that REM sleep and dreaming are important for forming memories and learning. Its believed that when events are replayed in dreams, this helps to integrate memories into longer-term storage. As soon as animals evolved moderately complex lifestyles, they would have needed to dream in order to manage these lifestyles. However, we still don’t understand how this outward behaviour relates to internal experience. It seems impossible to know what its like to be a rat or a pigeon, let alone imagine their dreamscapes. We are quick to interpret the twitching limbs and quiet barks of sleeping dogs, but the truth is that we don’t know if there is an internal ‘experience of chasing rabbits that comes along with that. Another non-human dreamer offers insight here. In 2019, while making a documentary, David Scheel of Alaska Pacific University in the USA housed an octopus named Heidi in a tank in his living room. At one point, in the middle of the night, Heidi seemed to dream: her limbs and head moved, and her skin rapidly changed colour, as though she was pursuing a crab. Similarly, a report recently emerged of a sleeping octopus apparently having a nightmare. Costello, as the octopus was called, thrashed around, extended his mantle as if trying to make himself look bigger, and squirted ink as though he were being attacked by a predator. The nightmare study is intriguing, says Scheel, but is only based on one animal. He argues that as well as outward behaviour, brain imaging is needed to show that the octopuses are replaying sequences of activities from their waking lives in dreams, The trouble is that we will never be able to experience any animal's dreams. That goes for other humans’ dreams too. But we can try to imagine what these dreamscapes are like by meeting animals on their own terms. For example, vision is the dominant sense for many humans, and so our dreams are heavily visual too. Dogs primarily navigate the world using smell while spiders rely much more on vibrations. Itis likely that dreaming has served multiple purposes since the first complex animals ‘evolved. And if this is the case, itis possible that better understanding of these Purposes might shed light on the true purpose of our own dreams."
+                }
+              ],
+              "visual_fallback": false
+            }
+          ],
+          "question_groups": [
+            {
+              "id": "qgroup-1-5",
+              "question_range": [
+                1,
+                5
+              ],
+              "question_type": "table_completion",
+              "source_pages": [
+                41
+              ],
+              "raw_text": "Questions 1-5\nComplete the table below.\nChoose ONE WORD ONLY from the passage for each answer.\nWrite your answers in boxes 1-5 on your answer sheet.\nResearch into sleep and dreaming\n‘+ humans experience REM sleep\nand non-REM sleep\n* in REM sleep, the eyes and\nmuscles move\n‘© similar brain patterns were indicative of dreaming\nobserved when active and\nsleeping\nPigeons * when sleeping, pigeons displayed | may have been dreaming\nactivity in parts of the brain that | of flying\ndeal with 2 ............ input\n‘Whales and * still have 3 ...... their brain their dreams are\ndolphins awake when they sleep probably not very\n* don’t experience REM sleep, as | 5” 7\nthis could affect their sensitivity\n20 coevesseseee",
+              "questions": [
+                {
+                  "number": 1,
+                  "source_pages": [
+                    41
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 2,
+                  "source_pages": [
+                    41
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 3,
+                  "source_pages": [
+                    41
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 4,
+                  "source_pages": [
+                    41
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 5,
+                  "source_pages": [
+                    41
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-6-13",
+              "question_range": [
+                6,
+                13
+              ],
+              "question_type": "true_false_not_given",
+              "source_pages": [
+                42
+              ],
+              "raw_text": "Questions 6-13\nDo the following statements agree with the information given in Reading Passage 1?\nIn boxes 6-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information\n\nFALSE if the statement contradicts the information\n\nNOT GIVEN _ if there is no information on this\n6 Dreaming about past experiences helps us to create lasting memories of them.\n7 _ Itis now possible to tell what type of dream a dog is having,\n8 David Scheel’s documentary was influential on other research into the sleeping\n\npatterns of octopuses.\n9 — While it was asleep, the octopus called Costello reacted as if it was hunting,\n10 Scheel believes more research into octopuses’ dreams should be carried out.\n11. We may soon be able to share the dreams of other human beings.\n12 Hearing may be an important part of the dreams of some animals.\n13. Interest in the reasons why humans dream has increased greatly in recent times.\n> a",
+              "questions": [
+                {
+                  "number": 6,
+                  "source_pages": [
+                    42
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 7,
+                  "source_pages": [
+                    42
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 8,
+                  "source_pages": [
+                    42
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 9,
+                  "source_pages": [
+                    42
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 10,
+                  "source_pages": [
+                    42
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 11,
+                  "source_pages": [
+                    42
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 12,
+                  "source_pages": [
+                    42
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 13,
+                  "source_pages": [
+                    42
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "reading-passage-2",
+          "type": "passage",
+          "number": 2,
+          "title": "Mapungubwe",
+          "source_pages": [
+            43,
+            44
+          ],
+          "body_pages": [
+            {
+              "pdf_page": 43,
+              "printed_page": 42,
+              "role": "reading_passage",
+              "text": "READING PASSAGE 2\n\nYou should spend about 20 minutes on Questions 14-26, which are based on Reading\n\nPassage 2 below.\n\nMapungubwe\nLocated in southern Africa just below the Limpopo River, the kingdom of\nMapungubwe, flourished between the 11th and 13th century CE\n\n‘A Mapungubwe, which was one of the first states in southern Africa, was formed\nby Bantu-speaking peoples who were farmers. The area controlled by the rulers\n‘of Mapungubwe had at its heart a large sandstone plateau, which was easily\ndefended due to its inaccessibility. As with other kingdoms in the region of\nsouthern Africa, cattle herding and other types of farming brought plenty of\nfood and a surplus that could be traded for needed goods. Archaeology has\nrevealed extensive layers of bones and manure, which indicate that from the\n‘9th century CE there were large cattle herds, the traditional source of political\npower in southern African communities. The archaeological record for the 10th\ncentury shows a marked increase in the number of domesticated cattle in the\narea as well as cotton cultivation and weaving, as indicated by abundant finds of\nspindle whorls.\n\nB The total population of Mapungubwe at its peak in the mid-13th century\nwas around 5,000 people. The chief or king of Mapungubwe was likely the\nwealthiest individual in the society, and would have owned more cattle and\nprecious materials than anyone else. The king and his advisers dwelt in a\nstone enclosure composed of stone walls and housing built on the highest level\n‘of the community's territory, a natural sandstone hill which is some 30 metres\nhigh and 100 metres in length. Occupation on the hill dates from the 11th century\nand the entire complex was surrounded by a wooden palisade*, as indicated by\npostholes made in the rock. The rest of the community lived in mud and thatch\nhousing spread out below the hill, although there is one stone structure here.\nThis settlement, known as Babandyanalo, covers around 5 hectares (12.3 acres)\nand predates the hilltop structures.\n\nThe kings of Mapungubwe were buried at the top of the hill site in a demarcated\narea away from the dwellings, while other members of the community were\nburied at the surrounding valley level. A wooden staircase connected the\ntwo levels, the sockets for the steps being clearly visible in the sandstone cliff\nface. There were some grander residences dotted around the outskirts of\nBabandyanalo, and these probably belonged to male relatives of the king. There\nare many other smaller but still impressive sites across the Mapungubwe plateau,\n\n{tnd cay vow ody pled igh vere wooden rion pons ad ea fence",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "READING PASSAGE 2"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "You should spend about 20 minutes on Questions 14-26, which are based on Reading"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Passage 2 below."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Mapungubwe Located in southern Africa just below the Limpopo River, the kingdom of Mapungubwe, flourished between the 11th and 13th century CE"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "‘A Mapungubwe, which was one of the first states in southern Africa, was formed by Bantu-speaking peoples who were farmers. The area controlled by the rulers ‘of Mapungubwe had at its heart a large sandstone plateau, which was easily defended due to its inaccessibility. As with other kingdoms in the region of southern Africa, cattle herding and other types of farming brought plenty of food and a surplus that could be traded for needed goods. Archaeology has revealed extensive layers of bones and manure, which indicate that from the ‘9th century CE there were large cattle herds, the traditional source of political power in southern African communities. The archaeological record for the 10th century shows a marked increase in the number of domesticated cattle in the area as well as cotton cultivation and weaving, as indicated by abundant finds of spindle whorls."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "B The total population of Mapungubwe at its peak in the mid-13th century was around 5,000 people. The chief or king of Mapungubwe was likely the wealthiest individual in the society, and would have owned more cattle and precious materials than anyone else. The king and his advisers dwelt in a stone enclosure composed of stone walls and housing built on the highest level ‘of the community's territory, a natural sandstone hill which is some 30 metres high and 100 metres in length. Occupation on the hill dates from the 11th century and the entire complex was surrounded by a wooden palisade*, as indicated by postholes made in the rock. The rest of the community lived in mud and thatch housing spread out below the hill, although there is one stone structure here. This settlement, known as Babandyanalo, covers around 5 hectares (12.3 acres) and predates the hilltop structures."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The kings of Mapungubwe were buried at the top of the hill site in a demarcated area away from the dwellings, while other members of the community were buried at the surrounding valley level. A wooden staircase connected the two levels, the sockets for the steps being clearly visible in the sandstone cliff face. There were some grander residences dotted around the outskirts of Babandyanalo, and these probably belonged to male relatives of the king. There are many other smaller but still impressive sites across the Mapungubwe plateau,"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "{tnd cay vow ody pled igh vere wooden rion pons ad ea fence"
+                }
+              ],
+              "visual_fallback": false
+            },
+            {
+              "pdf_page": 44,
+              "printed_page": 43,
+              "role": "reading_passage",
+              "text": "which are located anywhere from 15 to 100 kilometres from the major hill site.\nContaining stone residences and walls, they likely belonged to local chiefs who\nacted as servants to the king\n\nD__ The Mapungubwe plateau has a very high number of carnivore animal remains\nand ivory splinters, suggesting that the skins of these large animals and ivory\nelephant tusks were accumulated, probably for trade with coastal areas reached\nby the Limpopo River. The presence of glass beads, almost certainly from India,\nindicate there was trade of some sort with other states on the coast who, in turn,\ntraded with merchants travelling from India by sea. Mapungubwe also benefitted\nfrom locally-sourced copper and the gold trade as it passed from the kingdom of\nGreat Zimbabwe (12-15th century), situated to the north of Mapungubwe, to the\ncoastal city of Kosala. Its likely that trade links led to a strengthening of political\nauthority in order to control and even monopolise these lucrative interregional\nconnections.\n\nE Archaeological discoveries reveal that pottery was produced on a scale large\nenough to suggest the presence of professional potters, and is another indicator\nof the prosperity of Mapungubwe society. Archaeological finds include spherical\nvessels with short necks, beakers, and bowls, many of which have decorative\nstamps. There are also ceramic discs, and whistles. In addition, cattle, sheep,\nand goat figurines, and small figures of highly stylised humans with elongated\nbodies and short limbs have been found. The figures may have been used in\nceremonies as offerings to ancestors, but their precise function is not known.\n‘Other discoveries include small jewellery items made from locally sourced copper.\n\nF Beautifully decorated artefacts made of gold have also been found at\nMapungubwe. A type of decoration, found nowhere else except Great Zimbabwe,\ninvolved the crafting of gold into small rectangular sheets and carving geometrical\npatterns into it. These sheets were then used to cover wooden objects (which\nhave not survived) using small tacks, also made of gold. One such object that\nhas been discovered may have been a sceptre, while additional evidence of local\n<gold-working is a rhinoceros figurine made from small hammered sheets, and\nthousands of small gold beads. These objects were all found at the royal burial\nsite and date to c. 1150. They are the first known indicators that gold had an\nintrinsic value of its own (as opposed to that of a currency) in southern Africa\n\nG The kingdom of Mapungubwe was already in decline by the late 13th century,\nprobably because overpopulation placed too much stress on local resources, a\nsituation that may have been brought to a crisis point by a series of droughts.\nTrade routes may also have shifted northwards. Certainly, the areas that now\nprospered were to the north, such as Great Zimbabwe.",
+              "blocks": [
+                {
+                  "type": "instruction",
+                  "text": "which are located anywhere from 15 to 100 kilometres from the major hill site. Containing stone residences and walls, they likely belonged to local chiefs who acted as servants to the king"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "D__ The Mapungubwe plateau has a very high number of carnivore animal remains and ivory splinters, suggesting that the skins of these large animals and ivory elephant tusks were accumulated, probably for trade with coastal areas reached by the Limpopo River. The presence of glass beads, almost certainly from India, indicate there was trade of some sort with other states on the coast who, in turn, traded with merchants travelling from India by sea. Mapungubwe also benefitted from locally-sourced copper and the gold trade as it passed from the kingdom of Great Zimbabwe (12-15th century), situated to the north of Mapungubwe, to the coastal city of Kosala. Its likely that trade links led to a strengthening of political authority in order to control and even monopolise these lucrative interregional connections."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "E Archaeological discoveries reveal that pottery was produced on a scale large enough to suggest the presence of professional potters, and is another indicator of the prosperity of Mapungubwe society. Archaeological finds include spherical vessels with short necks, beakers, and bowls, many of which have decorative stamps. There are also ceramic discs, and whistles. In addition, cattle, sheep, and goat figurines, and small figures of highly stylised humans with elongated bodies and short limbs have been found. The figures may have been used in ceremonies as offerings to ancestors, but their precise function is not known. ‘Other discoveries include small jewellery items made from locally sourced copper."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "F Beautifully decorated artefacts made of gold have also been found at Mapungubwe. A type of decoration, found nowhere else except Great Zimbabwe, involved the crafting of gold into small rectangular sheets and carving geometrical patterns into it. These sheets were then used to cover wooden objects (which have not survived) using small tacks, also made of gold. One such object that has been discovered may have been a sceptre, while additional evidence of local <gold-working is a rhinoceros figurine made from small hammered sheets, and thousands of small gold beads. These objects were all found at the royal burial site and date to c. 1150. They are the first known indicators that gold had an intrinsic value of its own (as opposed to that of a currency) in southern Africa"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "G The kingdom of Mapungubwe was already in decline by the late 13th century, probably because overpopulation placed too much stress on local resources, a situation that may have been brought to a crisis point by a series of droughts. Trade routes may also have shifted northwards. Certainly, the areas that now prospered were to the north, such as Great Zimbabwe."
+                }
+              ],
+              "visual_fallback": false
+            }
+          ],
+          "question_groups": [
+            {
+              "id": "qgroup-14-19",
+              "question_range": [
+                14,
+                19
+              ],
+              "question_type": "paragraph_matching",
+              "source_pages": [
+                45
+              ],
+              "raw_text": "Questions 14-19\n\nReading Passage 2 has seven paragraphs, A-G.\n\nWhich paragraph contains the following information?\n\nWrite the correct letter, A-G, in boxes 14-19 on your answer sheet.\n\n14 a mention of the uncertainty regarding the purpose of certain objects\n\n15 the likelihood that a climatic factor increased the problems Mapungubwe faced\n\n16 a mention of the location where members of the king's family are thought to\nhave lived\n\n17. areference to people who brought goods by ship\n\n18 an estimate of the size to which the Mapungubwe community grew\n\n19 amention of agricultural produce being exchanged for other items\n\nQuestions 20 and 21\n\nChoose TWO letters, A-E.\n\nWrite the correct letters in boxes 20 and 21 on your answer sheet.\n\nThe archaeological record reveals information about gold and the kingdom of\n\nMapungubwe. Which TWO pieces of information are mentioned by the writer?\n\n‘A Not everyone in Mapungubwe used gold as a form of payment.\n\nB__ Items of gold were placed close to where Mapungubwe kings were buried.\n\nThe most valuable item discovered in Mapungubwe was a sceptre made of gold.\n\nD The way god was decorate in Mapungubwe wes alo practised in another\n\n’ingdom.\nE Working with gold was a respected occupation in the Mapungubwe community",
+              "questions": [
+                {
+                  "number": 14,
+                  "source_pages": [
+                    45
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 15,
+                  "source_pages": [
+                    45
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 16,
+                  "source_pages": [
+                    45
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 17,
+                  "source_pages": [
+                    45
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 18,
+                  "source_pages": [
+                    45
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 19,
+                  "source_pages": [
+                    45
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-20-21",
+              "question_range": [
+                20,
+                21
+              ],
+              "question_type": "multiple_choice_multiple",
+              "source_pages": [
+                45
+              ],
+              "raw_text": "Questions 14-19\n\nReading Passage 2 has seven paragraphs, A-G.\n\nWhich paragraph contains the following information?\n\nWrite the correct letter, A-G, in boxes 14-19 on your answer sheet.\n\n14 a mention of the uncertainty regarding the purpose of certain objects\n\n15 the likelihood that a climatic factor increased the problems Mapungubwe faced\n\n16 a mention of the location where members of the king's family are thought to\nhave lived\n\n17. areference to people who brought goods by ship\n\n18 an estimate of the size to which the Mapungubwe community grew\n\n19 amention of agricultural produce being exchanged for other items\n\nQuestions 20 and 21\n\nChoose TWO letters, A-E.\n\nWrite the correct letters in boxes 20 and 21 on your answer sheet.\n\nThe archaeological record reveals information about gold and the kingdom of\n\nMapungubwe. Which TWO pieces of information are mentioned by the writer?\n\n‘A Not everyone in Mapungubwe used gold as a form of payment.\n\nB__ Items of gold were placed close to where Mapungubwe kings were buried.\n\nThe most valuable item discovered in Mapungubwe was a sceptre made of gold.\n\nD The way god was decorate in Mapungubwe wes alo practised in another\n\n’ingdom.\nE Working with gold was a respected occupation in the Mapungubwe community",
+              "questions": [
+                {
+                  "number": 20,
+                  "source_pages": [
+                    45
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 21,
+                  "source_pages": [
+                    45
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-22-26",
+              "question_range": [
+                22,
+                26
+              ],
+              "question_type": "summary_completion",
+              "source_pages": [
+                46
+              ],
+              "raw_text": "Questions 22-26\nComplete the summary below.\n‘Choose ONE WORD ONLY from the passage for each answer.\nWrite your answers in boxes 22-26 on your answer sheet.\nArchaeological discoveries\n‘The Mapungubwe community's 22 is indicated by the amount of\nprofessionally made pottery discovered at the site. Many of these objects, such as\nbeakers and bowls, are highly decorated and have been marked with stamps. Other\nfinds include round ceramic objects, 23 oren-ennnermmmnw and figures of various\nanimals, as well as models of people with stretched 24 _ « itis possible\nthat these had a role in ceremonies to honoUt 25 surmnmnmnmnnnnee «IN addition, pieces\nOf 26 -nnnnnnnmnnnnnne Made from a local metal have been found at the site.\n> 45",
+              "questions": [
+                {
+                  "number": 22,
+                  "source_pages": [
+                    46
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 23,
+                  "source_pages": [
+                    46
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 24,
+                  "source_pages": [
+                    46
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 25,
+                  "source_pages": [
+                    46
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 26,
+                  "source_pages": [
+                    46
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "reading-passage-3",
+          "type": "passage",
+          "number": 3,
+          "title": "Artificial Intelligence",
+          "source_pages": [
+            47,
+            48
+          ],
+          "body_pages": [
+            {
+              "pdf_page": 47,
+              "printed_page": 46,
+              "role": "reading_passage",
+              "text": "READING PASSAGE 3\nYou should spend about 20 minutes on Questions 27-40, which are based on Reading\nPassage 3 below.\nArtificial Intelligence\n\nIn many countries in the West, hysteria the transformative effects of the coming\nabout the future of artificial intelligence (AI) ‘AI revolution’, they fail to realise the\nis everywhere. There seems to be no shortage complexity around deploying advanced\nof sensationalist news about how AI could machine learning systems in the real world.\ncure diseases, accelerate human innovation\nand improve human creativity. Just looking One of the most promising varieties of AI\nat the media headlines, you might think that technologies are neural networks. This form\nwe are already living in a future where AI of machine learning is loosely modelled on\nhas infiltrated every aspect of society. the neuronal structure of the human brain,\n\nbut on a much smaller scale, But what many\nWhile it is undeniable that AI has opened up _ politicians do not understand is that simply\n‘a wealth of promising opportunities, it has adding a neural network to a problem will\nalso led to the emergence of a mindset that ‘not automatically mean that you'll find a\ncan be best described as ‘Al solutionism’. solution. Similarly, adding a neural network\nThis is the philosophy that, given enough toa system of government does not mean it\ndata, machine learning algorithms can will be instantaneously more inclusive or fair.\nsolve all of humanity's problems. But, in\nfact, instead of supporting AI progress, Al systems need a lot of data to function,\nthis mindset actually jeopardises the value but the public sector typically does not\n‘of machine intelligence by disregarding have the appropriate data infrastructure to\nimportant AI safety principles and setting _ support advanced machine learning. Most\nunrealistic expectations about what AI can of the data remains stored in offline archives.\nreally do for humanity. The few digitised sources of data that exist\n\ntend to be buried in bureaucracy. More often\nIn only a few years, AI solutionism has made _ than not, data is spread across different\nits way from the technology evangelists’ government departments that each require\nmouths in Silicon Valley in California to special permissions to be accessed. Above\nthe minds of government officials and all, the public sector typically lacks the\npolicymakers around the world. The human talent with the right technological\npendulum has swung from the dystopian ‘capabilities to fully reap the benefits of\nnotion that AI will destroy humanity to the machine intelligence.\nutopian belie that our algorithmic saviour\nis here, For these reasons, the sensationalism\n\nover AT has attracted many critics. Stuart\n‘We are now seeing governments pledge Russell, a professor of computer science\nsupport to national AI initiatives and at the University of California, Berkeley,\n‘compete in a technological race to has long advocated a more sensible and.\ndominate the burgeoning machine-learning realistic approach that focuses on simple\nsector. While many politicians proclaim everyday applications of Al instead of the",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "READING PASSAGE 3"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "You should spend about 20 minutes on Questions 27-40, which are based on Reading Passage 3 below. Artificial Intelligence"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In many countries in the West, hysteria the transformative effects of the coming about the future of artificial intelligence (AI) ‘AI revolution’, they fail to realise the is everywhere. There seems to be no shortage complexity around deploying advanced of sensationalist news about how AI could machine learning systems in the real world. cure diseases, accelerate human innovation and improve human creativity. Just looking One of the most promising varieties of AI at the media headlines, you might think that technologies are neural networks. This form we are already living in a future where AI of machine learning is loosely modelled on has infiltrated every aspect of society. the neuronal structure of the human brain,"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "but on a much smaller scale, But what many While it is undeniable that AI has opened up _ politicians do not understand is that simply ‘a wealth of promising opportunities, it has adding a neural network to a problem will also led to the emergence of a mindset that ‘not automatically mean that you'll find a can be best described as ‘Al solutionism’. solution. Similarly, adding a neural network This is the philosophy that, given enough toa system of government does not mean it data, machine learning algorithms can will be instantaneously more inclusive or fair. solve all of humanity's problems. But, in fact, instead of supporting AI progress, Al systems need a lot of data to function, this mindset actually jeopardises the value but the public sector typically does not ‘of machine intelligence by disregarding have the appropriate data infrastructure to important AI safety principles and setting _ support advanced machine learning. Most unrealistic expectations about what AI can of the data remains stored in offline archives. really do for humanity. The few digitised sources of data that exist"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "tend to be buried in bureaucracy. More often In only a few years, AI solutionism has made _ than not, data is spread across different its way from the technology evangelists’ government departments that each require mouths in Silicon Valley in California to special permissions to be accessed. Above the minds of government officials and all, the public sector typically lacks the policymakers around the world. The human talent with the right technological pendulum has swung from the dystopian ‘capabilities to fully reap the benefits of notion that AI will destroy humanity to the machine intelligence. utopian belie that our algorithmic saviour is here, For these reasons, the sensationalism"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "over AT has attracted many critics. Stuart ‘We are now seeing governments pledge Russell, a professor of computer science support to national AI initiatives and at the University of California, Berkeley, ‘compete in a technological race to has long advocated a more sensible and. dominate the burgeoning machine-learning realistic approach that focuses on simple sector. While many politicians proclaim everyday applications of Al instead of the"
+                }
+              ],
+              "visual_fallback": false
+            },
+            {
+              "pdf_page": 48,
+              "printed_page": 47,
+              "role": "reading_passage",
+              "text": "hypothetical takeover by super-intelligent The medical profession has also recognised\nrobots. Similarly, Rodney Brooks, professor the drawbacks to AI. The IBM Watson for\nof robotics at Massachusetts Institute Oncology programme was a piece of AI that\nof Technology, writes that ‘almost all ‘was meant to help doctors treat cancer, Even\ninnovations in robotics and AI take far, far, though it was developed to deliver the best\nlonger to be really widely deployed than recommendations, human experts found\npeople in the field and outside the field it hard to trust the machine, As a result,\nimagine’ the AI programme was abandoned in most\n\nhospitals where it was trialled.\n‘One of the many difficulties in deploying\nmachine learning systems is that AI is ‘Similar difficulties arose in the legal domain\nextremely susceptible to adversarial attacks. when algorithms were used in courts in the\nThis means that a malicious Al can target. _US to sentence criminals. An algorithm\nanother AI to make it behave in acertain calculated risk assessment scores and\n‘way, such as forcing it to make wrong advised judges on the sentencing. The system\npredictions. Many researchers have warned __was found to amplify structural racial\n‘against the rolling out of AI without discrimination and was later abandoned.\nappropriate security standards and defence\nmechanisms Still, AI security remains ‘There are some crucial lessons here for\nan often overlooked topic when machine _everyone aiming to boost investments in\nlearning systems are installed. national AI programmes. These examples\n\ndemonstrate that there is no AI solution\nIf weare to reap the benefits and minimise for everything. Using AI simply for the\nthe potential harms of AI, we must start __sake of AI may not always be productive or\nthinking about how machine learning can _useful, and not every issue is best addressed\nbbe meaningfully applied to specific areas. _by applying machine intelligence to it.\nof government, business and society. This __ All solutions come with a cost and not\n‘means we need to have a discussion about AT everything that can be automated should be.\n‘ethics and the distrust that many people have\ntowards machine learning,\nMost importantly, we need to be aware of\nthe limitations of Al and where people still\nneed to take the lead. Instead of painting an\nunrealistic picture of the power of A, itis\nimportant to take a step back and separate\nthe actual technological capabilities of Al\nfrom fantasy.\n\na7",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "hypothetical takeover by super-intelligent The medical profession has also recognised robots. Similarly, Rodney Brooks, professor the drawbacks to AI. The IBM Watson for of robotics at Massachusetts Institute Oncology programme was a piece of AI that of Technology, writes that ‘almost all ‘was meant to help doctors treat cancer, Even innovations in robotics and AI take far, far, though it was developed to deliver the best longer to be really widely deployed than recommendations, human experts found people in the field and outside the field it hard to trust the machine, As a result, imagine’ the AI programme was abandoned in most"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "hospitals where it was trialled. ‘One of the many difficulties in deploying machine learning systems is that AI is ‘Similar difficulties arose in the legal domain extremely susceptible to adversarial attacks. when algorithms were used in courts in the This means that a malicious Al can target. _US to sentence criminals. An algorithm another AI to make it behave in acertain calculated risk assessment scores and ‘way, such as forcing it to make wrong advised judges on the sentencing. The system predictions. Many researchers have warned __was found to amplify structural racial ‘against the rolling out of AI without discrimination and was later abandoned. appropriate security standards and defence mechanisms Still, AI security remains ‘There are some crucial lessons here for an often overlooked topic when machine _everyone aiming to boost investments in learning systems are installed. national AI programmes. These examples"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "demonstrate that there is no AI solution If weare to reap the benefits and minimise for everything. Using AI simply for the the potential harms of AI, we must start __sake of AI may not always be productive or thinking about how machine learning can _useful, and not every issue is best addressed bbe meaningfully applied to specific areas. _by applying machine intelligence to it. of government, business and society. This __ All solutions come with a cost and not ‘means we need to have a discussion about AT everything that can be automated should be. ‘ethics and the distrust that many people have towards machine learning, Most importantly, we need to be aware of the limitations of Al and where people still need to take the lead. Instead of painting an unrealistic picture of the power of A, itis important to take a step back and separate the actual technological capabilities of Al from fantasy."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "a7"
+                }
+              ],
+              "visual_fallback": false
+            }
+          ],
+          "question_groups": [
+            {
+              "id": "qgroup-27-29",
+              "question_range": [
+                27,
+                29
+              ],
+              "question_type": "multiple_choice",
+              "source_pages": [
+                49
+              ],
+              "raw_text": "Questions 27-29\nChoose the correct letter, A, B, C or D.\nWrite the correct letter in boxes 27-29 on your answer sheet.\n27 What is the writer doing in the first paragraph?\nA predicting the future impact of Al\nB_ describing a public perception of Al\nC outlining some possible benefits of Al\nD__ highlighting the breadth of the influence of Al\n28 When discussing Al solutionism in the second paragraph, the writer\nA points out a risk involved.\nB specifies its probable origins.\nC__ mentions its chief supporters.\nD__ weighs up some pros and cons.\n29. In the fourth paragraph, the writer suggests that many politicians may\nA have failed to appreciate the true potential of Al initiatives.\nB__ have misunderstood the function of the machine-learning sector.\nC__ be unaware of the challenges of implementing national Al initiatives.\nD__be too keen to enter the race to dominate the machine-learning sector.",
+              "questions": [
+                {
+                  "number": 27,
+                  "source_pages": [
+                    49
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 28,
+                  "source_pages": [
+                    49
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 29,
+                  "source_pages": [
+                    49
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-30-35",
+              "question_range": [
+                30,
+                35
+              ],
+              "question_type": "summary_completion",
+              "source_pages": [
+                50
+              ],
+              "raw_text": "Questions 30-35\nComplete the summary using the list of words, A-l, below.\nWrite the correct letter, Al, in boxes 30-35 on your answer sheet.\nAl in government, medicine and the law\nNeural networks are a promising area of Al technology for governments. However,\nmany politicians overestimate their capabilities, believing that the mere addition of a\nneural network will produce solutions and promote 30 wwmwnwnnnn»\nMost public sector organisations have not set up the necessary 31 n-m-m-\nto manage the huge amount of data required to enable Al to function. Complex\nbureaucracy is another issue, as each person involved needs 32 rvmnmnnnnn tO\naccess the relevant data, which is often spread across different departments. But the\nmain problem is that few public sector employees have the 33 to take\nfull advantage of machine intelligence.\n‘The medical profession experimented with an Al programme, but their experts had\nTitle faith in it 34 .eonmmnmnnen , and the programme was abandoned. US courts also\nabandoned the use of algorithms when it was found that these reflected and magnified\nthe existing 35 oon within the legal profession.\nA reliability B funding © skills\nD prejudices E_ computers F equality\nG framework confidentiality 1 approval",
+              "questions": [
+                {
+                  "number": 30,
+                  "source_pages": [
+                    50
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 31,
+                  "source_pages": [
+                    50
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 32,
+                  "source_pages": [
+                    50
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 33,
+                  "source_pages": [
+                    50
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 34,
+                  "source_pages": [
+                    50
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 35,
+                  "source_pages": [
+                    50
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-36-39",
+              "question_range": [
+                36,
+                39
+              ],
+              "question_type": "yes_no_not_given",
+              "source_pages": [
+                51
+              ],
+              "raw_text": "Questions 36-39\nDo the following statements agree with the claims of the writer in Reading Passage 3?\nIn boxes 36-39 on your answer sheet, write\nYes if the statement agrees with the claims of the writer\n‘NO if the statement contradicts the claims of the writer\nNOT GIVEN fit is impossible to say what the writer thinks about this\n36 Stuart Russell's proposals regarding the use of Al are impractical.\n37 Rodney Brooks’ view has attracted unfair criticism from supporters of Al.\n38 Nowadays, the need to protect Al systems is always taken into account when they\nare set up,\n39 Inorder to benefit from Al and minimise the harms, we have to explore people’s\nconcerns about its use.\n‘Question 40\nChoose the correct letter, A, B, C or D.\nWrite the correct letter in box 40 on your answer sheet.\n40 What would be a suitable subtitle for Reading Passage 3?\n‘A How to make the most of what Al has to offer\nB Why Al may not be the answer to our problems\nWhy governments should not invest in Al systems\nD__ How Al could improve the efficiency of the public sector",
+              "questions": [
+                {
+                  "number": 36,
+                  "source_pages": [
+                    51
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 37,
+                  "source_pages": [
+                    51
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 38,
+                  "source_pages": [
+                    51
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                },
+                {
+                  "number": 39,
+                  "source_pages": [
+                    51
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            },
+            {
+              "id": "qgroup-40-40",
+              "question_range": [
+                40,
+                40
+              ],
+              "question_type": "multiple_choice",
+              "source_pages": [
+                51
+              ],
+              "raw_text": "",
+              "questions": [
+                {
+                  "number": 40,
+                  "source_pages": [
+                    51
+                  ],
+                  "text_status": "source_page_bound",
+                  "text": null
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "writing",
+      "type": "writing",
+      "title": "WRITING",
+      "tasks": [
+        {
+          "id": "writing-task-1",
+          "task_number": 1,
+          "source_pages": [
+            52
+          ],
+          "page": {
+            "pdf_page": 52,
+            "printed_page": 51,
+            "role": "writing_task",
+            "text": "WRITING TASK 1\nYou should spend about 20 minutes on this task.\nThe plans below show a college café before it was redesigned and how it\nlooks now.\nSummarise the information by selecting and reporting the main features, and\nmake comparisons where relevant.\nWrite at least 150 words.\nLr | —\n[rina Sn |\nSIS\n‘Tt nd cae &\n_\n|\ncee oo\nsaws",
+            "blocks": [
+              {
+                "type": "heading",
+                "text": "WRITING TASK 1"
+              },
+              {
+                "type": "paragraph",
+                "text": "You should spend about 20 minutes on this task. The plans below show a college café before it was redesigned and how it looks now. Summarise the information by selecting and reporting the main features, and make comparisons where relevant. Write at least 150 words. Lr | — [rina Sn | SIS ‘Tt nd cae & _ | cee oo saws"
+              }
+            ],
+            "visual_fallback": true
+          }
+        },
+        {
+          "id": "writing-task-2",
+          "task_number": 2,
+          "source_pages": [
+            53
+          ],
+          "page": {
+            "pdf_page": 53,
+            "printed_page": 52,
+            "role": "writing_task",
+            "text": "WRITING TASK 2\n\nYou should spend about 40 minutes on this task.\n\nWrite about the following topic:\n‘Some people say that in the digital age, theatres and cinemas are no longer\nimportant as people can watch all the entertainment they want online. Others\nargue that theatres and cinemas are still important both economically and\nculturally.\nDiscuss both these views and give your own opinion.\n\nGive reasons for your answer and include any relevant examples from your own\n\nknowledge or experience.\n\nWrite at least 250 words.",
+            "blocks": [
+              {
+                "type": "heading",
+                "text": "WRITING TASK 2"
+              },
+              {
+                "type": "paragraph",
+                "text": "You should spend about 40 minutes on this task."
+              },
+              {
+                "type": "instruction",
+                "text": "Write about the following topic: ‘Some people say that in the digital age, theatres and cinemas are no longer important as people can watch all the entertainment they want online. Others argue that theatres and cinemas are still important both economically and culturally. Discuss both these views and give your own opinion."
+              },
+              {
+                "type": "paragraph",
+                "text": "Give reasons for your answer and include any relevant examples from your own"
+              },
+              {
+                "type": "paragraph",
+                "text": "knowledge or experience."
+              },
+              {
+                "type": "instruction",
+                "text": "Write at least 250 words."
+              }
+            ],
+            "visual_fallback": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "speaking",
+      "type": "speaking",
+      "title": "SPEAKING",
+      "parts": [
+        {
+          "source_pages": [
+            54
+          ],
+          "pages": [
+            {
+              "pdf_page": 54,
+              "printed_page": 53,
+              "role": "speaking",
+              "text": "PART 1\nThe examiner asks you about yourself, your home, work or studies and other\nfamiliar topics.\nEXAMPLE\nCities\n+ How well do you know the capital city of your country?\n* Do you think cities are exciting places to live?\n* Why do some people dislike living in a city?\n* If you could visit any city in the world, where would you go?\nPART 2\nDescribe a time when you read or heard something |. wit have to talk\nthat you thought was not true. bebirlieatst ec\nYou should say: 2 minutes. You have\nwhere you read/heard this 1 minute to think about\nwhat you read/heard what you are going to\nwhy you thought it was not true say. You can make some\nand explain how you felt about reading/hearing notes to help you if\nthis thing that you thought was not true. x\nPART 3\nDiscussion topics:\nHonesty and children\nExample questions:\nDo you think children are more honest than adults?\nWhy do adults tell children it’s important to be honest?\nDo you think there are sometimes good reasons for adults not to tell children the truth?\nHonesty and advertising\nExample questions:\n‘Are there any claims in advertisements that are sometimes not true?\nWhy do people stil buy things even when they know advertisements aren't\ncompletely accurate?\nDo you think advertisements that are dishonest should be banned?",
+              "blocks": [
+                {
+                  "type": "heading",
+                  "text": "PART 1"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The examiner asks you about yourself, your home, work or studies and other familiar topics. EXAMPLE Cities + How well do you know the capital city of your country? * Do you think cities are exciting places to live? * Why do some people dislike living in a city? * If you could visit any city in the world, where would you go?"
+                },
+                {
+                  "type": "heading",
+                  "text": "PART 2"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Describe a time when you read or heard something |. wit have to talk that you thought was not true. bebirlieatst ec You should say: 2 minutes. You have where you read/heard this 1 minute to think about what you read/heard what you are going to why you thought it was not true say. You can make some and explain how you felt about reading/hearing notes to help you if this thing that you thought was not true. x"
+                },
+                {
+                  "type": "heading",
+                  "text": "PART 3"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Discussion topics: Honesty and children Example questions: Do you think children are more honest than adults? Why do adults tell children it’s important to be honest? Do you think there are sometimes good reasons for adults not to tell children the truth? Honesty and advertising Example questions: ‘Are there any claims in advertisements that are sometimes not true? Why do people stil buy things even when they know advertisements aren't completely accurate? Do you think advertisements that are dishonest should be banned?"
+                }
+              ],
+              "visual_fallback": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

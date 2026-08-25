@@ -1,0 +1,1169 @@
+{
+  "schema_version": 3,
+  "listening": {
+    "parts": [
+      {
+        "text": "SECTION 1 Questions 1-10\n\nQuestions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,\n\n2.\n(Behind the 3\nPhone number: 875934\nBest time to contact customer: during the 4 ....\n‘Where to park; opposite entrance next to the 5...\nNeeds full quote showing all the jobs and the 6 ...\n80 leltsresources.org\n\nQuestions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,\n\nQuestions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,\n\nQuestions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,\n\nQuestions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,\n\nQuestions 7-10\nComplete the table below.\nWrite ONE WORD ONLY for each answer.\nArea Work to be done Notes\nKitchen Replace the 7 ...... Fix tomorrow\nin the door\nPaint wall above Strip paint and plaster\n\nQuestions 7-10\nComplete the table below.\nWrite ONE WORD ONLY for each answer.\nArea Work to be done Notes\nKitchen Replace the 7 ...... Fix tomorrow\nin the door\nPaint wall above Strip paint and plaster\n\nQuestions 7-10\nComplete the table below.\nWrite ONE WORD ONLY for each answer.\nArea Work to be done Notes\nKitchen Replace the 7 ...... Fix tomorrow\nin the door\nPaint wall above Strip paint and plaster\n\nQuestions 7-10\nComplete the table below.\nWrite ONE WORD ONLY for each answer.\nArea Work to be done Notes\nKitchen Replace the 7 ...... Fix tomorrow\nin the door\nPaint wall above Strip paint and plaster",
+        "blocks": [
+          {
+            "type": "text",
+            "page": 81,
+            "text": "SECTION 1 Questions 1-10"
+          }
+        ],
+        "questions": [
+          {
+            "page": 81,
+            "question": 1,
+            "text": "Questions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,"
+          },
+          {
+            "page": 81,
+            "question": 2,
+            "text": "2.\n(Behind the 3\nPhone number: 875934\nBest time to contact customer: during the 4 ....\n‘Where to park; opposite entrance next to the 5...\nNeeds full quote showing all the jobs and the 6 ...\n80 leltsresources.org"
+          },
+          {
+            "page": 81,
+            "question": 3,
+            "text": "Questions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,"
+          },
+          {
+            "page": 81,
+            "question": 4,
+            "text": "Questions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,"
+          },
+          {
+            "page": 81,
+            "question": 5,
+            "text": "Questions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,"
+          },
+          {
+            "page": 81,
+            "question": 6,
+            "text": "Questions 1-6\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nTHORNDYKE’S BUILDERS\nExample\nCustomer heard about Thorndyke's from a.\nName: Edith 1.....\nAddress: Flat 4,"
+          },
+          {
+            "page": 82,
+            "question": 7,
+            "text": "Questions 7-10\nComplete the table below.\nWrite ONE WORD ONLY for each answer.\nArea Work to be done Notes\nKitchen Replace the 7 ...... Fix tomorrow\nin the door\nPaint wall above Strip paint and plaster"
+          },
+          {
+            "page": 82,
+            "question": 8,
+            "text": "Questions 7-10\nComplete the table below.\nWrite ONE WORD ONLY for each answer.\nArea Work to be done Notes\nKitchen Replace the 7 ...... Fix tomorrow\nin the door\nPaint wall above Strip paint and plaster"
+          },
+          {
+            "page": 82,
+            "question": 9,
+            "text": "Questions 7-10\nComplete the table below.\nWrite ONE WORD ONLY for each answer.\nArea Work to be done Notes\nKitchen Replace the 7 ...... Fix tomorrow\nin the door\nPaint wall above Strip paint and plaster"
+          },
+          {
+            "page": 82,
+            "question": 10,
+            "text": "Questions 7-10\nComplete the table below.\nWrite ONE WORD ONLY for each answer.\nArea Work to be done Notes\nKitchen Replace the 7 ...... Fix tomorrow\nin the door\nPaint wall above Strip paint and plaster"
+          }
+        ],
+        "question_range": [
+          1,
+          10
+        ],
+        "qa": {
+          "expected_count": 10,
+          "detected_count": 10,
+          "expected_questions": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "detected_questions": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "missing_questions": [],
+          "duplicate_questions": [],
+          "unexpected_questions": [],
+          "ordered": true,
+          "ok": true
+        }
+      },
+      {
+        "text": "SECTION 2 Questions 11-20\n\nQuestions 11-15\nChoose the correct letter, A, B or C.\n1\n\nQuestions 11-15\nChoose the correct letter, A, B or C.\n1\n\nQuestions 11-15\nChoose the correct letter, A, B or C.\n1\n\nQuestions 11-15\nChoose the correct letter, A, B or C.\n1\n\n15\n82\nMANHAM PORT\nWhy did a port originally develop at Manham?\nA__ Itwas safe from enemy attack.\nB It was convenient for river transport.\nC__ Ithad a good position on the sea coast.\nWhat caused Manham's sudden expansion during the Industrial Revolution?\nA __ the improvement in mining techniques\nB the increase in demand for metals\nC __ the discovery of tin in the area\nWhy did rocks have to be sent away from Manham to be processed?\nA __ shortage of fuel\nB poor transport systems\nC lack of skills among local people\nWhat happened when the port declined in the twentieth century?\nA The workers went away.\nB Traditional skills were lost.\nC Buildings were used for new purposes.\nWhat did the Manham Trust hope to do?\nA discover the location of the original port\nB provide jobs for the unemployed\nC rebuild the port complex\nleltsresources.org\n\n16 .. take visitors into and enclosed — unsuitable\nthe mountain for children and animals\nvillage school classrooms and a special aig\nexhibition of 18 .. recol\n‘The George’ the ship's wheel (was lost but children shouldn't use the\n(old sailing ship) has now been restored) 20...\nleltsresources.org BS\n\nQuestions 16-20\nComplete the table below.\nWrite NO MORE THAN TWO WORDS for each answer.\nTourist attractions in Manham\nPlace Features and activities Advice\ncopper mine specially adapted miners’ the mine is 17.\n\nQuestions 16-20\nComplete the table below.\nWrite NO MORE THAN TWO WORDS for each answer.\nTourist attractions in Manham\nPlace Features and activities Advice\ncopper mine specially adapted miners’ the mine is 17.\n\nQuestions 16-20\nComplete the table below.\nWrite NO MORE THAN TWO WORDS for each answer.\nTourist attractions in Manham\nPlace Features and activities Advice\ncopper mine specially adapted miners’ the mine is 17.\n\nQuestions 16-20\nComplete the table below.\nWrite NO MORE THAN TWO WORDS for each answer.\nTourist attractions in Manham\nPlace Features and activities Advice\ncopper mine specially adapted miners’ the mine is 17.",
+        "blocks": [
+          {
+            "type": "text",
+            "page": 83,
+            "text": "SECTION 2 Questions 11-20"
+          }
+        ],
+        "questions": [
+          {
+            "page": 83,
+            "question": 11,
+            "text": "Questions 11-15\nChoose the correct letter, A, B or C.\n1"
+          },
+          {
+            "page": 83,
+            "question": 12,
+            "text": "Questions 11-15\nChoose the correct letter, A, B or C.\n1"
+          },
+          {
+            "page": 83,
+            "question": 13,
+            "text": "Questions 11-15\nChoose the correct letter, A, B or C.\n1"
+          },
+          {
+            "page": 83,
+            "question": 14,
+            "text": "Questions 11-15\nChoose the correct letter, A, B or C.\n1"
+          },
+          {
+            "page": 83,
+            "question": 15,
+            "text": "15\n82\nMANHAM PORT\nWhy did a port originally develop at Manham?\nA__ Itwas safe from enemy attack.\nB It was convenient for river transport.\nC__ Ithad a good position on the sea coast.\nWhat caused Manham's sudden expansion during the Industrial Revolution?\nA __ the improvement in mining techniques\nB the increase in demand for metals\nC __ the discovery of tin in the area\nWhy did rocks have to be sent away from Manham to be processed?\nA __ shortage of fuel\nB poor transport systems\nC lack of skills among local people\nWhat happened when the port declined in the twentieth century?\nA The workers went away.\nB Traditional skills were lost.\nC Buildings were used for new purposes.\nWhat did the Manham Trust hope to do?\nA discover the location of the original port\nB provide jobs for the unemployed\nC rebuild the port complex\nleltsresources.org"
+          },
+          {
+            "page": 84,
+            "question": 16,
+            "text": "16 .. take visitors into and enclosed — unsuitable\nthe mountain for children and animals\nvillage school classrooms and a special aig\nexhibition of 18 .. recol\n‘The George’ the ship's wheel (was lost but children shouldn't use the\n(old sailing ship) has now been restored) 20...\nleltsresources.org BS"
+          },
+          {
+            "page": 84,
+            "question": 17,
+            "text": "Questions 16-20\nComplete the table below.\nWrite NO MORE THAN TWO WORDS for each answer.\nTourist attractions in Manham\nPlace Features and activities Advice\ncopper mine specially adapted miners’ the mine is 17."
+          },
+          {
+            "page": 84,
+            "question": 18,
+            "text": "Questions 16-20\nComplete the table below.\nWrite NO MORE THAN TWO WORDS for each answer.\nTourist attractions in Manham\nPlace Features and activities Advice\ncopper mine specially adapted miners’ the mine is 17."
+          },
+          {
+            "page": 84,
+            "question": 19,
+            "text": "Questions 16-20\nComplete the table below.\nWrite NO MORE THAN TWO WORDS for each answer.\nTourist attractions in Manham\nPlace Features and activities Advice\ncopper mine specially adapted miners’ the mine is 17."
+          },
+          {
+            "page": 84,
+            "question": 20,
+            "text": "Questions 16-20\nComplete the table below.\nWrite NO MORE THAN TWO WORDS for each answer.\nTourist attractions in Manham\nPlace Features and activities Advice\ncopper mine specially adapted miners’ the mine is 17."
+          }
+        ],
+        "question_range": [
+          11,
+          20
+        ],
+        "qa": {
+          "expected_count": 10,
+          "detected_count": 10,
+          "expected_questions": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "detected_questions": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "missing_questions": [],
+          "duplicate_questions": [],
+          "unexpected_questions": [],
+          "ordered": true,
+          "ok": true
+        }
+      },
+      {
+        "text": "SECTION 3 Questions 21-30\n\nQuestions 21 and 22\nChoose TWO letters, A-E.\nWhich TWO skills did Laura improve as a result of her work placement?\nA communication\nB_ design\nc oT\nD_ marketing\nE organisation\n\nQuestions 21 and 22\nChoose TWO letters, A-E.\nWhich TWO skills did Laura improve as a result of her work placement?\nA communication\nB_ design\nc oT\nD_ marketing\nE organisation\n\nQuestions 23 and 24\nChoose TWO letters, A-E.\nWhich TWO immediate benefits did the company get from Laura's work placement?\nupdates for its software\ncost savings\nan improved image\nnew clients\na growth in sales\nmoomp>\n84 leltsresources.org\n\nQuestions 23 and 24\nChoose TWO letters, A-E.\nWhich TWO immediate benefits did the company get from Laura's work placement?\nupdates for its software\ncost savings\nan improved image\nnew clients\na growth in sales\nmoomp>\n84 leltsresources.org\n\nQuestions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure\n\nQuestions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure\n\nQuestions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure\n\nQuestions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure\n\nQuestions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure\n\nQuestions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure",
+        "blocks": [
+          {
+            "type": "text",
+            "page": 85,
+            "text": "SECTION 3 Questions 21-30"
+          }
+        ],
+        "questions": [
+          {
+            "page": 85,
+            "question": 21,
+            "text": "Questions 21 and 22\nChoose TWO letters, A-E.\nWhich TWO skills did Laura improve as a result of her work placement?\nA communication\nB_ design\nc oT\nD_ marketing\nE organisation"
+          },
+          {
+            "page": 85,
+            "question": 22,
+            "text": "Questions 21 and 22\nChoose TWO letters, A-E.\nWhich TWO skills did Laura improve as a result of her work placement?\nA communication\nB_ design\nc oT\nD_ marketing\nE organisation"
+          },
+          {
+            "page": 85,
+            "question": 23,
+            "text": "Questions 23 and 24\nChoose TWO letters, A-E.\nWhich TWO immediate benefits did the company get from Laura's work placement?\nupdates for its software\ncost savings\nan improved image\nnew clients\na growth in sales\nmoomp>\n84 leltsresources.org"
+          },
+          {
+            "page": 85,
+            "question": 24,
+            "text": "Questions 23 and 24\nChoose TWO letters, A-E.\nWhich TWO immediate benefits did the company get from Laura's work placement?\nupdates for its software\ncost savings\nan improved image\nnew clients\na growth in sales\nmoomp>\n84 leltsresources.org"
+          },
+          {
+            "page": 86,
+            "question": 25,
+            "text": "Questions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure"
+          },
+          {
+            "page": 86,
+            "question": 26,
+            "text": "Questions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure"
+          },
+          {
+            "page": 86,
+            "question": 27,
+            "text": "Questions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure"
+          },
+          {
+            "page": 86,
+            "question": 28,
+            "text": "Questions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure"
+          },
+          {
+            "page": 86,
+            "question": 29,
+            "text": "Questions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure"
+          },
+          {
+            "page": 86,
+            "question": 30,
+            "text": "Questions 25-30\nWhat source of information should Tim use at each of the following stages of the work\nplacement?\nChoose SIX answers from the box and write the correct letter, A-G, next to questions\n25-30.\nSources of information\ncompany manager\ncompany’s personnel department\npersonal tutor\npsychology department\nmentor\nuniversity careers officer\ninternet\neo7™moow®wp\nStages of the work placement procedure"
+          }
+        ],
+        "question_range": [
+          21,
+          30
+        ],
+        "qa": {
+          "expected_count": 10,
+          "detected_count": 10,
+          "expected_questions": [
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30
+          ],
+          "detected_questions": [
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30
+          ],
+          "missing_questions": [],
+          "duplicate_questions": [],
+          "unexpected_questions": [],
+          "ordered": true,
+          "ok": true
+        }
+      },
+      {
+        "text": "SECTION 4 Questions 31-40\n\n31 The speaker says that one problem with nanotechnology is that\nA _ it could threaten our way of life.\nB it could be used to spy on people.\nC __ itis misunderstood by the public.\n\n32 According to the speaker, some scientists believe that nano-particles\nA should be restricted to secure environments.\nB should be used with more caution.\nC should only be developed for essential products.\n\n33 In the speaker's opinion, research into nanotechnology\nA has yet to win popular support.\nB could be seen as unethical.\nC ought to be continued.\n86 leltsresources.org\n\nQuestions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87\n\nQuestions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87\n\nQuestions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87\n\nQuestions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87\n\nQuestions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87\n\nQuestions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87\n\nQuestions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87",
+        "blocks": [
+          {
+            "type": "text",
+            "page": 87,
+            "text": "SECTION 4 Questions 31-40"
+          }
+        ],
+        "questions": [
+          {
+            "page": 87,
+            "question": 31,
+            "text": "31 The speaker says that one problem with nanotechnology is that\nA _ it could threaten our way of life.\nB it could be used to spy on people.\nC __ itis misunderstood by the public."
+          },
+          {
+            "page": 87,
+            "question": 32,
+            "text": "32 According to the speaker, some scientists believe that nano-particles\nA should be restricted to secure environments.\nB should be used with more caution.\nC should only be developed for essential products."
+          },
+          {
+            "page": 87,
+            "question": 33,
+            "text": "33 In the speaker's opinion, research into nanotechnology\nA has yet to win popular support.\nB could be seen as unethical.\nC ought to be continued.\n86 leltsresources.org"
+          },
+          {
+            "page": 88,
+            "question": 34,
+            "text": "Questions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87"
+          },
+          {
+            "page": 88,
+            "question": 35,
+            "text": "Questions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87"
+          },
+          {
+            "page": 88,
+            "question": 36,
+            "text": "Questions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87"
+          },
+          {
+            "page": 88,
+            "question": 37,
+            "text": "Questions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87"
+          },
+          {
+            "page": 88,
+            "question": 38,
+            "text": "Questions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87"
+          },
+          {
+            "page": 88,
+            "question": 39,
+            "text": "Questions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87"
+          },
+          {
+            "page": 88,
+            "question": 40,
+            "text": "Questions 34-40\nComplete the notes below.\nWrite ONE WORD ONLY for each answer.\nLe Uses of Nanotechnology\nTransport\n* Nanotechnology could allow the development of stronger 34\n* Planes would be much lighter in weight.\ntravel will be made available to the masses.\nTechnology\n* Computers will be even smaller, faster, and will have a greater\ncat | fee energy will become more affordable.\nThe Environment\n* Nano-robots could rebuild the ozone layer.\n* Pollutants such as 38 ...\nmore easily.\ncould be removed from water\n* There will be no 39... w. from manufacturing.\nHealth and Medicine\n* New methods of food production could eradicate famine.\n* Analysis of medical 40 .. will be speeded up.\n* Life expectancy could be increased.\n| ES ee Se a\nleltsresources.org 87"
+          }
+        ],
+        "question_range": [
+          31,
+          40
+        ],
+        "qa": {
+          "expected_count": 10,
+          "detected_count": 10,
+          "expected_questions": [
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40
+          ],
+          "detected_questions": [
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40
+          ],
+          "missing_questions": [],
+          "duplicate_questions": [],
+          "unexpected_questions": [],
+          "ordered": true,
+          "ok": true
+        }
+      }
+    ]
+  },
+  "reading": {
+    "passages": [
+      {
+        "text": "EADING\n\nREADING PASSAGE 1\n\nYou should spend about 20 minutes on Questions 1-13, which are based on\n\nReading Passage 1 below.\n\nThe megafires of California\n\nDrought, housing expansion, and oversupply of tinder make for bigger, hotter fires in the western United States\n\nWildfires are becoming an increasing menace in the western United States, with Southern California being the hardest hit area. There's a reason fire squads battling more frequent blazes in Southern California are having such difficulty containing the flames, despite better preparedness than ever and decades of experience fighting fires fanned by the ‘Santa Ana Winds’. The wildfires themselves, experts say, are generally hotter, faster, and spread more erratically than in the past.\n\nMegafires, also called ‘siege fires’, are the increasingly frequent blazes that burn 500,000 acres or more ~ 10 times the size of the average forest fire of 20 years ago. Some recent wildfires are among the biggest ever in California in terms of acreage burned, according to state figures and news reports.\n\nOne explanation for the trend to more superhot fires is that the region, which usually has dry summers, has had significantly below normal precipitation in many recent years. Another reason, experts say, is related to the centurylong policy of the US Forest Service to stop wildfires as quickly as possible. The unintentional consequence has\n\n88\n\nbeen to halt the natural eradication of underbrush, now the primary fuel for megafires.\n\nThree other factors contribute to the trend, they add. First is climate change, marked by a 1-degree Fahrenheit rise in average yearly temperature across the western states. Second is fire seasons that on average are 78 days longer than they were 20 years ago. Third is increased construction of homes in wooded areas.\n\n‘We are increasingly building our homes in fire-prone ecosystems,’ says Dominik Kulakowski, adjunct professor of biology at Clark University Graduate School of Geography in Worcester, Massachusetts. ‘Doing that in many of the forests of the western US is like building homes on the side of an active volcano.’\n\nIn California, where population growth has averaged more than 600,000 a year for at least a decade, more residential housing is being built. ‘What once was open space is now residential homes providing fuel to make fires burn with greater intensity,’ says Terry McHale of the California Department of Forestry firefighters’ union. ‘With so\n\nleltsresources.org\n\nmuch dryness, so many communities to catch fire, so many fronts to fight, it becomes an almost incredible job.’\n\nThat said, many experts give California high marks for making progress on preparedness in recent years, after some of the largest fires in state history scorched thousands of acres, burned thousands of homes, and killed numerous people. Stung in the past by criticism of bungling that allowed fires to spread when they might have been contained, personnel are meeting the peculiar challenges of neighborhood - and canyon- hopping fires better than previously, observers say.\n\nState promises to provide more up-to-date engines, planes, and helicopters to fight fires have been fulfilled. Firefighters' unions that in the past complained of dilapidated equipment, old fire engines, and insufficient blueprints for fire safety are now praising the state’s commitment, noting that funding for firefighting has increased, despite huge cuts in many other programs. ‘We are pleased that the current state administration has been very proactive in its support of us, and [has] come through with budgetary support of the infrastructure needs we have long sought,\" says Mr. McHale of the firefighters’ union.\n\nBesides providing money to upgrade the fire engines that must traverse the mammoth state and wind along serpentine canyon roads, the state has\n\nleltsresources.org\n\ninvested in better command-and-control facilities as well as in the strategies\n\nto run them. ‘In the fire sieges of earlier years, we found that other jurisdictions and states were willing\n\nto offer mutual-aid help, but we were not able to communicate adequately with them,’ says Kim Zagaris, chief\n\nof the state’s Office of Emergency Services Fire and Rescue Branch.\n\nAfter a commission examined and revamped communications procedures, the statewide response ‘has become far more professional and responsive,’ he says. There is a sense among both government officials and residents that the speed, dedication, and coordination of firefighters from several states and jurisdictions are resulting in greater efficiency than in past ‘siege fire’ situations.\n\nIn recent years, the Southern California region has improved building codes, evacuation procedures, and procurement of new technology. ‘I am extraordinarily impressed by the improvements we have witnessed,’ says Randy Jacobs, a Southern Californiabased lawyer who has had to evacuate both his home and business to escape wildfires. ‘Notwithstanding all the damage that will continue to be caused by wildfires, we will no longer suffer the loss of life endured in the past because of the fire prevention and firefighting measures that have been put in place,’ he says.\n\n89\n\nQuestions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org\n\nQuestions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org\n\nQuestions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org\n\nQuestions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org\n\nQuestions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org\n\nQuestions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org\n\nQuestions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this\n\nQuestions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this\n\nQuestions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this\n\nQuestions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this\n\nQuestions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this\n\nQuestions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this\n\nQuestions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this",
+        "blocks": [
+          {
+            "type": "text",
+            "page": 89,
+            "text": "EADING"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "READING PASSAGE 1"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "You should spend about 20 minutes on Questions 1-13, which are based on"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "Reading Passage 1 below."
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "The megafires of California"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "Drought, housing expansion, and oversupply of tinder make for bigger, hotter fires in the western United States"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "Wildfires are becoming an increasing menace in the western United States, with Southern California being the hardest hit area. There's a reason fire squads battling more frequent blazes in Southern California are having such difficulty containing the flames, despite better preparedness than ever and decades of experience fighting fires fanned by the ‘Santa Ana Winds’. The wildfires themselves, experts say, are generally hotter, faster, and spread more erratically than in the past."
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "Megafires, also called ‘siege fires’, are the increasingly frequent blazes that burn 500,000 acres or more ~ 10 times the size of the average forest fire of 20 years ago. Some recent wildfires are among the biggest ever in California in terms of acreage burned, according to state figures and news reports."
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "One explanation for the trend to more superhot fires is that the region, which usually has dry summers, has had significantly below normal precipitation in many recent years. Another reason, experts say, is related to the centurylong policy of the US Forest Service to stop wildfires as quickly as possible. The unintentional consequence has"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "88"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "been to halt the natural eradication of underbrush, now the primary fuel for megafires."
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "Three other factors contribute to the trend, they add. First is climate change, marked by a 1-degree Fahrenheit rise in average yearly temperature across the western states. Second is fire seasons that on average are 78 days longer than they were 20 years ago. Third is increased construction of homes in wooded areas."
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "‘We are increasingly building our homes in fire-prone ecosystems,’ says Dominik Kulakowski, adjunct professor of biology at Clark University Graduate School of Geography in Worcester, Massachusetts. ‘Doing that in many of the forests of the western US is like building homes on the side of an active volcano.’"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "In California, where population growth has averaged more than 600,000 a year for at least a decade, more residential housing is being built. ‘What once was open space is now residential homes providing fuel to make fires burn with greater intensity,’ says Terry McHale of the California Department of Forestry firefighters’ union. ‘With so"
+          },
+          {
+            "type": "text",
+            "page": 89,
+            "text": "leltsresources.org"
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "much dryness, so many communities to catch fire, so many fronts to fight, it becomes an almost incredible job.’"
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "That said, many experts give California high marks for making progress on preparedness in recent years, after some of the largest fires in state history scorched thousands of acres, burned thousands of homes, and killed numerous people. Stung in the past by criticism of bungling that allowed fires to spread when they might have been contained, personnel are meeting the peculiar challenges of neighborhood - and canyon- hopping fires better than previously, observers say."
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "State promises to provide more up-to-date engines, planes, and helicopters to fight fires have been fulfilled. Firefighters' unions that in the past complained of dilapidated equipment, old fire engines, and insufficient blueprints for fire safety are now praising the state’s commitment, noting that funding for firefighting has increased, despite huge cuts in many other programs. ‘We are pleased that the current state administration has been very proactive in its support of us, and [has] come through with budgetary support of the infrastructure needs we have long sought,\" says Mr. McHale of the firefighters’ union."
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "Besides providing money to upgrade the fire engines that must traverse the mammoth state and wind along serpentine canyon roads, the state has"
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "leltsresources.org"
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "invested in better command-and-control facilities as well as in the strategies"
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "to run them. ‘In the fire sieges of earlier years, we found that other jurisdictions and states were willing"
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "to offer mutual-aid help, but we were not able to communicate adequately with them,’ says Kim Zagaris, chief"
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "of the state’s Office of Emergency Services Fire and Rescue Branch."
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "After a commission examined and revamped communications procedures, the statewide response ‘has become far more professional and responsive,’ he says. There is a sense among both government officials and residents that the speed, dedication, and coordination of firefighters from several states and jurisdictions are resulting in greater efficiency than in past ‘siege fire’ situations."
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "In recent years, the Southern California region has improved building codes, evacuation procedures, and procurement of new technology. ‘I am extraordinarily impressed by the improvements we have witnessed,’ says Randy Jacobs, a Southern Californiabased lawyer who has had to evacuate both his home and business to escape wildfires. ‘Notwithstanding all the damage that will continue to be caused by wildfires, we will no longer suffer the loss of life endured in the past because of the fire prevention and firefighting measures that have been put in place,’ he says."
+          },
+          {
+            "type": "text",
+            "page": 90,
+            "text": "89"
+          }
+        ],
+        "questions": [
+          {
+            "page": 91,
+            "question": 1,
+            "text": "Questions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org"
+          },
+          {
+            "page": 91,
+            "question": 2,
+            "text": "Questions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org"
+          },
+          {
+            "page": 91,
+            "question": 3,
+            "text": "Questions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org"
+          },
+          {
+            "page": 91,
+            "question": 4,
+            "text": "Questions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org"
+          },
+          {
+            "page": 91,
+            "question": 5,
+            "text": "Questions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org"
+          },
+          {
+            "page": 91,
+            "question": 6,
+            "text": "Questions 1-6\n\nComplete the notes below.\n\nChoose ONE WORD AND/OR A NUMBER from the passage for each answer.\n\nWrite your answers in boxes 1-6 on your answer sheet.\n\nWildfires Characteristics of wildfires and wildfire conditions today compared to the past: — occurrence: more frequent temperature: hotter speed: faster\n\nmovement: 4 .. more unpredictably\n\nsize of fires: 2 .. greater on average than two decades ago\n\nReasons wildfires cause more damage today compared to the past: rainfall: 3 . average\n\nmore brush to act as 4...\n\nincrease in yearly temperature extended fire 5 ..\n\nmore building of 6 .. in vulnerable places\n\n90 leltsresources.org"
+          },
+          {
+            "page": 92,
+            "question": 7,
+            "text": "Questions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this"
+          },
+          {
+            "page": 92,
+            "question": 8,
+            "text": "Questions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this"
+          },
+          {
+            "page": 92,
+            "question": 9,
+            "text": "Questions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this"
+          },
+          {
+            "page": 92,
+            "question": 10,
+            "text": "Questions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this"
+          },
+          {
+            "page": 92,
+            "question": 11,
+            "text": "Questions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this"
+          },
+          {
+            "page": 92,
+            "question": 12,
+            "text": "Questions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this"
+          },
+          {
+            "page": 92,
+            "question": 13,
+            "text": "Questions 7-13\n\nDo the following statements agree with the information given in Reading Passage 1? In boxes 7-13 on your answer sheet, write\n\nTRUE if the statement agrees with the information FALSE if the statement contradicts the information NOT GIVEN if there is no information on this"
+          }
+        ],
+        "question_range": [
+          1,
+          13
+        ],
+        "qa": {
+          "expected_count": 13,
+          "detected_count": 13,
+          "expected_questions": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "detected_questions": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "missing_questions": [],
+          "duplicate_questions": [],
+          "unexpected_questions": [],
+          "ordered": true,
+          "ok": true
+        }
+      },
+      {
+        "text": "READING PASSAGE 2\n\nYou should spend about 20 minutes on Questions 14-26, which are based on Reading Passage 2 below.\n\nSecond nature\n\nYour personality isn't necessarily set in stone. With a little experimentation, people can reshape their temperaments and inject passion, optimism, joy and\n\nA\n\n92\n\ncourage into their lives\n\nPsychologists have long held that a person’s character cannot undergo a transformation in any meaningful way and that the key traits of personality are determined at a very young age. However, researchers have begun looking more closely at ways we can change. Positive psychologists have identified 24 qualities we admire, such as loyalty and kindness, and are studying them to find out why they come so naturally to some people. What they're discovering is that many of these qualities amount to habitual behaviour that determines the way we respond to the world. The good news is that all this can be learned.\n\nSome qualities are less challenging to develop than others, optimism being one of them. However, developing qualities requires mastering a range of skills which are diverse and sometimes surprising, For example, to bring more joy and passion into your life, you must be open to experiencing negative emotions. Cultivating such qualities will help you realise your full potential.\n\n‘The evidence is good that most personality traits can be altered,’ says Christopher Peterson, professor of psychology at the University of Michigan, who cites himself as an example. Inherently introverted, he realised early on that as an academic,\n\nhis reticence would prove disastrous in the lecture hall. So he learned to be\n\nmore outgoing and to entertain his classes. ‘Now my extroverted behaviour is spontaneous,’ he says.\n\nDavid Fajgenbaum had to make a similar transition. He was preparing for university, when he had an accident that put an end to his sports career. On campus, he quickly found that beyond ordinary counselling, the university had no services for students who were undergoing physical rehabilitation and suffering from depression like him. He therefore launched a support group to help others in similar situations. He took action despite his own pain — a typical response of an optimist.\n\nSuzanne Segerstrom, professor of psychology at the University of Kentucky, believes that the key to increasing optimism is through cultivating optimistic behaviour, rather than positive thinking. She recommends you train yourself to pay attention to good fortune by writing down three positive things that come about each day. This will help you convince yourself that favourable outcomes actually happen all the time, making it easier to begin taking action.\n\nleltsresources.org\n\nYou can recognise a person who is passionate about a pursuit by the way they\n\nare so strongly involved in it. Tanya Streeter’s passion is freediving - the sport\n\nof plunging deep into the water without tanks or other breathing equipment. Beginning in 1998, she set nine world records and can hold her breath for\n\nsix minutes. The physical stamina required for this sport is intense but the psychological demands are even more overwhelming, Streeter learned to untangle her fears from her judgment of what her body and mind could do. ‘In my career as a competitive freediver, there was a limit to what I could do - but it wasn’t anywhere near what I thought it was,’ she says.\n\nFinding a pursuit that excites you can improve anyone's life. The secret about consuming passions, though, according to psychologist Paul Silvia of the University of North Carolina, is that ‘they require discipline, hard work and ability, which is why they are so rewarding.’ Psychologist Todd Kashdan has this advice for those people taking up a new passion: ‘As a newcomer, you also have to tolerate and laugh at your own ignorance. You must be willing to accept the negative feelings that come your way,’ he says.\n\nIn 2004, physician-scientist Mauro Zappaterra began his PhD research at Harvard Medical School. Unfortunately, he was miserable as his research wasn’t compatible with his curiosity about healing. He finally took a break and during eight months in Santa Fe, Zappaterra learned about alternative healing techniques not taught\n\nat Harvard. When he got back, he switched labs to study how cerebrospinal fluid nourishes the developing nervous system. He also vowed to look for the joy in everything, including failure, as this could help him learn about his research and himself.\n\nOne thing that can hold joy back is a person’s concentration on avoiding failure rather than their looking forward to doing something well. ‘Focusing on being safe might get in the way of your reaching your goals,’ explains Kashdan. For example, are you hoping to get through a business lunch without embarrassing yourself, or are you thinking about how fascinating the conversation might be?\n\nUsually, we think of courage in physical terms but ordinary life demands something else. For marketing executive Kenneth Pedeleose, it meant speaking out against something he thought was ethically wrong. The new manager was intimidating staff so Pedeleose carefully recorded each instance of bullying and eventually took the evidence to a senior director, knowing his own job security would be threatened. Eventually the manager was the one to go. According to Cynthia Pury, a psychologist at Clemson University, Pedeleose’s story proves the point that courage is not motivated by fearlessness, but by moral obligation. Pury also believes that people can acquire courage. Many of her students said that faced with a risky situation, they first tried to calm themselves down, then looked for a way to mitigate the danger, just as Pedeleose did by documenting his allegations.\n\nOver the long term, picking up a new character trait may help you move toward being the person you want to be. And in the short term, the effort itself could be surprisingly rewarding, a kind of internal adventure.\n\nleltsresources.org 93\n\nQuestions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org\n\nQuestions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org\n\nQuestions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org\n\nQuestions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org\n\nQuestions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org\n\nQuestions 19-22\n\nLook at the following statements (Questions 19-22) and the list of people below.\n\nMatch each statement with the correct person, A-G.\n\nWrite the correct letter, A-G, in boxes 19-22 on your answer sheet.\n\nQuestions 19-22\n\nLook at the following statements (Questions 19-22) and the list of people below.\n\nMatch each statement with the correct person, A-G.\n\nWrite the correct letter, A-G, in boxes 19-22 on your answer sheet.\n\nQuestions 19-22\n\nLook at the following statements (Questions 19-22) and the list of people below.\n\nMatch each statement with the correct person, A-G.\n\nWrite the correct letter, A-G, in boxes 19-22 on your answer sheet.\n\n22\n\nPeople must accept that they do not know much when first trying something new. It is important for people to actively notice when good things happen. Courage can be learned once its origins in a sense of responsibility are understood.\n\nIt is possible to overcome shyness when faced with the need to speak in public.\n\nList of People Christopher Peterson David Fajgenbaum Suzanne Segerstrom Tanya Streeter Todd Kashdan Kenneth Pedeleose Cynthia Pury\n\no7rmooap\n\nleltsresources.org 95\n\nQuestions 23-26\n\nReading Passage 2 has eight sections, A-H.\n\nWhich section contains the following information?\n\nWrite the correct letter, A-H, in boxes 23-26 on your answer sheet.\n\nQuestions 23-26\n\nReading Passage 2 has eight sections, A-H.\n\nWhich section contains the following information?\n\nWrite the correct letter, A-H, in boxes 23-26 on your answer sheet.\n\nQuestions 23-26\n\nReading Passage 2 has eight sections, A-H.\n\nWhich section contains the following information?\n\nWrite the correct letter, A-H, in boxes 23-26 on your answer sheet.\n\nQuestions 23-26\n\nReading Passage 2 has eight sections, A-H.\n\nWhich section contains the following information?\n\nWrite the correct letter, A-H, in boxes 23-26 on your answer sheet.",
+        "blocks": [
+          {
+            "type": "text",
+            "page": 93,
+            "text": "READING PASSAGE 2"
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "You should spend about 20 minutes on Questions 14-26, which are based on Reading Passage 2 below."
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "Second nature"
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "Your personality isn't necessarily set in stone. With a little experimentation, people can reshape their temperaments and inject passion, optimism, joy and"
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "A"
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "92"
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "courage into their lives"
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "Psychologists have long held that a person’s character cannot undergo a transformation in any meaningful way and that the key traits of personality are determined at a very young age. However, researchers have begun looking more closely at ways we can change. Positive psychologists have identified 24 qualities we admire, such as loyalty and kindness, and are studying them to find out why they come so naturally to some people. What they're discovering is that many of these qualities amount to habitual behaviour that determines the way we respond to the world. The good news is that all this can be learned."
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "Some qualities are less challenging to develop than others, optimism being one of them. However, developing qualities requires mastering a range of skills which are diverse and sometimes surprising, For example, to bring more joy and passion into your life, you must be open to experiencing negative emotions. Cultivating such qualities will help you realise your full potential."
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "‘The evidence is good that most personality traits can be altered,’ says Christopher Peterson, professor of psychology at the University of Michigan, who cites himself as an example. Inherently introverted, he realised early on that as an academic,"
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "his reticence would prove disastrous in the lecture hall. So he learned to be"
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "more outgoing and to entertain his classes. ‘Now my extroverted behaviour is spontaneous,’ he says."
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "David Fajgenbaum had to make a similar transition. He was preparing for university, when he had an accident that put an end to his sports career. On campus, he quickly found that beyond ordinary counselling, the university had no services for students who were undergoing physical rehabilitation and suffering from depression like him. He therefore launched a support group to help others in similar situations. He took action despite his own pain — a typical response of an optimist."
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "Suzanne Segerstrom, professor of psychology at the University of Kentucky, believes that the key to increasing optimism is through cultivating optimistic behaviour, rather than positive thinking. She recommends you train yourself to pay attention to good fortune by writing down three positive things that come about each day. This will help you convince yourself that favourable outcomes actually happen all the time, making it easier to begin taking action."
+          },
+          {
+            "type": "text",
+            "page": 93,
+            "text": "leltsresources.org"
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "You can recognise a person who is passionate about a pursuit by the way they"
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "are so strongly involved in it. Tanya Streeter’s passion is freediving - the sport"
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "of plunging deep into the water without tanks or other breathing equipment. Beginning in 1998, she set nine world records and can hold her breath for"
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "six minutes. The physical stamina required for this sport is intense but the psychological demands are even more overwhelming, Streeter learned to untangle her fears from her judgment of what her body and mind could do. ‘In my career as a competitive freediver, there was a limit to what I could do - but it wasn’t anywhere near what I thought it was,’ she says."
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "Finding a pursuit that excites you can improve anyone's life. The secret about consuming passions, though, according to psychologist Paul Silvia of the University of North Carolina, is that ‘they require discipline, hard work and ability, which is why they are so rewarding.’ Psychologist Todd Kashdan has this advice for those people taking up a new passion: ‘As a newcomer, you also have to tolerate and laugh at your own ignorance. You must be willing to accept the negative feelings that come your way,’ he says."
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "In 2004, physician-scientist Mauro Zappaterra began his PhD research at Harvard Medical School. Unfortunately, he was miserable as his research wasn’t compatible with his curiosity about healing. He finally took a break and during eight months in Santa Fe, Zappaterra learned about alternative healing techniques not taught"
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "at Harvard. When he got back, he switched labs to study how cerebrospinal fluid nourishes the developing nervous system. He also vowed to look for the joy in everything, including failure, as this could help him learn about his research and himself."
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "One thing that can hold joy back is a person’s concentration on avoiding failure rather than their looking forward to doing something well. ‘Focusing on being safe might get in the way of your reaching your goals,’ explains Kashdan. For example, are you hoping to get through a business lunch without embarrassing yourself, or are you thinking about how fascinating the conversation might be?"
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "Usually, we think of courage in physical terms but ordinary life demands something else. For marketing executive Kenneth Pedeleose, it meant speaking out against something he thought was ethically wrong. The new manager was intimidating staff so Pedeleose carefully recorded each instance of bullying and eventually took the evidence to a senior director, knowing his own job security would be threatened. Eventually the manager was the one to go. According to Cynthia Pury, a psychologist at Clemson University, Pedeleose’s story proves the point that courage is not motivated by fearlessness, but by moral obligation. Pury also believes that people can acquire courage. Many of her students said that faced with a risky situation, they first tried to calm themselves down, then looked for a way to mitigate the danger, just as Pedeleose did by documenting his allegations."
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "Over the long term, picking up a new character trait may help you move toward being the person you want to be. And in the short term, the effort itself could be surprisingly rewarding, a kind of internal adventure."
+          },
+          {
+            "type": "text",
+            "page": 94,
+            "text": "leltsresources.org 93"
+          }
+        ],
+        "questions": [
+          {
+            "page": 95,
+            "question": 14,
+            "text": "Questions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org"
+          },
+          {
+            "page": 95,
+            "question": 15,
+            "text": "Questions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org"
+          },
+          {
+            "page": 95,
+            "question": 16,
+            "text": "Questions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org"
+          },
+          {
+            "page": 95,
+            "question": 17,
+            "text": "Questions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org"
+          },
+          {
+            "page": 95,
+            "question": 18,
+            "text": "Questions 14-18\n\nComplete the summary below.\n\nChoose NO MORE THAN TWO WORDS from the passage for each answer.\n\nWrite your answers in boxes 14-18 on your answer sheet.\n\nPsychologists have traditionally believed that a personality 14 .... .. was impossible\n\nand that by a 15 . , @ person's character tends to be fixed. This is not true according to positive psychologists, who say that our personal qualities can be seen\n\nas habitual behaviour. One of the easiest qualities to acquire is 16 .... . However,\n\nregardless of the quality, it is necessary to learn a wide variety of different 17 in order for a new quality to develop; for example, a person must understand and feel\n\nsome 18... in order to increase their happiness.\n\nleltsresources.org"
+          },
+          {
+            "page": 96,
+            "question": 19,
+            "text": "Questions 19-22\n\nLook at the following statements (Questions 19-22) and the list of people below.\n\nMatch each statement with the correct person, A-G.\n\nWrite the correct letter, A-G, in boxes 19-22 on your answer sheet."
+          },
+          {
+            "page": 96,
+            "question": 20,
+            "text": "Questions 19-22\n\nLook at the following statements (Questions 19-22) and the list of people below.\n\nMatch each statement with the correct person, A-G.\n\nWrite the correct letter, A-G, in boxes 19-22 on your answer sheet."
+          },
+          {
+            "page": 96,
+            "question": 21,
+            "text": "Questions 19-22\n\nLook at the following statements (Questions 19-22) and the list of people below.\n\nMatch each statement with the correct person, A-G.\n\nWrite the correct letter, A-G, in boxes 19-22 on your answer sheet."
+          },
+          {
+            "page": 96,
+            "question": 22,
+            "text": "22\n\nPeople must accept that they do not know much when first trying something new. It is important for people to actively notice when good things happen. Courage can be learned once its origins in a sense of responsibility are understood.\n\nIt is possible to overcome shyness when faced with the need to speak in public.\n\nList of People Christopher Peterson David Fajgenbaum Suzanne Segerstrom Tanya Streeter Todd Kashdan Kenneth Pedeleose Cynthia Pury\n\no7rmooap\n\nleltsresources.org 95"
+          },
+          {
+            "page": 97,
+            "question": 23,
+            "text": "Questions 23-26\n\nReading Passage 2 has eight sections, A-H.\n\nWhich section contains the following information?\n\nWrite the correct letter, A-H, in boxes 23-26 on your answer sheet."
+          },
+          {
+            "page": 97,
+            "question": 24,
+            "text": "Questions 23-26\n\nReading Passage 2 has eight sections, A-H.\n\nWhich section contains the following information?\n\nWrite the correct letter, A-H, in boxes 23-26 on your answer sheet."
+          },
+          {
+            "page": 97,
+            "question": 25,
+            "text": "Questions 23-26\n\nReading Passage 2 has eight sections, A-H.\n\nWhich section contains the following information?\n\nWrite the correct letter, A-H, in boxes 23-26 on your answer sheet."
+          },
+          {
+            "page": 97,
+            "question": 26,
+            "text": "Questions 23-26\n\nReading Passage 2 has eight sections, A-H.\n\nWhich section contains the following information?\n\nWrite the correct letter, A-H, in boxes 23-26 on your answer sheet."
+          }
+        ],
+        "question_range": [
+          14,
+          26
+        ],
+        "qa": {
+          "expected_count": 13,
+          "detected_count": 13,
+          "expected_questions": [
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26
+          ],
+          "detected_questions": [
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26
+          ],
+          "missing_questions": [],
+          "duplicate_questions": [],
+          "unexpected_questions": [],
+          "ordered": true,
+          "ok": true
+        }
+      },
+      {
+        "text": "READING PASSAGE 3\n\nYou should spend about 20 minutes on Questions 27-40, which are based on Reading\n\nPassage 3 below.\n\nWhen evolution runs backwards\n\nEvolution isn’t supposed to run backwards — yet an increasing number of examples show that it does and that it can sometimes represent the future of a species\n\nThe description of any animal as an ‘evolutionary throwback’ is controversial. For the better part of a century, most biologists have been reluctant to use those words, mindful of a principle of evolution that says ‘evolution cannot run backwards’. But as more and more examples come to light and modern genetics enters the scene, that principle is having to be rewritten. Not only are evolutionary throwbacks possible, they sometimes play an important role in the forward march of evolution.\n\nThe technical term for an evolutionary throwback is an ‘atavism’, from the Latin atavus, meaning forefather. The word has ugly connotations thanks largely to Cesare Lombroso, a 19th-century Italian medic who argued that criminals were born not made and could be identified by certain physical features that were throwbacks to a primitive, sub-human state.\n\nWhile Lombroso was measuring criminals, a Belgian palaeontologist called Louis Dollo was studying fossil records and coming to the opposite conclusion.\n\nIn 1890 he proposed that evolution was irreversible: that ‘an organism is unable to return, even partially, to a previous stage already realised in the ranks of its ancestors’. Early 20th-century biologists came to a similar conclusion, though they qualified it\n\nleltsresources.org\n\nin terms of probability, stating that there is no reason why evolution cannot run backwards ~ it is just very unlikely. And so the idea of irreversibility in evolution stuck and came to be known as ‘Doll's law’.\n\nIf Dollo’s law is right, atavisms should occur only very rarely, if at all. Yet almost since the idea took root, exceptions have been cropping up. In 1919, for example, a humpback whale with a pair of leg-like appendages over a metre long, complete with a full set of limb bones, was caught off Vancouver Island in Canada. Explorer Roy Chapman Andrews argued at the time that the whale must be a throwback to a land-living ancestor. ‘I can see no other explanation,’ he wrote in 1921.\n\nSince then, so many other examples have been discovered that it no longer makes sense to say that evolution is as good as irreversible. And this poses a puzzle: how can characteristics that disappeared millions of years ago suddenly reappear?\n\nIn 1994, Rudolf Raff and colleagues at Indiana University in the USA decided\n\nto use genetics to put a number on the probability of evolution going into reverse. They reasoned that while some evolutionary changes involve the loss of genes and are therefore irreversible, others may be the result of genes being switched off. If these\n\n97\n\nsilent genes are somehow switched back on, they argued, long-lost traits could reappear.\n\nRaff's team went on to calculate the likelinood of it happening. Silent genes accumulate random mutations, they reasoned, eventually rendering them useless. So how long can a gene survive in a species if it is no longer used? The team calculated that there is a good chance of silent genes surviving for up to 6 million years in at least a few individuals in a population, and that some might survive as long as 10 million years. In other words, throwbacks are possible, but only to the relatively recent evolutionary past.\n\nAs a possible example, the team pointed to the mole salamanders of Mexico and California. Like most amphibians these begin life in a juvenile ‘tadpole’ state, then metamorphose into the adult form - except for one species, the axolotl, which famously lives its entire life as a juvenile. The simplest explanation for this is that the axolotl lineage alone lost the ability to metamorphose, while others retained it. From a detailed analysis of the salamanders’ family tree, however, it is clear that the other lineages evolved from an ancestor that itself had lost the ability to metamorphose. In other words, metamorphosis in mole salamanders is an atavism. The salamander example fits with Raff's 10-million-year time frame.\n\nMore recently, however, examples have been reported that break the time limit, suggesting that silent genes may not be the whole story. In a paper published last year, biologist Gunter Wagner of Yale University reported some work on the evolutionary\n\n98\n\nhistory of a group of South American lizards called Bachia. Many of these have minuscule limbs; some look more like snakes than lizards and a few have completely lost the toes on their hind limbs. Other species, however, sport up to four toes on their\n\nhind legs. The simplest explanation is that the toed lineages never lost their toes,\n\nbut Wagner begs to differ. According to\n\nhis analysis of the Bachia family tree, the toed species re-evolved toes from toeless ancestors and, what is more, digit loss\n\nand gain has occurred on more than one occasion over tens of millions of years.\n\nSo what's going on? One possibility is ‘that these traits are lost and then simply reappear, in much the same way that similar structures can independently arise in unrelated species, such as the dorsal fins of sharks and killer whales. Another more intriguing possibility is that the genetic information needed to make toes somehow survived for tens or perhaps hundreds of millions of years in the lizards and was reactivated. These atavistic traits provided an advantage and spread through the population, effectively reversing evolution.\n\nBut if silent genes degrade within 6 to 10 million years, how can long-lost traits be reactivated over longer timescales? The answer may lie in the womb. Early embryos of many species develop ancestral features. Snake embryos, for example, sprout hind limb buds. Later in development these features disappear thanks to developmental programs that say ‘lose the leg’. If for any reason this does not happen, the ancestral feature may not disappear, leading to an atavism.\n\nleltsresources.org\n\nQuestions 27-31\n\nChoose the correct letter, A, B, C or D.\n\nWrite the correct letter in boxes 27-31 on your answer sheet.\n\nQuestions 27-31\n\nChoose the correct letter, A, B, C or D.\n\nWrite the correct letter in boxes 27-31 on your answer sheet.\n\nQuestions 27-31\n\nChoose the correct letter, A, B, C or D.\n\nWrite the correct letter in boxes 27-31 on your answer sheet.\n\n30\n\n3M\n\nWhen discussing the theory developed by Louis Dollo, the writer says that\n\nA __ it was immediately referred to as Dollo’s law.\n\nB__ it supported the possibility of evolutionary throwbacks.\n\nC__ itwas modified by biologists in the early twentieth century. D__ itwas based on many years of research.\n\nThe humpback whale caught off Vancouver Island is mentioned because of\n\nA __ the exceptional size of its body.\n\nB the way it exemplifies Dollo's law.\n\nC__ the amount of local controversy it caused. D__ the reason given for its unusual features.\n\nWhat is said about ‘silent genes’?\n\nA Their numbers vary according to species.\n\nB_ Raff disagreed with the use of the term.\n\nC_ They could lead to the re-emergence of certain characteristics. D_ They can have an unlimited life span.\n\nThe writer mentions the mole salamander because\n\nA __ it exemplifies what happens in the development of most amphibians. B__ it suggests that Raff's theory is correct.\n\nC __ ithas lost and regained more than one ability.\n\nD _ its ancestors have become the subject of extensive research.\n\nWhich of the following does Wagner claim?\n\nA Members of the Bachia lizard family have lost and regained certain features several times.\n\nB_ Evidence shows that the evolution of the Bachia lizard is due to the\n\nenvironment.\n\nHis research into South American lizards supports Raff's assertions.\n\nHis findings will apply to other species of South American lizards.\n\n00\n\nleltsresources.org 99\n\nQuestions 27-31\n\nChoose the correct letter, A, B, C or D.\n\nWrite the correct letter in boxes 27-31 on your answer sheet.\n\nQuestions 32-36\n\nComplete each sentence with the correct ending, A-G, below. Write the correct letter, A-G, in boxes 32-36 on your answer sheet.\n\nQuestions 32-36\n\nComplete each sentence with the correct ending, A-G, below. Write the correct letter, A-G, in boxes 32-36 on your answer sheet.\n\nQuestions 32-36\n\nComplete each sentence with the correct ending, A-G, below. Write the correct letter, A-G, in boxes 32-36 on your answer sheet.\n\nQuestions 32-36\n\nComplete each sentence with the correct ending, A-G, below. Write the correct letter, A-G, in boxes 32-36 on your answer sheet.\n\n36 One explanation for the findings of Wagner's research is\n\nthe question of how certain long-lost traits could reappear. the occurrence of a particular feature in different species. parallels drawn between behaviour and appearance.\n\nthe continued existence of certain genetic information. the doubts felt about evolutionary throwbacks.\n\nthe possibility of evolution being reversible.\n\noao7rmoog p>\n\nDollo’s findings and the convictions held by Lombroso.\n\nQuestions 37-40\n\nDo the following statements agree with the claims of the writer in Reading Passage 3? In boxes 37-40 on your answer sheet, write\n\nYES if the statement agrees with the claims of the writer\n\nNO if the statement contradicts the claims of the writer NOT GIVEN if it is impossible to say what the writer thinks about this\n\nQuestions 37-40\n\nDo the following statements agree with the claims of the writer in Reading Passage 3? In boxes 37-40 on your answer sheet, write\n\nYES if the statement agrees with the claims of the writer\n\nNO if the statement contradicts the claims of the writer NOT GIVEN if it is impossible to say what the writer thinks about this\n\nQuestions 37-40\n\nDo the following statements agree with the claims of the writer in Reading Passage 3? In boxes 37-40 on your answer sheet, write\n\nYES if the statement agrees with the claims of the writer\n\nNO if the statement contradicts the claims of the writer NOT GIVEN if it is impossible to say what the writer thinks about this\n\nQuestions 37-40\n\nDo the following statements agree with the claims of the writer in Reading Passage 3? In boxes 37-40 on your answer sheet, write\n\nYES if the statement agrees with the claims of the writer\n\nNO if the statement contradicts the claims of the writer NOT GIVEN if it is impossible to say what the writer thinks about this",
+        "blocks": [
+          {
+            "type": "text",
+            "page": 98,
+            "text": "READING PASSAGE 3"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "You should spend about 20 minutes on Questions 27-40, which are based on Reading"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "Passage 3 below."
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "When evolution runs backwards"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "Evolution isn’t supposed to run backwards — yet an increasing number of examples show that it does and that it can sometimes represent the future of a species"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "The description of any animal as an ‘evolutionary throwback’ is controversial. For the better part of a century, most biologists have been reluctant to use those words, mindful of a principle of evolution that says ‘evolution cannot run backwards’. But as more and more examples come to light and modern genetics enters the scene, that principle is having to be rewritten. Not only are evolutionary throwbacks possible, they sometimes play an important role in the forward march of evolution."
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "The technical term for an evolutionary throwback is an ‘atavism’, from the Latin atavus, meaning forefather. The word has ugly connotations thanks largely to Cesare Lombroso, a 19th-century Italian medic who argued that criminals were born not made and could be identified by certain physical features that were throwbacks to a primitive, sub-human state."
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "While Lombroso was measuring criminals, a Belgian palaeontologist called Louis Dollo was studying fossil records and coming to the opposite conclusion."
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "In 1890 he proposed that evolution was irreversible: that ‘an organism is unable to return, even partially, to a previous stage already realised in the ranks of its ancestors’. Early 20th-century biologists came to a similar conclusion, though they qualified it"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "leltsresources.org"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "in terms of probability, stating that there is no reason why evolution cannot run backwards ~ it is just very unlikely. And so the idea of irreversibility in evolution stuck and came to be known as ‘Doll's law’."
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "If Dollo’s law is right, atavisms should occur only very rarely, if at all. Yet almost since the idea took root, exceptions have been cropping up. In 1919, for example, a humpback whale with a pair of leg-like appendages over a metre long, complete with a full set of limb bones, was caught off Vancouver Island in Canada. Explorer Roy Chapman Andrews argued at the time that the whale must be a throwback to a land-living ancestor. ‘I can see no other explanation,’ he wrote in 1921."
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "Since then, so many other examples have been discovered that it no longer makes sense to say that evolution is as good as irreversible. And this poses a puzzle: how can characteristics that disappeared millions of years ago suddenly reappear?"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "In 1994, Rudolf Raff and colleagues at Indiana University in the USA decided"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "to use genetics to put a number on the probability of evolution going into reverse. They reasoned that while some evolutionary changes involve the loss of genes and are therefore irreversible, others may be the result of genes being switched off. If these"
+          },
+          {
+            "type": "text",
+            "page": 98,
+            "text": "97"
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "silent genes are somehow switched back on, they argued, long-lost traits could reappear."
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "Raff's team went on to calculate the likelinood of it happening. Silent genes accumulate random mutations, they reasoned, eventually rendering them useless. So how long can a gene survive in a species if it is no longer used? The team calculated that there is a good chance of silent genes surviving for up to 6 million years in at least a few individuals in a population, and that some might survive as long as 10 million years. In other words, throwbacks are possible, but only to the relatively recent evolutionary past."
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "As a possible example, the team pointed to the mole salamanders of Mexico and California. Like most amphibians these begin life in a juvenile ‘tadpole’ state, then metamorphose into the adult form - except for one species, the axolotl, which famously lives its entire life as a juvenile. The simplest explanation for this is that the axolotl lineage alone lost the ability to metamorphose, while others retained it. From a detailed analysis of the salamanders’ family tree, however, it is clear that the other lineages evolved from an ancestor that itself had lost the ability to metamorphose. In other words, metamorphosis in mole salamanders is an atavism. The salamander example fits with Raff's 10-million-year time frame."
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "More recently, however, examples have been reported that break the time limit, suggesting that silent genes may not be the whole story. In a paper published last year, biologist Gunter Wagner of Yale University reported some work on the evolutionary"
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "98"
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "history of a group of South American lizards called Bachia. Many of these have minuscule limbs; some look more like snakes than lizards and a few have completely lost the toes on their hind limbs. Other species, however, sport up to four toes on their"
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "hind legs. The simplest explanation is that the toed lineages never lost their toes,"
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "but Wagner begs to differ. According to"
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "his analysis of the Bachia family tree, the toed species re-evolved toes from toeless ancestors and, what is more, digit loss"
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "and gain has occurred on more than one occasion over tens of millions of years."
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "So what's going on? One possibility is ‘that these traits are lost and then simply reappear, in much the same way that similar structures can independently arise in unrelated species, such as the dorsal fins of sharks and killer whales. Another more intriguing possibility is that the genetic information needed to make toes somehow survived for tens or perhaps hundreds of millions of years in the lizards and was reactivated. These atavistic traits provided an advantage and spread through the population, effectively reversing evolution."
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "But if silent genes degrade within 6 to 10 million years, how can long-lost traits be reactivated over longer timescales? The answer may lie in the womb. Early embryos of many species develop ancestral features. Snake embryos, for example, sprout hind limb buds. Later in development these features disappear thanks to developmental programs that say ‘lose the leg’. If for any reason this does not happen, the ancestral feature may not disappear, leading to an atavism."
+          },
+          {
+            "type": "text",
+            "page": 99,
+            "text": "leltsresources.org"
+          }
+        ],
+        "questions": [
+          {
+            "page": 100,
+            "question": 27,
+            "text": "Questions 27-31\n\nChoose the correct letter, A, B, C or D.\n\nWrite the correct letter in boxes 27-31 on your answer sheet."
+          },
+          {
+            "page": 100,
+            "question": 28,
+            "text": "Questions 27-31\n\nChoose the correct letter, A, B, C or D.\n\nWrite the correct letter in boxes 27-31 on your answer sheet."
+          },
+          {
+            "page": 100,
+            "question": 29,
+            "text": "Questions 27-31\n\nChoose the correct letter, A, B, C or D.\n\nWrite the correct letter in boxes 27-31 on your answer sheet."
+          },
+          {
+            "page": 100,
+            "question": 30,
+            "text": "30\n\n3M\n\nWhen discussing the theory developed by Louis Dollo, the writer says that\n\nA __ it was immediately referred to as Dollo’s law.\n\nB__ it supported the possibility of evolutionary throwbacks.\n\nC__ itwas modified by biologists in the early twentieth century. D__ itwas based on many years of research.\n\nThe humpback whale caught off Vancouver Island is mentioned because of\n\nA __ the exceptional size of its body.\n\nB the way it exemplifies Dollo's law.\n\nC__ the amount of local controversy it caused. D__ the reason given for its unusual features.\n\nWhat is said about ‘silent genes’?\n\nA Their numbers vary according to species.\n\nB_ Raff disagreed with the use of the term.\n\nC_ They could lead to the re-emergence of certain characteristics. D_ They can have an unlimited life span.\n\nThe writer mentions the mole salamander because\n\nA __ it exemplifies what happens in the development of most amphibians. B__ it suggests that Raff's theory is correct.\n\nC __ ithas lost and regained more than one ability.\n\nD _ its ancestors have become the subject of extensive research.\n\nWhich of the following does Wagner claim?\n\nA Members of the Bachia lizard family have lost and regained certain features several times.\n\nB_ Evidence shows that the evolution of the Bachia lizard is due to the\n\nenvironment.\n\nHis research into South American lizards supports Raff's assertions.\n\nHis findings will apply to other species of South American lizards.\n\n00\n\nleltsresources.org 99"
+          },
+          {
+            "page": 100,
+            "question": 31,
+            "text": "Questions 27-31\n\nChoose the correct letter, A, B, C or D.\n\nWrite the correct letter in boxes 27-31 on your answer sheet."
+          },
+          {
+            "page": 101,
+            "question": 32,
+            "text": "Questions 32-36\n\nComplete each sentence with the correct ending, A-G, below. Write the correct letter, A-G, in boxes 32-36 on your answer sheet."
+          },
+          {
+            "page": 101,
+            "question": 33,
+            "text": "Questions 32-36\n\nComplete each sentence with the correct ending, A-G, below. Write the correct letter, A-G, in boxes 32-36 on your answer sheet."
+          },
+          {
+            "page": 101,
+            "question": 34,
+            "text": "Questions 32-36\n\nComplete each sentence with the correct ending, A-G, below. Write the correct letter, A-G, in boxes 32-36 on your answer sheet."
+          },
+          {
+            "page": 101,
+            "question": 35,
+            "text": "Questions 32-36\n\nComplete each sentence with the correct ending, A-G, below. Write the correct letter, A-G, in boxes 32-36 on your answer sheet."
+          },
+          {
+            "page": 101,
+            "question": 36,
+            "text": "36 One explanation for the findings of Wagner's research is\n\nthe question of how certain long-lost traits could reappear. the occurrence of a particular feature in different species. parallels drawn between behaviour and appearance.\n\nthe continued existence of certain genetic information. the doubts felt about evolutionary throwbacks.\n\nthe possibility of evolution being reversible.\n\noao7rmoog p>\n\nDollo’s findings and the convictions held by Lombroso."
+          },
+          {
+            "page": 101,
+            "question": 37,
+            "text": "Questions 37-40\n\nDo the following statements agree with the claims of the writer in Reading Passage 3? In boxes 37-40 on your answer sheet, write\n\nYES if the statement agrees with the claims of the writer\n\nNO if the statement contradicts the claims of the writer NOT GIVEN if it is impossible to say what the writer thinks about this"
+          },
+          {
+            "page": 101,
+            "question": 38,
+            "text": "Questions 37-40\n\nDo the following statements agree with the claims of the writer in Reading Passage 3? In boxes 37-40 on your answer sheet, write\n\nYES if the statement agrees with the claims of the writer\n\nNO if the statement contradicts the claims of the writer NOT GIVEN if it is impossible to say what the writer thinks about this"
+          },
+          {
+            "page": 101,
+            "question": 39,
+            "text": "Questions 37-40\n\nDo the following statements agree with the claims of the writer in Reading Passage 3? In boxes 37-40 on your answer sheet, write\n\nYES if the statement agrees with the claims of the writer\n\nNO if the statement contradicts the claims of the writer NOT GIVEN if it is impossible to say what the writer thinks about this"
+          },
+          {
+            "page": 101,
+            "question": 40,
+            "text": "Questions 37-40\n\nDo the following statements agree with the claims of the writer in Reading Passage 3? In boxes 37-40 on your answer sheet, write\n\nYES if the statement agrees with the claims of the writer\n\nNO if the statement contradicts the claims of the writer NOT GIVEN if it is impossible to say what the writer thinks about this"
+          }
+        ],
+        "question_range": [
+          27,
+          40
+        ],
+        "qa": {
+          "expected_count": 14,
+          "detected_count": 14,
+          "expected_questions": [
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40
+          ],
+          "detected_questions": [
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40
+          ],
+          "missing_questions": [],
+          "duplicate_questions": [],
+          "unexpected_questions": [],
+          "ordered": true,
+          "ok": true
+        }
+      }
+    ]
+  }
+}
