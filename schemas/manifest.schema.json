@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ieltsband.com/schemas/manifest-v2.json",
+  "title": "IELTS Mock Manifest v2",
+  "type": "object",
+  "required": ["schema_version", "mock_name", "pdf_file", "tests"],
+  "properties": {
+    "schema_version": { "const": "2.0" },
+    "mock_id": { "type": "string" },
+    "mock_name": { "type": "string", "minLength": 1 },
+    "pdf_file": { "type": "string", "minLength": 1 },
+    "variant": { "enum": ["academic", "general"] },
+    "tests": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "variant": { "enum": ["academic", "general"] },
+          "content_file": { "type": "string", "minLength": 1 },
+          "sections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "available": { "type": "boolean" },
+                "duration_seconds": { "type": "integer", "minimum": 0 }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
