@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ieltsband.com/schemas/content-v2.json",
+  "title": "IELTS Mock Test Content v2",
+  "type": "object",
+  "required": ["schema_version", "test", "sections"],
+  "properties": {
+    "schema_version": { "const": "2.0" },
+    "test": {
+      "type": "object",
+      "required": ["id", "name", "variant"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "variant": { "enum": ["academic", "general"] }
+      },
+      "additionalProperties": true
+    },
+    "sections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/section" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "properties": {
+        "pdf_pages": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+        "primary_page": { "type": ["integer", "null"], "minimum": 1 },
+        "text_origin": { "enum": ["vision", "ocr", "manual", "mixed", "unknown"] },
+        "verified": { "type": "boolean" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "ui": {
+      "type": "object",
+      "properties": {
+        "renderer": { "type": "string" },
+        "input_mode": { "type": "string" },
+        "layout": { "type": "string" },
+        "width": { "type": "string" },
+        "show_question_number": { "type": "boolean" },
+        "inline_answers": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "option": {
+      "type": "object",
+      "required": ["id", "label", "text"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "answer": {
+      "type": ["object", "null"],
+      "properties": {
+        "type": { "type": "string" },
+        "accepted": {},
+        "normalization": {
+          "type": "object",
+          "properties": {
+            "case_sensitive": { "type": "boolean" },
+            "trim_whitespace": { "type": "boolean" },
+            "ignore_trailing_period": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        },
+        "constraints": {
+          "type": "object",
+          "properties": {
+            "min_words": { "type": ["integer", "null"], "minimum": 0 },
+            "max_words": { "type": ["integer", "null"], "minimum": 0 },
+            "max_characters": { "type": ["integer", "null"], "minimum": 0 }
+          },
+          "additionalProperties": true
+        },
+        "points": { "type": ["integer", "number", "null"], "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "explanation": {
+      "type": ["object", "null"],
+      "properties": {
+        "text": { "type": "string" },
+        "evidence": {
+          "type": ["object", "null"],
+          "properties": {
+            "quote": { "type": "string" },
+            "source_pages": { "type": "array", "items": { "type": "integer", "minimum": 1 } }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "question": {
+      "type": "object",
+      "required": ["id", "number", "type"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "number": { "type": "integer", "minimum": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "group_id": { "type": ["string", "null"] },
+        "section": { "type": ["string", "null"] },
+        "part": { "type": ["integer", "null"], "minimum": 1 },
+        "prompt": { "type": ["string", "null"] },
+        "content": { "type": ["object", "null"] },
+        "display": { "type": ["object", "null"] },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/option" } },
+        "selection": {
+          "type": ["object", "null"],
+          "properties": {
+            "min": { "type": ["integer", "null"], "minimum": 0 },
+            "max": { "type": ["integer", "null"], "minimum": 0 }
+          },
+          "additionalProperties": true
+        },
+        "answer": { "$ref": "#/$defs/answer" },
+        "explanation": { "$ref": "#/$defs/explanation" },
+        "source": { "$ref": "#/$defs/source" },
+        "ui": { "$ref": "#/$defs/ui" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "difficulty": { "type": ["object", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "group": {
+      "type": "object",
+      "required": ["id", "type", "questions"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "question_range": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "minItems": 2, "maxItems": 2 },
+        "title": { "type": ["string", "null"] },
+        "instructions": { "type": "array", "items": { "type": "string" } },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/option" } },
+        "content": { "type": ["object", "null"] },
+        "display": { "$ref": "#/$defs/ui" },
+        "questions": { "type": "array", "items": { "$ref": "#/$defs/question" } }
+      },
+      "additionalProperties": true
+    },
+    "page": {
+      "type": "object",
+      "required": ["pdf_page"],
+      "properties": {
+        "pdf_page": { "type": "integer", "minimum": 1 },
+        "printed_page": { "type": ["integer", "null"], "minimum": 1 },
+        "role": { "type": "string" },
+        "text_origin": { "enum": ["vision", "ocr", "manual", "mixed", "unknown"] },
+        "raw_text": { "type": "string" },
+        "blocks": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "source": { "$ref": "#/$defs/source" }
+      },
+      "additionalProperties": true
+    },
+    "reading_passage": {
+      "type": "object",
+      "required": ["id", "number", "title"],
+      "properties": {
+        "id": { "type": "string" },
+        "number": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string" },
+        "question_range": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "minItems": 2, "maxItems": 2 },
+        "source_pages": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+        "body_pages": { "type": "array", "items": { "$ref": "#/$defs/page" } },
+        "content": { "type": ["object", "null"] },
+        "question_groups": { "type": "array", "items": { "$ref": "#/$defs/group" } }
+      },
+      "additionalProperties": true
+    },
+    "section": {
+      "type": "object",
+      "required": ["id", "type", "title"],
+      "properties": {
+        "id": { "enum": ["listening", "reading", "writing"] },
+        "type": { "enum": ["listening", "reading", "writing"] },
+        "title": { "type": "string" },
+        "duration_seconds": { "type": "integer", "minimum": 0 },
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/page" } },
+        "audio": { "type": ["object", "null"] },
+        "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
+        "passages": { "type": "array", "items": { "$ref": "#/$defs/reading_passage" } },
+        "tasks": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

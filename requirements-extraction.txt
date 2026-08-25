@@ -1,0 +1,4 @@
+# Authoring/extraction tooling only. Not required by the Flask runtime.
+# Runs entirely locally; no paid API key is required.
+PyMuPDF==1.24.9
+jsonschema>=4.0.0
