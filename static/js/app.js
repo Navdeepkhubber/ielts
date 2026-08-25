@@ -506,85 +506,6 @@ function stepQuestion(prefix, dir) {
   inputs[idx].scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-/* ---------------- text view (extracted content) ---------------- */
-
-async function fetchContent(mockId, testName) {
-  try {
-    return await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/content`);
-  } catch { return null; }
-}
-
-const _BLOCK_PATTERNS = {
-  qrange: /^(?:[QO]uestions?\s+\d|READING PASSAGE\s+\d|(?:SECTION|PART)\s+\d+$)/i,
-  instruction: /^(Complete|Choose|Write|Circle|Label)\b.{0,70}$/i,
-  letterMark: /^[A-H]$/,
-  allCaps: /^[A-Z][A-Z\s'.,\-]{3,60}$/,
-};
-
-function classifyBlock(text) {
-  if (_BLOCK_PATTERNS.letterMark.test(text)) return "letter-mark";
-  if (_BLOCK_PATTERNS.qrange.test(text)) return "q-range";
-  if (_BLOCK_PATTERNS.instruction.test(text) || _BLOCK_PATTERNS.allCaps.test(text)) return "instruction";
-  return "prose";
-}
-
-function textWithInlineInputs(text, prefix, qFrom, qTo) {
-  // Turn numbered gaps ("7 ........" / "7 ____") into inline inputs
-  // synced with the answer sheet. Only numbers in this section's range
-  // become inputs, so years/quantities in prose are left alone.
-  const addGaps = raw => esc(raw).replace(/\b(\d{1,2})\s*(?:[.…·]{3,}|_{3,})/g, (m, num) => {
-    const q = Number(num);
-    if (q < qFrom || q > qTo) return m;
-    return `<span class="inline-q"><span class="inline-qnum">${q}</span><input class="inline-input" data-inline-q="${q}" data-prefix="${prefix}" autocomplete="off" spellcheck="false" aria-label="Answer for question ${q}"></span>`;
-  });
-
-  return text.split(/\n{2,}/).filter(b => b.trim()).map(block => {
-    const kind = classifyBlock(block.trim());
-    if (kind === "letter-mark") return `<div class="para-letter">${esc(block.trim())}</div>`;
-    if (kind === "q-range") return `<div class="q-range-head">${esc(block.trim())}</div>`;
-    if (kind === "instruction") return `<div class="q-instruction">${addGaps(block.trim())}</div>`;
-    return `<p>${addGaps(block)}</p>`;
-  }).join("");
-}
-
-function wireInlineInputs(container) {
-  container.querySelectorAll(".inline-input").forEach(inp => {
-    const q = inp.dataset.inlineQ, prefix = inp.dataset.prefix;
-    const sheet = document.getElementById(`${prefix}-${q}`);
-    if (!sheet) return;
-    inp.addEventListener("input", () => {
-      sheet.value = inp.value;
-      sheet.dispatchEvent(new Event("input"));
-    });
-    inp.addEventListener("focus", () => syncNavCurrent(prefix, q));
-    sheet.addEventListener("input", () => {
-      if (document.activeElement !== inp) inp.value = sheet.value;
-    });
-  });
-}
-
-function viewToggleHtml(hasText) {
-  if (!hasText) return "";
-  return `
-    <div class="view-toggle">
-      <button class="vt-btn active" data-vt="text">Text</button>
-      <button class="vt-btn" data-vt="book">Book view</button>
-    </div>`;
-}
-
-function wireViewToggle(container) {
-  const tabs = container.querySelector(".view-toggle");
-  if (!tabs) return;
-  tabs.addEventListener("click", e => {
-    const btn = e.target.closest(".vt-btn");
-    if (!btn) return;
-    tabs.querySelectorAll(".vt-btn").forEach(b => b.classList.toggle("active", b === btn));
-    const mode = btn.dataset.vt;
-    container.querySelectorAll(".content-text").forEach(el => el.style.display = mode === "text" ? "" : "none");
-    container.querySelectorAll(".content-book").forEach(el => el.style.display = mode === "book" ? "" : "none");
-  });
-}
-
 /* ---------------- READING ---------------- */
 
 async function startReading(mockId, testName) {
@@ -597,32 +518,17 @@ async function startReading(mockId, testName) {
     body: JSON.stringify({ mock_id: mockId, test_name: testName, section: "reading", time_allowed_seconds: totalSeconds })
   });
 
-  const content = await fetchContent(mockId, testName);
-  const rtexts = content?.reading?.passages || [];
   const groups = rcfg.passages.map((p, i) => ({ label: `Passage ${i + 1}`, from: p.questions[0], to: p.questions[1] }));
   let totalQ = 0;
   let materialHtml = "";
   rcfg.passages.forEach((p, i) => {
     const imgs = p.pages.map(pg =>
       `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pg}" alt="Reading passage page ${pg}" loading="lazy">`).join("");
-    const txt = rtexts[i]?.text;
-    if (txt) {
-      materialHtml += `
-        <div class="passage-block">
-          <div class="passage-head">Reading Passage ${i + 1}</div>
-          <div class="content-text">${textWithInlineInputs(txt, "ans", p.questions[0], p.questions[1])}</div>
-          <div class="content-book" style="display:none">${imgs}</div>
-        </div>`;
-    } else {
-      materialHtml += `<div class="passage-block"><div class="passage-head">Reading Passage ${i + 1}</div>${imgs}</div>`;
-    }
+    materialHtml += `<div class="passage-block"><div class="passage-head">Reading Passage ${i + 1}</div>${imgs}</div>`;
     totalQ += p.questions[1] - p.questions[0] + 1;
   });
-  const hasText = rtexts.some(t => t?.text);
-
   app.innerHTML = `
     ${examBarHtml("Reading", { mockId })}
-    ${viewToggleHtml(hasText)}
     <div class="exam-shell">
       <div class="exam-material">${materialHtml}</div>
       <div class="exam-answers">
@@ -639,8 +545,6 @@ async function startReading(mockId, testName) {
   window._navPrefix = "ans";
   document.body.classList.add("has-exam-navbar");
   wireAnswerSheet(app);
-  wireInlineInputs(app);
-  wireViewToggle(app);
   syncNavAnswered("ans");
   document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
 
@@ -679,19 +583,12 @@ async function startListening(mockId, testName) {
   const groups = lcfg.parts.map((p, i) => ({ label: `Part ${p.part_number || i + 1}`, from: p.questions[0], to: p.questions[1] }));
   const totalQ = groups.reduce((a, g) => a + g.to - g.from + 1, 0);
 
-  const content = await fetchContent(mockId, testName);
-  const ltexts = content?.listening?.parts || [];
   let materialHtml = "";
   lcfg.parts.forEach((p, i) => {
     const pages = p.pages || [];
     const imgs = pages.length
       ? pages.map(pg => `<img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${pg}" alt="Listening part ${i + 1} question sheet, page ${pg}" loading="lazy">`).join("")
       : `<div class="missing-sheet">The question sheet for this part isn't configured yet. Add its page numbers to the <strong>pages</strong> list for this part in manifest.json.</div>`;
-    const txt = ltexts[i]?.text;
-    const sheetHtml = txt
-      ? `<div class="content-text">${textWithInlineInputs(txt, "lans", p.questions[0], p.questions[1])}</div>
-         <div class="content-book" style="display:none">${imgs}</div>`
-      : imgs;
     // A part can be split across multiple audio files (e.g. two halves of
     // one recording) -- these must play back-to-back as ONE continuous
     // "once only" listen, not as separate parts. Old manifests may still
@@ -705,14 +602,11 @@ async function startListening(mockId, testName) {
           <div class="audio-progress"><div class="audio-progress-fill" id="audioFill-${i}"></div></div>
           <span class="audio-time" id="audioTime-${i}">not started</span>
         </div>
-        <div class="question-sheet">${sheetHtml}</div>
+        <div class="question-sheet">${imgs}</div>
       </div>`;
   });
-  const hasText = ltexts.some(t => t?.text);
-
   app.innerHTML = `
     ${examBarHtml("Listening", { mockId })}
-    ${viewToggleHtml(hasText)}
     <div class="exam-shell">
       <div class="exam-material">${materialHtml}</div>
       <div class="exam-answers">
@@ -729,8 +623,6 @@ async function startListening(mockId, testName) {
   window._navPrefix = "lans";
   document.body.classList.add("has-exam-navbar");
   wireAnswerSheet(app);
-  wireInlineInputs(app);
-  wireViewToggle(app);
   syncNavAnswered("lans");
   document.getElementById("answeredCount").textContent = `0 / ${totalQ} answered`;
 
@@ -943,39 +835,6 @@ function bandRibbonHtml(band) {
     </div>`;
 }
 
-/* ---------------- answer-key page viewer (for manual comparison) ---------------- */
-
-async function answerKeyPageHtml(mockId, testInfo) {
-  if (!testInfo) return "";
-  try {
-    const { page } = await api(
-      `/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testInfo.testName)}/answer-key-page?section=${encodeURIComponent(testInfo.section)}`
-    );
-    return `
-      <div class="key-page-toggle">
-        <button class="btn-key-page" data-action="toggleKeyPage">📖 View answer key page ${page} (compare manually)</button>
-      </div>
-      <div class="key-page-viewer" id="keyPageViewer" style="display:none">
-        <img src="/api/mocks/${encodeURIComponent(mockId)}/page?page=${page}" alt="Answer key page ${page}" loading="lazy">
-      </div>`;
-  } catch {
-    return ""; // no known answer-key page for this section -- omit the button entirely
-  }
-}
-
-function wireKeyPageToggle(container) {
-  const btn = container.querySelector("[data-action='toggleKeyPage']");
-  const viewer = container.querySelector("#keyPageViewer");
-  if (!btn || !viewer) return;
-  btn.addEventListener("click", () => {
-    const showing = viewer.style.display !== "none";
-    viewer.style.display = showing ? "none" : "";
-    btn.textContent = showing
-      ? btn.textContent.replace("Hide", "View")
-      : btn.textContent.replace("View", "Hide");
-  });
-}
-
 /* ---------------- manual score entry ---------------- */
 
 function manualScoreFormHtml(total) {
@@ -1032,17 +891,12 @@ async function renderUnmarkedResults(sectionLabel, result, mockId, testInfo) {
         <span class="given">${r.given ? esc(r.given) : "<em>not answered</em>"}</span>
         <span class="expected"><em>key not entered</em></span>
       </div>`).join("");
-  const keyPageHtml = await answerKeyPageHtml(mockId, testInfo);
   app.innerHTML = `
     <div class="results-box results-wide">
       <h2>${esc(sectionLabel)} — answers recorded (unmarked)</h2>
       <p class="unmarked-note">This test's answer key hasn't been filled in yet, so no score
       can be calculated — but your answers below are saved, and you can mark them yourself
-      against the key in your book. To get auto-marking next time, fill in
-      <code>answers/&lt;Test&gt;/${sectionLabel.toLowerCase()}.json</code> — see
-      <strong>ANSWER_KEYS.md</strong> and <strong>NEEDS_ATTENTION.md</strong> for exactly
-      what's missing and where to find it in the PDF.</p>
-      ${keyPageHtml}
+      against the key in your book.</p>
       ${testInfo?.attemptId ? manualScoreFormHtml(result.total) : ""}
       <div class="q-result q-result-head"><span class="qn">Q</span><span>Your answer</span><span></span></div>
       <div class="review-list">${rows}</div>
@@ -1050,7 +904,6 @@ async function renderUnmarkedResults(sectionLabel, result, mockId, testInfo) {
         <button class="btn btn-primary" data-action="openMock" data-mock="${esc(mockId)}">Back to tests</button>
       </div>
     </div>`;
-  wireKeyPageToggle(app);
   wireManualScoreForm(app, testInfo?.attemptId, result.total);
 }
 
@@ -1136,14 +989,10 @@ async function renderResults(sectionLabel, result, autoSubmitted, mockId, groups
       </div>
       <div class="review-list" id="reviewList">${entries.map(reviewRow).join("")}</div>
 
-      ${await answerKeyPageHtml(mockId, testInfo)}
-
       <div class="submit-area">
         <button class="btn btn-primary" data-action="openMock" data-mock="${esc(mockId)}">Back to tests</button>
       </div>
     </div>`;
-
-  wireKeyPageToggle(app);
 
   // Filter tab behavior
   const tabs = document.getElementById("filterTabs");

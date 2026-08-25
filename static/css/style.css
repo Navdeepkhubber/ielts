@@ -422,13 +422,9 @@ main {
 }
 
 /* Text-size scaling applied to the exam material + answer sheet */
-.exam-shell.text-lg .content-text,
 .exam-shell.text-lg .sheet-cell input,
-.exam-shell.text-lg .inline-input,
 .exam-shell.text-lg textarea.essay { font-size: 1.14em; }
-.exam-shell.text-xl .content-text,
 .exam-shell.text-xl .sheet-cell input,
-.exam-shell.text-xl .inline-input,
 .exam-shell.text-xl textarea.essay { font-size: 1.3em; }
 
 /* "Hide" — simulates the real exam's break/hide-test feature */
@@ -460,7 +456,6 @@ body.high-contrast .settings-panel,
 body.high-contrast .mock-card,
 body.high-contrast .test-row { background: #000 !important; color: #ffe066 !important; border-color: #444 !important; }
 body.high-contrast .sheet-cell,
-body.high-contrast .inline-input,
 body.high-contrast textarea.essay { background: #111 !important; color: #ffe066 !important; border-color: #555 !important; }
 body.high-contrast .exam-navbar { background: #000; border-top-color: #444; }
 body.high-contrast .navq-num { background: #111; color: #ffe066; border-color: #555; }
@@ -1190,28 +1185,6 @@ table.history .mono { font-family: var(--font-mono); font-variant-numeric: tabul
   border-radius: var(--radius-sm);
 }
 
-/* ---------- Text view (extracted content) ---------- */
-.view-toggle {
-  display: inline-flex;
-  gap: 2px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 3px;
-  margin-bottom: 12px;
-}
-.vt-btn {
-  border: none;
-  background: none;
-  padding: 6px 16px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--ink-soft);
-  border-radius: 999px;
-  cursor: pointer;
-}
-.vt-btn.active { background: var(--ink); color: #fff; }
-
 .passage-block { margin-bottom: 28px; }
 .passage-head {
   font-family: var(--font-display);
@@ -1226,83 +1199,6 @@ table.history .mono { font-family: var(--font-mono); font-variant-numeric: tabul
   border-radius: var(--radius-sm);
   margin-bottom: 12px;
 }
-.content-text {
-  font-size: 1rem;
-  line-height: 1.75;
-  color: var(--ink);
-  padding: 4px 8px;
-}
-.content-text p { margin: 0 0 14px; }
-
-.inline-q {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  margin: 0 2px;
-}
-.inline-qnum {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #fff;
-  background: var(--navy-btn);
-  border-radius: 4px;
-  padding: 1px 5px;
-  transform: translateY(-1px);
-}
-.inline-input {
-  border: none;
-  border-bottom: 2px solid var(--line-strong);
-  background: var(--paper);
-  border-radius: 4px 4px 0 0;
-  padding: 2px 8px;
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  width: 130px;
-  color: var(--ink);
-}
-.inline-input:focus {
-  outline: none;
-  border-bottom-color: var(--focus);
-  background: #fff;
-}
-
-/* ---------- Content block hierarchy (reading/listening text view) ---------- */
-.q-range-head {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--navy-btn);
-  margin: 18px 0 6px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-}
-.content-text > .q-range-head:first-child { border-top: none; padding-top: 0; margin-top: 0; }
-
-.q-instruction {
-  font-style: italic;
-  color: var(--ink-soft);
-  font-size: 0.92rem;
-  margin: 0 0 12px;
-}
-
-.para-letter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--navy-btn);
-  color: #fff;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.78rem;
-  margin: 10px 0 6px;
-}
-
 .unmarked-note {
   background: var(--band-soft);
   border-radius: var(--radius-sm);

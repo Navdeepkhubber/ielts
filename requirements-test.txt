@@ -1,4 +1,0 @@
-# Only needed to run the test suite in app_tests/ (locally or in CI) --
-# not part of the production runtime, so it's kept out of
-# requirements-prod.txt and the Docker image.
-pytest==8.2.2

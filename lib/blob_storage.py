@@ -106,7 +106,7 @@ def fetch_cached(relative_path):
 
 def list_mock_ids():
     """Top-level 'folder' names under the prefix -- one per mock, each
-    containing its own manifest.json/main.pdf/audio/answers/etc."""
+    containing its own mock configuration, PDFs, and audio files."""
     client = _get_client()
     paginator = client.get_paginator("list_objects_v2")
     mock_ids = set()

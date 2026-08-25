@@ -1,14 +1,4 @@
-# Production runtime dependencies only. This deliberately excludes
-# pytesseract/easyocr (and the ~500MB+ of torch they pull in) since those
-# are only used by lib/scaffold.py + lib/answer_key.py to auto-generate
-# manifest.json/answer files from a freshly-dumped, unscaffolded mock --
-# something you do locally before deploying, not something the running
-# server needs. Keeping them out of the production image matters
-# concretely on free-tier hosting (e.g. Render's free plan caps memory at
-# 512MB) and shrinks image size/build time a lot either way.
-#
-# If you ever need to scaffold *inside* the deployed container instead of
-# locally, install from requirements.txt (the full dev set) instead.
+# Production runtime dependencies only.
 
 Flask==3.0.3
 PyMuPDF==1.24.9

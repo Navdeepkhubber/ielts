@@ -2,14 +2,6 @@
 # not the Flask dev server (python3 app.py) -- that server is single-
 # threaded and explicitly documented by Flask as unsafe for real traffic.
 #
-# Deliberately does NOT install tesseract/ocrad/easyocr -- those are only
-# used by the local auto-scaffolder (turning a freshly-dumped, unscanned
-# mock folder into manifest.json + answer files), never by the running
-# server. Scaffold your tests/ folder locally first, then build/deploy --
-# this keeps the image small and its memory footprint low, which matters
-# concretely on free-tier hosting (e.g. Render's free plan caps a service
-# at 512MB RAM). See SETUP.md.
-#
 # Build:  docker build -t ieltsband .
 # Run:    docker run -p 8080:8080 --env-file .env.production ieltsband
 
