@@ -66,7 +66,6 @@ QUESTION_TYPES = {
     "ordering",
 }
 
-
 PAGE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -80,7 +79,6 @@ PAGE_SCHEMA = {
     "required": ["page", "role", "raw_text", "blocks", "groups"],
     "additionalProperties": True
 }
-
 
 PROMPT = """
 You are reconstructing the content of an IELTS practice test from one scanned
@@ -147,8 +145,8 @@ def extract_page(client: OpenAI, image_bytes: bytes, page_number: int, model: st
     )
     text = response.output_text.strip()
     if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\\s*", "", text)
-        text = re.sub(r"\\s*```$", "", text)
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
     data = json.loads(text)
     data["page"] = page_number
     data.setdefault("role", "unknown")
@@ -242,8 +240,6 @@ def assemble(pages: list[dict[str, Any]], test_id: str, test_name: str, variant:
                     qmap[q["number"]] = q
 
         if section_id == "reading":
-            # Reading passage metadata may appear on several pages. Keep one
-            # passage object per stable id/title and append body pages.
             passage = page.get("passage")
             if passage:
                 pid = passage.get("id") or f"reading-passage-{passage.get('number', len(section['passages']) + 1)}"
