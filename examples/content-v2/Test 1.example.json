@@ -1,0 +1,289 @@
+{
+  "schema_version": "2.0",
+  "test": {
+    "id": "cambridge-test-1",
+    "name": "Test 1",
+    "variant": "academic"
+  },
+  "sections": [
+    {
+      "id": "listening",
+      "type": "listening",
+      "title": "Listening",
+      "duration_seconds": 1800,
+      "groups": [
+        {
+          "id": "listening-part-1-group-1-6",
+          "type": "table_completion",
+          "question_range": [1, 6],
+          "title": "Oyster Bay Sailing Club Courses",
+          "instructions": [
+            "Complete the table below.",
+            "Write ONE WORD AND/OR A NUMBER for each answer."
+          ],
+          "questions": [
+            {
+              "id": "listening-q1",
+              "number": 1,
+              "type": "text_input",
+              "content": {
+                "before": "Taster day — introduction to sailing — £120 if booking one place — small groups (max ____ people).",
+                "after": ""
+              },
+              "answer": {
+                "type": "text",
+                "accepted": [],
+                "constraints": {"max_words": 2}
+              },
+              "source": {
+                "pdf_pages": [11],
+                "primary_page": 11,
+                "text_origin": "vision",
+                "verified": false
+              },
+              "ui": {
+                "renderer": "inline_blank",
+                "input_mode": "text",
+                "width": "small"
+              }
+            }
+          ]
+        },
+        {
+          "id": "listening-part-2-group-11-16",
+          "type": "multiple_choice",
+          "question_range": [11, 16],
+          "title": "Working as a makeup trainee",
+          "instructions": [
+            "Choose the correct letter, A, B or C."
+          ],
+          "questions": [
+            {
+              "id": "listening-q11",
+              "number": 11,
+              "type": "multiple_choice",
+              "prompt": "What should trainees always expect to get when working on low budget short films?",
+              "options": [
+                {"id": "A", "label": "A", "text": "travel expenses"},
+                {"id": "B", "label": "B", "text": "a minimum wage"},
+                {"id": "C", "label": "C", "text": "meals"}
+              ],
+              "answer": {
+                "type": "single",
+                "accepted": []
+              },
+              "source": {
+                "pdf_pages": [12],
+                "primary_page": 12,
+                "text_origin": "vision",
+                "verified": false
+              },
+              "ui": {
+                "renderer": "choice_list",
+                "input_mode": "radio",
+                "layout": "vertical"
+              }
+            }
+          ]
+        },
+        {
+          "id": "listening-part-3-group-25-30",
+          "type": "matching",
+          "question_range": [25, 30],
+          "title": "Resources related to ocean biodiversity",
+          "instructions": [
+            "Choose SIX answers from the box and write the correct letter, A-H, next to Questions 25-30."
+          ],
+          "options": [
+            {"id": "A", "label": "A", "text": "This is aimed at a very specialist audience."},
+            {"id": "B", "label": "B", "text": "This is now rather outdated."},
+            {"id": "C", "label": "C", "text": "This was an effective description of a new danger."},
+            {"id": "D", "label": "D", "text": "This suggests possible ways to improve the situation."},
+            {"id": "E", "label": "E", "text": "This does not give a balanced account."},
+            {"id": "F", "label": "F", "text": "This is too predictable to be useful."},
+            {"id": "G", "label": "G", "text": "This gives insufficient evidence for its claims."},
+            {"id": "H", "label": "H", "text": "This gives a clear explanation of the problems."}
+          ],
+          "questions": [
+            {
+              "id": "listening-q25",
+              "number": 25,
+              "type": "matching",
+              "prompt": "Article on invasive lionfish",
+              "answer": {"type": "single", "accepted": []},
+              "source": {
+                "pdf_pages": [15],
+                "primary_page": 15,
+                "text_origin": "vision",
+                "verified": false
+              },
+              "ui": {
+                "renderer": "matching_select",
+                "input_mode": "select"
+              }
+            }
+          ]
+        },
+        {
+          "id": "listening-part-4-group-31-40",
+          "type": "notes_completion",
+          "question_range": [31, 40],
+          "title": "Sources of rubber",
+          "instructions": [
+            "Complete the notes below.",
+            "Write ONE WORD ONLY for each answer."
+          ],
+          "questions": [
+            {
+              "id": "listening-q31",
+              "number": 31,
+              "type": "text_input",
+              "content": {
+                "before": "Three resources which are essential for industrial civilisation: 31. ______; fossil fuels; rubber.",
+                "after": ""
+              },
+              "answer": {
+                "type": "text",
+                "accepted": [],
+                "constraints": {"max_words": 1}
+              },
+              "source": {
+                "pdf_pages": [16],
+                "primary_page": 16,
+                "text_origin": "vision",
+                "verified": false
+              },
+              "ui": {
+                "renderer": "inline_blank",
+                "input_mode": "text",
+                "width": "medium"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reading",
+      "type": "reading",
+      "title": "Reading",
+      "duration_seconds": 3600,
+      "passages": [
+        {
+          "id": "reading-passage-1",
+          "number": 1,
+          "title": "The Davies Sisters",
+          "question_range": [1, 13],
+          "source_pages": [17, 18, 19, 20],
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "text": "Between 1908 and 1924, Gwendoline and Margaret Davies amassed one of the largest collections of late-nineteenth and early-twentieth-century French paintings in Britain."
+              },
+              {
+                "type": "paragraph",
+                "text": "Gwendoline (1882-1951) and Margaret (1884-1963) Davies were the granddaughters of David Davies, a Welshman who amassed a fortune in the shipping and mining industries."
+              }
+            ]
+          },
+          "question_groups": [
+            {
+              "id": "reading-p1-group-1-7",
+              "type": "notes_completion",
+              "question_range": [1, 7],
+              "instructions": [
+                "Complete the notes below.",
+                "Choose ONE WORD ONLY from the passage for each answer."
+              ],
+              "questions": [
+                {
+                  "id": "reading-q1",
+                  "number": 1,
+                  "type": "text_input",
+                  "prompt": "Their grandfather's wealth came from ____ and transportation businesses.",
+                  "answer": {
+                    "type": "text",
+                    "accepted": [],
+                    "constraints": {"max_words": 1}
+                  },
+                  "source": {
+                    "pdf_pages": [19],
+                    "primary_page": 19,
+                    "text_origin": "vision",
+                    "verified": false
+                  },
+                  "ui": {
+                    "renderer": "inline_blank",
+                    "input_mode": "text"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "reading-p1-group-8-13",
+              "type": "true_false_not_given",
+              "question_range": [8, 13],
+              "instructions": [
+                "TRUE if the statement agrees with the information",
+                "FALSE if the statement contradicts the information",
+                "NOT GIVEN if there is no information on this"
+              ],
+              "options": [
+                {"id": "TRUE", "label": "TRUE", "text": "TRUE"},
+                {"id": "FALSE", "label": "FALSE", "text": "FALSE"},
+                {"id": "NOT_GIVEN", "label": "NOT GIVEN", "text": "NOT GIVEN"}
+              ],
+              "questions": [
+                {
+                  "id": "reading-q8",
+                  "number": 8,
+                  "type": "true_false_not_given",
+                  "prompt": "The Davies sisters' childhood influenced the way they decided to use their wealth.",
+                  "answer": {
+                    "type": "single",
+                    "accepted": []
+                  },
+                  "source": {
+                    "pdf_pages": [20],
+                    "primary_page": 20,
+                    "text_origin": "vision",
+                    "verified": false
+                  },
+                  "ui": {
+                    "renderer": "choice_list",
+                    "input_mode": "radio"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "writing",
+      "type": "writing",
+      "title": "Writing",
+      "duration_seconds": 3600,
+      "tasks": [
+        {
+          "id": "writing-task-1",
+          "task_number": 1,
+          "type": "academic_task_1",
+          "prompt": {"text": "Extract the complete Writing Task 1 prompt from the scanned page."},
+          "response": {"type": "long_text", "min_words": 150},
+          "source": {"pdf_pages": [], "text_origin": "vision", "verified": false}
+        },
+        {
+          "id": "writing-task-2",
+          "task_number": 2,
+          "type": "essay",
+          "prompt": {"text": "Extract the complete Writing Task 2 prompt from the scanned page."},
+          "response": {"type": "long_text", "min_words": 250},
+          "source": {"pdf_pages": [], "text_origin": "vision", "verified": false}
+        }
+      ]
+    }
+  ]
+}
