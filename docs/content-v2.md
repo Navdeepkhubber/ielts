@@ -1,20 +1,20 @@
 # Text-only IELTS content v2
 
-The v2 content model is intentionally independent of PDF rendering. The scanned PDF is an authoring/source asset only. Production UI data lives in `content/Test N.json`.
+The v2 content model is independent of PDF rendering. The scanned PDF is an authoring/source asset only. Production UI data lives in `content/Test N.json`.
 
 ## Pipeline
 
 ```text
 scanned PDF
   -> PyMuPDF page render
-  -> vision model reads page image
+  -> local Ollama vision model reads page image
   -> page-level semantic JSON
   -> deterministic assembly
   -> schemas/content.schema.json validation
   -> text-only web UI
 ```
 
-Traditional OCR is not used for content generation. The page image is the source presented to the vision model because the supplied PDFs are scans without a usable text layer.
+Traditional OCR is deliberately not used as the canonical content source. The page image is provided directly to a local vision-language model because the supplied PDFs are scans without a usable text layer.
 
 ## Canonical object hierarchy
 
@@ -34,25 +34,29 @@ Every question is an atomic object with a stable `id`, numeric `number`, semanti
 ## Important rules
 
 - Do not render PDF pages in the learner-facing UI.
-- Do not make OCR output the canonical content model.
+- Do not make raw OCR output the canonical content model.
 - Do not guess an answer during extraction. Use an empty `answer.accepted` until a trusted answer key is entered.
 - Preserve `source.pdf_pages` only for authoring/audit/debugging; it is not a UI fallback.
 - Validate question coverage and duplicates before publishing a test.
 - Keep raw page responses outside production content, e.g. `content/raw/`, so extraction can be audited without coupling the UI to the extraction format.
+- The extraction pipeline must work with no OpenAI or other paid API account.
 
-## Extraction
+## Local extraction
+
+The default provider is Ollama running locally with Qwen3-VL. Ollama currently provides local Qwen3-VL variants including 2B, 4B, 8B, 30B and 32B sizes; choose the largest one your machine can run comfortably. Qwen3-VL is designed for visual document understanding and OCR-like tasks. See the current Ollama/Qwen documentation before choosing a model.
+
+Install Ollama, then pull a local model:
+
+```bash
+ollama pull qwen3-vl:8b
+```
+
+The extractor talks only to `http://127.0.0.1:11434` by default.
 
 Install authoring dependencies:
 
 ```bash
 python3 -m pip install -r requirements-extraction.txt
-```
-
-Set credentials:
-
-```bash
-export OPENAI_API_KEY=...
-export OPENAI_VISION_MODEL=gpt-5.6-luna
 ```
 
 Run a test extraction:
@@ -65,7 +69,14 @@ python3 scripts/extract_test_content.py \
   --pages 11-45 \
   --test-id cambridge-21-test-1 \
   --test-name "Test 1" \
-  --variant academic
+  --variant academic \
+  --model qwen3-vl:8b
+```
+
+For a smaller machine, use a smaller local model, for example:
+
+```bash
+--model qwen3-vl:4b
 ```
 
 Then validate:
@@ -77,4 +88,4 @@ python3 scripts/validate_content.py \
   --expected-listening 40
 ```
 
-The current default model is `gpt-5.6-luna`; it can be overridden through `OPENAI_VISION_MODEL` or `--model`. OpenAI's current platform supports multimodal Responses API workflows and lists GPT-5.6 Luna as a cost-sensitive model suitable for high-volume workloads. See the current OpenAI platform/pricing documentation before large batch runs.
+No API key, OpenAI account, or per-page inference charge is required. Model inference cost is local compute only.
