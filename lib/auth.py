@@ -14,6 +14,11 @@ from lib.firebase_admin_setup import db
 USERS_COLLECTION = "users"
 
 
+def is_local_dev_request(request):
+    """Return true only for the loopback hosts used by local development."""
+    return request.host.split(":", 1)[0].lower() in {"localhost", "127.0.0.1", "::1"}
+
+
 def _clean_profile(data):
     data = data or {}
     return {
@@ -114,6 +119,15 @@ def current_user():
     user_id = session.get("user_id")
     if user_id is None:
         return None
+    if user_id == "local-dev":
+        return {
+            "id": "local-dev",
+            "name": "Local Developer",
+            "email": "local@example.test",
+            "target_band": "",
+            "test_type": "Academic",
+            "exam_date": "",
+        }
     return get_user(user_id)
 
 

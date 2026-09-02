@@ -518,7 +518,9 @@ def scan_and_scaffold(tests_root=None, verbose=True):
 
         # --- content/<Test N>.json: extracted section text for the text view ---
         try:
-            content_extract.scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name)
+            content_extract.scaffold_content_files(
+                mock_dir, manifest, pages_text, log, mock_name, pdf_path=pdf_path
+            )
         except Exception as e:
             log.append(f"[{mock_name}] content extraction failed: {e}")
 

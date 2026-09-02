@@ -43,6 +43,10 @@ CACHE_DIR = os.environ.get("BLOB_CACHE_DIR", "/tmp/ielts-blob-cache")
 
 
 def is_configured():
+    # Local debug runs must exercise the checked-out tests/ tree. Remote
+    # storage is enabled only by an explicitly non-debug server process.
+    if os.environ.get("FLASK_DEBUG", "1") == "1":
+        return False
     return bool(BUCKET and ENDPOINT and KEY_ID and APP_KEY)
 
 

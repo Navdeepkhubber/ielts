@@ -41,6 +41,10 @@ _TEST_RE = re.compile(r"^\s*Test\s+(\d+)\s*$", re.IGNORECASE | re.MULTILINE)
 # detect_structure().
 _PRACTICE_TEST_RE = re.compile(r"^\s*Practice\s+Test\s+(\d+)\s*$", re.IGNORECASE | re.MULTILINE)
 _READING_RE = re.compile(r"READING\s+PASSAGE\s+(\d+)", re.IGNORECASE)
+_READING_SECTION_RE = re.compile(
+    r"^\s*(?:SECTION|S\s*E\s*C\s*T\s*I\s*O\s*N)\s+(\d+)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
 # Listening: books printed before 2020 say "SECTION N"; from Cambridge 15
 # onward they say "PART N" (IELTS renamed listening sections to parts).
 # Line-anchored because "part 2" appears constantly in ordinary passage
@@ -51,7 +55,7 @@ _READING_RE = re.compile(r"READING\s+PASSAGE\s+(\d+)", re.IGNORECASE)
 # otherwise uses the no-colon form -- formatting is inconsistent even
 # within one PDF, so both must be tried everywhere).
 _LISTENING_RE = re.compile(
-    r"^\s*(?:SECTION|PART)\s+(\d+)\s*:?\s*(?:[QO]uestions?\s+\d+\s*[-–—~]\s*\d+)?\s*\.?\s*$",
+    r"^\s*(?:SECTION|PART)\s+(\d+)\s*(?::\s*)?(?:[QO]uestions?\s*:??\s*)?(?:\d(?:\s*\d)?\s*(?:[-–—~]|to|and)\s*\d(?:\s*\d)?)?\s*\.?\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 _WRITING_RE = re.compile(r"WRITING\s+TASK\s+(\d+)", re.IGNORECASE)
@@ -63,6 +67,7 @@ _WRITING_RE = re.compile(r"WRITING\s+TASK\s+(\d+)", re.IGNORECASE)
 _WRITING_RE2 = re.compile(r"^\s*T\s?A\s?S\s?K\s+(\d+)\s*$", re.IGNORECASE | re.MULTILINE)
 # OCR sometimes misreads Q as O ("Ouestions"); allow both.
 _QUESTIONS_RE = re.compile(r"[QO]uestions?\s+(\d+)\s*[-–—~]\s*(\d+)", re.IGNORECASE)
+_QUESTION_NUMBER_RE = re.compile(r"^\s*{number}\s*(?:[.)]|$)", re.MULTILINE)
 # Sample writing answers in the back of the book: "TEST 2, WRITING TASK 1"
 _SAMPLE_WRITING_RE = re.compile(r"^\s*TEST\s+(\d+)\s*,\s*WRITING\s+TASK\s+(\d+)", re.IGNORECASE | re.MULTILINE)
 _SAMPLE_SECTION_END_RE = re.compile(r"sample\s+answer\s+sheets", re.IGNORECASE)
@@ -203,6 +208,15 @@ def _find_headings(pages_text, pattern):
     return out
 
 
+def _find_all_headings(pages_text, pattern):
+    """Return every ``(page_num_1indexed, heading_number)`` match."""
+    out = []
+    for i, text in enumerate(pages_text):
+        for m in pattern.finditer(text):
+            out.append((i + 1, int(m.group(1))))
+    return out
+
+
 def _find_question_ranges(pages_text):
     """Returns [(page_num_1indexed, start, end)] for every match, page can repeat."""
     out = []
@@ -251,6 +265,50 @@ def _question_range_in_span(question_ranges, span_pages):
     return [min(s for s, _ in hits), max(e for _, e in hits)]
 
 
+def _first_question_page(pages_text, start_page, end_page, question_number):
+    """Find the first page containing the printed question number."""
+    pattern = re.compile(
+        _QUESTION_NUMBER_RE.pattern.format(number=re.escape(str(question_number)))
+    )
+    for page in range(start_page, end_page + 1):
+        if pattern.search(pages_text[page - 1]):
+            return page
+    return start_page
+
+
+def _question_marker_pages(pdf_path):
+    """Return pages containing colored boxed question-number spans."""
+    markers = {}
+
+    def is_blue(color):
+        red = (color >> 16) & 0xFF
+        green = (color >> 8) & 0xFF
+        blue = color & 0xFF
+        return blue > red * 1.5 and blue > green * 1.5
+
+    try:
+        doc = fitz.open(pdf_path)
+        try:
+            for page_number, page in enumerate(doc, 1):
+                for block in page.get_text("dict")["blocks"]:
+                    for line in block.get("lines", []):
+                        for span in line.get("spans", []):
+                            text = span.get("text", "").strip()
+                            if (
+                                text.isdigit()
+                                and is_blue(span.get("color", 0))
+                                and span["bbox"][1] < page.rect.height - 50
+                            ):
+                                number = int(text)
+                                if 1 <= number <= 40:
+                                    markers.setdefault(number, []).append(page_number)
+        finally:
+            doc.close()
+    except (OSError, ValueError):
+        return {}
+    return markers
+
+
 def detect_structure(pdf_path, use_ocr=True, ocr_progress=None):
     """
     Returns:
@@ -263,6 +321,7 @@ def detect_structure(pdf_path, use_ocr=True, ocr_progress=None):
     All page numbers are 1-indexed, matching main.pdf directly.
     """
     pages_text, ocr_count = _page_texts(pdf_path, use_ocr=use_ocr, ocr_progress=ocr_progress)
+    question_marker_pages = _question_marker_pages(pdf_path)
     last_page = len(pages_text)
     warnings = []
     if not _OCR_AVAILABLE:
@@ -322,7 +381,7 @@ def detect_structure(pdf_path, use_ocr=True, ocr_progress=None):
         warnings.append("Detected 'Practice Test N' headings (a repackaged-edition style) instead of 'Test N'.")
 
     reading_headings = _find_headings(scannable, _READING_RE)
-    listening_headings = _find_headings(scannable, _LISTENING_RE)
+    listening_headings = _find_all_headings(scannable, _LISTENING_RE)
     writing_headings = _find_headings(scannable, _WRITING_RE)
     used_bare_task = False
     if not writing_headings:
@@ -379,8 +438,42 @@ def detect_structure(pdf_path, use_ocr=True, ocr_progress=None):
         # reading/writing page.
         first_r = r_heads[0][0] if r_heads else None
         first_w = w_heads[0][0] if w_heads else None
-        listening_cutoff = min(x for x in (first_r, first_w, test_end + 1) if x is not None)
+        # Listening always precedes reading in these books. Prefer the first
+        # reading page as the boundary so a writing phrase in listening text
+        # cannot truncate the listening section early.
+        listening_cutoff = first_r or first_w or (test_end + 1)
         l_heads = [(p, n) for (p, n) in l_heads if p < listening_cutoff]
+        listening_end = listening_cutoff - 1
+        for page in range(start_page, listening_end + 1):
+            if re.search(r"Listening\s+Answer\s+Sheet", pages_text[page - 1], re.IGNORECASE):
+                listening_end = page - 1
+                break
+
+        if l_heads and l_heads[0][1] > 1:
+            first_part_page = min(
+                (
+                    page for page in question_marker_pages.get(1, [])
+                    if start_page <= page < l_heads[0][0]
+                ),
+                default=None,
+            )
+            if first_part_page:
+                l_heads.insert(0, (first_part_page, 1))
+
+        if len(r_heads) < 3:
+            reading_start = next(
+                (p for p, text in enumerate(scannable, 1)
+                 if start_page <= p <= test_end
+                 and re.search(r"\bReading\s+40\s+questions", text, re.IGNORECASE)),
+                None,
+            )
+            if reading_start:
+                reading_section_heads = _collapse_runs(sorted(
+                    (p, n) for p, n in _within_test(_find_headings(scannable, _READING_SECTION_RE))
+                    if p >= reading_start
+                ))
+                if len(reading_section_heads) >= 3:
+                    r_heads = reading_section_heads[:3]
 
         def _first_after(page, *heading_lists):
             candidates = [p for heads in heading_lists for (p, _n) in heads if p > page]
@@ -408,14 +501,44 @@ def detect_structure(pdf_path, use_ocr=True, ocr_progress=None):
                     )
 
         parts = []
+        question_start_pages = []
+        for i, (p, _n) in enumerate(l_heads):
+            next_heading = l_heads[i + 1][0] if i + 1 < len(l_heads) else test_end
+            search_end = min(test_end, next_heading + 1)
+            marker_pages = [
+                page for page in question_marker_pages.get(i * 10 + 1, [])
+                if p <= page <= search_end
+            ]
+            question_start_pages.append(
+                min(marker_pages)
+                if marker_pages
+                else _first_question_page(pages_text, p, search_end, i * 10 + 1)
+            )
         for i, (p, n) in enumerate(l_heads):
-            next_p = _first_after(p, l_heads, r_heads, w_heads)
-            span = _span_pages(p, next_p, test_end)
             # IELTS listening is invariant: 4 parts, exactly 10 questions
             # each (1-10 / 11-20 / 21-30 / 31-40). Extraction of the
             # "Questions X-Y" line is flaky (e.g. "1-10" reads as "1-1"),
             # so canonicalize by part position rather than trusting it.
             canonical = [i * 10 + 1, i * 10 + 10]
+            span_start = question_start_pages[i]
+            span_end = (
+                question_start_pages[i + 1] - 1
+                if i + 1 < len(question_start_pages)
+                else min(test_end, listening_cutoff - 1)
+            )
+            for page in range(span_start, span_end + 1):
+                if re.search(r"Listening\s+Answer\s+Sheet", pages_text[page - 1], re.IGNORECASE):
+                    span_end = page - 1
+                    break
+            span = list(range(span_start, max(span_start, span_end) + 1))
+            marked_pages = sorted({
+                page
+                for question_number in range(canonical[0], canonical[1] + 1)
+                for page in question_marker_pages.get(question_number, [])
+                if span_start <= page <= listening_end
+            })
+            if marked_pages:
+                span = list(range(marked_pages[0], marked_pages[-1] + 1))
             detected = _question_range_in_span(question_ranges, span)
             if detected is not None and detected != canonical:
                 warnings.append(

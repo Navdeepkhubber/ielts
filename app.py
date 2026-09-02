@@ -106,7 +106,7 @@ def _dashboard_url():
     """Where a logged-in visitor belongs. On the apex/local-dev path this
     is unchanged ("/app"); once the subdomain is configured, the
     dashboard lives at its own subdomain root instead."""
-    if PUBLIC_BASE_DOMAIN:
+    if PUBLIC_BASE_DOMAIN and not auth.is_local_dev_request(request):
         return f"{_app_origin()}/"
     return url_for("app_shell")
 
@@ -120,7 +120,7 @@ def _is_safe_next(value):
     return bool(value) and value.startswith("/") and not value.startswith("//")
 
 
-if PUBLIC_BASE_DOMAIN:
+if PUBLIC_BASE_DOMAIN and not _is_debug:
     # Share the session cookie between the apex domain and app.<domain>
     # -- by default Flask's session cookie is host-only (tied to the
     # exact host that set it), which would otherwise mean a session
@@ -133,7 +133,7 @@ if PUBLIC_BASE_DOMAIN:
 
 @app.before_request
 def _route_by_subdomain():
-    if not PUBLIC_BASE_DOMAIN:
+    if not PUBLIC_BASE_DOMAIN or auth.is_local_dev_request(request):
         return None
 
     host = request.host.split(":")[0].lower()
@@ -240,7 +240,7 @@ def login():
         return redirect(_dashboard_url())
     next_path = request.args.get("next")
     if not _is_safe_next(next_path):
-        next_path = "/" if PUBLIC_BASE_DOMAIN else url_for("app_shell")
+        next_path = "/" if PUBLIC_BASE_DOMAIN and not auth.is_local_dev_request(request) else url_for("app_shell")
     return render_template("login.html", next=next_path)
 
 
@@ -257,6 +257,9 @@ def auth_session():
     email can't be used to create/access an account.
     """
     data = request.get_json(silent=True) or {}
+    if data.get("localDev") and auth.is_local_dev_request(request):
+        session["user_id"] = "local-dev"
+        return jsonify({"ok": True, "local": True})
     id_token = data.get("idToken")
     if not id_token:
         return jsonify({"error": "Missing idToken."}), 400
@@ -296,7 +299,7 @@ def auth_session():
 def logout():
     session.clear()
 
-    if PUBLIC_BASE_DOMAIN:
+    if PUBLIC_BASE_DOMAIN and not auth.is_local_dev_request(request):
         return redirect(f"https://{PUBLIC_BASE_DOMAIN}/")
 
     return redirect(url_for("landing"))
