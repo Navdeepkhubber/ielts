@@ -35,17 +35,32 @@ except ImportError:
 _MIN_NATIVE_CHARS = 20  # below this, treat the page as "no real text layer" and try OCR
 
 _TEST_RE = re.compile(r"^\s*Test\s+(\d+)\s*$", re.IGNORECASE | re.MULTILINE)
+# Some repackaged/re-exported PDF editions label
+# each test's divider page "Practice Test N" instead of Cambridge's bare
+# "Test N". Tried only as a fallback when _TEST_RE finds nothing -- see
+# detect_structure().
+_PRACTICE_TEST_RE = re.compile(r"^\s*Practice\s+Test\s+(\d+)\s*$", re.IGNORECASE | re.MULTILINE)
 _READING_RE = re.compile(r"READING\s+PASSAGE\s+(\d+)", re.IGNORECASE)
 # Listening: books printed before 2020 say "SECTION N"; from Cambridge 15
 # onward they say "PART N" (IELTS renamed listening sections to parts).
 # Line-anchored because "part 2" appears constantly in ordinary passage
-# prose. Two printed forms exist: the heading alone ("PART 1") or with the
-# question range on the same line ("PART 1 Questions 1-10", Cambridge 19+).
+# prose. Three printed forms seen so far: the heading alone ("PART 1"),
+# with the question range on the same line ("PART 1 Questions 1-10",
+# Cambridge 19+), or with a colon before the range ("Part 1: Questions
+# 1-10", seen in some repackaged-edition tests within the same book that
+# otherwise uses the no-colon form -- formatting is inconsistent even
+# within one PDF, so both must be tried everywhere).
 _LISTENING_RE = re.compile(
-    r"^\s*(?:SECTION|PART)\s+(\d+)\s*(?:[QO]uestions?\s+\d+\s*[-–—~]\s*\d+)?\s*\.?\s*$",
+    r"^\s*(?:SECTION|PART)\s+(\d+)\s*:?\s*(?:[QO]uestions?\s+\d+\s*[-–—~]\s*\d+)?\s*\.?\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 _WRITING_RE = re.compile(r"WRITING\s+TASK\s+(\d+)", re.IGNORECASE)
+# Some repackaged editions print the task heading itself as a bare "TASK N" (no
+# "WRITING" prefix -- that word only appears once, higher up, as the
+# section title "Writing"). Their text layer also renders it with odd
+# letter-spacing from font kerning, e.g. "TA S K 1" rather than "TASK 1".
+# Tried as a fallback within a test if _WRITING_RE finds nothing there.
+_WRITING_RE2 = re.compile(r"^\s*T\s?A\s?S\s?K\s+(\d+)\s*$", re.IGNORECASE | re.MULTILINE)
 # OCR sometimes misreads Q as O ("Ouestions"); allow both.
 _QUESTIONS_RE = re.compile(r"[QO]uestions?\s+(\d+)\s*[-–—~]\s*(\d+)", re.IGNORECASE)
 # Sample writing answers in the back of the book: "TEST 2, WRITING TASK 1"
@@ -53,11 +68,24 @@ _SAMPLE_WRITING_RE = re.compile(r"^\s*TEST\s+(\d+)\s*,\s*WRITING\s+TASK\s+(\d+)"
 _SAMPLE_SECTION_END_RE = re.compile(r"sample\s+answer\s+sheets", re.IGNORECASE)
 # Cambridge back-matter: tapescripts and answer keys repeat "Test N",
 # "SECTION N", "Questions X-Y" etc. -- everything from the first such page
-# onward must be excluded from structure detection.
+# onward must be excluded from structure detection. Line-anchored (the
+# whole line must just be the heading, give or take punctuation) so this
+# only fires on a genuine section-divider heading -- not on an unrelated
+# sentence that happens to contain the same words, e.g. one repackaged
+# edition's
+# per-section "scan to see the answer key online" call-to-action, which
+# would otherwise falsely truncate every test after the first one.
 _BACKMATTER_RE = re.compile(
-    r"\btapescripts?\b|\baudioscripts?\b|\banswer\s+keys?\b|\blistening\s+and\s+reading\s+answer",
-    re.IGNORECASE,
+    r"^\s*(?:tapescripts?|audioscripts?|(?:listening\s+and\s+reading\s+)?answer\s+keys?)\s*[:.]?\s*$",
+    re.IGNORECASE | re.MULTILINE,
 )
+# Some repackaged editions print a QR code linking to the listening audio
+# for the whole
+# test (one continuous recording, not one file per part) right at the top
+# of each test's Listening section, e.g. "https://<host>/listening-audio/<id>".
+# Matched on the URL path rather than a specific hostname so this keeps
+# working if the hosting domain changes.
+_LISTENING_AUDIO_URL_RE = re.compile(r"https?://\S+/listening-audio/\S+", re.IGNORECASE)
 
 
 def _ocr_page_text(page, zoom=1.7):
@@ -267,6 +295,12 @@ def detect_structure(pdf_path, use_ocr=True, ocr_progress=None):
         )
 
     test_headings = _find_headings(scannable, _TEST_RE)
+    used_practice_test = False
+    if not test_headings:
+        # Some publishers (e.g. repackaged/re-exported Cambridge books) label
+        # the divider page "Practice Test N" instead of bare "Test N".
+        test_headings = _find_headings(scannable, _PRACTICE_TEST_RE)
+        used_practice_test = bool(test_headings)
     # Cambridge prints "Test N" as a running header on EVERY page of a test,
     # so collapse consecutive same-number matches into a single boundary:
     # a new test starts only where the test number changes.
@@ -279,16 +313,33 @@ def detect_structure(pdf_path, use_ocr=True, ocr_progress=None):
         # No "Test N" headings found at all -- treat the whole book as one test.
         test_headings = [(1, 1)]
         warnings.append(
-            "No 'Test N' heading found anywhere in the PDF -- treating the "
-            "entire document as a single 'Test 1'. If your book has multiple "
-            "tests, check that each starts with a page whose only text is "
-            "e.g. 'Test 2'."
+            "No 'Test N' or 'Practice Test N' heading found anywhere in the PDF -- "
+            "treating the entire document as a single 'Test 1'. If your book has "
+            "multiple tests, check that each starts with a page whose only text is "
+            "e.g. 'Test 2' or 'Practice Test 2'."
         )
+    elif used_practice_test:
+        warnings.append("Detected 'Practice Test N' headings (a repackaged-edition style) instead of 'Test N'.")
 
     reading_headings = _find_headings(scannable, _READING_RE)
     listening_headings = _find_headings(scannable, _LISTENING_RE)
     writing_headings = _find_headings(scannable, _WRITING_RE)
+    used_bare_task = False
+    if not writing_headings:
+        # No "WRITING TASK N" phrasing found -- try the bare "TASK N" /
+        # "TA S K N" heading style used by some repackaged editions.
+        writing_headings = _find_headings(scannable, _WRITING_RE2)
+        used_bare_task = bool(writing_headings)
+    if used_bare_task:
+        warnings.append("Detected bare 'TASK N' headings (a repackaged-edition style) instead of 'WRITING TASK N'.")
     question_ranges = _find_question_ranges(scannable)
+    # Page -> URL, for the (at most one) listening-audio QR link
+    # found on that page -- used below to attach one audio_url per test.
+    listening_audio_url_by_page = {}
+    for i, text in enumerate(scannable):
+        m = _LISTENING_AUDIO_URL_RE.search(text)
+        if m:
+            listening_audio_url_by_page[i + 1] = m.group(0)
     last_page = scan_end  # spans must not extend into back-matter
     # Sample writing answers live IN the back-matter, so scan the full text.
     sample_writing_pages = _find_sample_writing_pages(pages_text)
@@ -394,10 +445,20 @@ def detect_structure(pdf_path, use_ocr=True, ocr_progress=None):
         if not w_heads:
             warnings.append(f"[{test_name}]: no 'WRITING TASK N' headings found.")
 
+        # Repackaged-edition-style remote audio: one QR-code URL per test, printed on
+        # the first page of that test's Listening section (i.e. at or after
+        # start_page and before the first reading/writing page).
+        listening_audio_url = None
+        for page in sorted(listening_audio_url_by_page):
+            if start_page <= page < listening_cutoff:
+                listening_audio_url = listening_audio_url_by_page[page]
+                break
+
         tests[test_name] = {
             "reading_passages": passages,
             "listening_parts": parts,
             "writing": writing,
+            "listening_audio_url": listening_audio_url,
         }
 
     seen = set()

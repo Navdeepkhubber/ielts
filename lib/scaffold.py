@@ -162,6 +162,44 @@ def _build_listening_block(test_name, audio_root, detected_parts=None, warn=None
     return {"audio_folder": test_name, "parts": parts}
 
 
+def _build_remote_listening_block(test_name, audio_url, detected_parts, warn=None):
+    """
+    For books like some repackaged/re-exported Cambridge editions, which ship no
+    local audio files at all -- each test instead has ONE continuous
+    recording hosted externally (played via a QR code in the PDF, covering
+    all 4 parts back-to-back, same as the real exam). There's no
+    audio/<Test N>/ folder to scan, so this builds the "listening" block
+    straight from pdf_structure's detected part pages/questions, always
+    assuming the standard 4 parts x 10 questions (canonicalised the same
+    way _build_listening_block does) since there's no filename to read a
+    real part number from.
+
+    Returns None if no audio_url was found in the PDF for this test (in
+    which case the caller should fall back to the local-file behaviour,
+    or skip the test with a warning) -- never silently invents a URL.
+    """
+    if not audio_url:
+        if warn:
+            warn(f"[{test_name}] no listening-audio QR link found in the PDF for "
+                 f"this test -- 'listening' was left out of the manifest; add an \"audio_url\" by "
+                 f"hand if you have the link, or check the PDF scan/OCR quality.")
+        return None
+    parts = []
+    for i in range(4):
+        detected = detected_parts[i] if detected_parts and i < len(detected_parts) else None
+        start, end = (i * QUESTIONS_PER_PART + 1, i * QUESTIONS_PER_PART + QUESTIONS_PER_PART)
+        if detected and detected.get("questions"):
+            start, end = detected["questions"]
+        pages = detected["pages"] if detected else []
+        parts.append({"questions": [start, end], "pages": pages})
+    if warn and detected_parts and len(detected_parts) != 4:
+        warn(f"[{test_name}] found {len(detected_parts)} listening section heading(s) in the PDF "
+             f"instead of the expected 4 -- some parts' 'pages' may be missing or wrong; "
+             f"double-check against the PDF (audio itself is unaffected, it's one continuous "
+             f"file covering all 4 parts).")
+    return {"audio_url": audio_url, "duration_minutes": 40, "parts": parts}
+
+
 def _build_reading_block(detected_passages):
     if not detected_passages:
         return None
@@ -255,6 +293,13 @@ def scan_and_scaffold(tests_root=None, verbose=True):
 
         manifest_path = os.path.join(mock_dir, "manifest.json")
         test_dirs = _discover_test_dirs(audio_root)
+        # Remote-audio mode: no audio/Test N/ folders on disk at all (e.g. a
+        # repackaged/re-exported PDF, whose listening audio is hosted
+        # externally and reached via a QR code printed in the PDF rather
+        # than shipped as local files). Detected below once the PDF scan
+        # runs; until then this just remembers there was nothing to scan
+        # on disk, so the "test list" has to come from the PDF instead.
+        remote_audio_mode = not test_dirs
 
         # FAST PATH: skip the (potentially slow, OCR-heavy) PDF scan entirely
         # when there's nothing left to backfill for this mock -- i.e. a
@@ -335,16 +380,43 @@ def scan_and_scaffold(tests_root=None, verbose=True):
             )
         detected_tests = structure["tests"]  # keyed "Test 1", "Test 2", ... from PDF headings
 
+        if remote_audio_mode and not detected_tests:
+            remote_audio_mode = False  # nothing detected in the PDF either -- fall through to normal (empty) handling
+        elif remote_audio_mode and not any(t.get("listening_audio_url") for t in detected_tests.values()):
+            # No audio/Test N/ folders on disk AND no repackaged-edition-style QR
+            # link found in the PDF either -- this isn't a remote-audio
+            # book, it's just a mock with no audio yet. Don't invent tests
+            # with no listening at all; leave it to the old behaviour
+            # (test_dirs stays empty, nothing gets scaffolded until audio
+            # or a manifest is added by hand).
+            remote_audio_mode = False
+        if remote_audio_mode:
+            test_dirs = sorted(detected_tests.keys(), key=_natural_key)
+            log.append(
+                f"[{mock_name}] no audio/Test N/ folder(s) found on disk, but the PDF has "
+                f"repackaged-edition-style remote listening-audio links -- using {len(test_dirs)} test(s) "
+                f"detected directly from the PDF ({', '.join(test_dirs)}) instead."
+            )
+
         if not os.path.isfile(manifest_path):
             manifest = {"mock_name": mock_name, "pdf_file": pdf_filename, "tests": {}}
             for test_name in test_dirs:
                 det = _match_detected_test(test_name, detected_tests)
                 reading = _build_reading_block(det.get("reading_passages"))
                 writing = _build_writing_block(det.get("writing"))
-                cfg = {"listening": _build_listening_block(
-                    test_name, audio_root, det.get("listening_parts"),
-                    warn=lambda msg, tn=test_name: log.append(f"[{mock_name}/{tn}] {msg}"),
-                )}
+                if remote_audio_mode:
+                    listening = _build_remote_listening_block(
+                        test_name, det.get("listening_audio_url"), det.get("listening_parts"),
+                        warn=lambda msg, tn=test_name: log.append(f"[{mock_name}] {msg}"),
+                    )
+                else:
+                    listening = _build_listening_block(
+                        test_name, audio_root, det.get("listening_parts"),
+                        warn=lambda msg, tn=test_name: log.append(f"[{mock_name}/{tn}] {msg}"),
+                    )
+                cfg = {}
+                if listening:
+                    cfg["listening"] = listening
                 if reading:
                     cfg["reading"] = reading
                 if writing:
@@ -370,10 +442,19 @@ def scan_and_scaffold(tests_root=None, verbose=True):
                 if test_name not in manifest.get("tests", {}):
                     reading = _build_reading_block(det.get("reading_passages"))
                     writing = _build_writing_block(det.get("writing"))
-                    cfg = {"listening": _build_listening_block(
-                        test_name, audio_root, det.get("listening_parts"),
-                        warn=lambda msg, tn=test_name: log.append(f"[{mock_name}/{tn}] {msg}"),
-                    )}
+                    if remote_audio_mode:
+                        listening = _build_remote_listening_block(
+                            test_name, det.get("listening_audio_url"), det.get("listening_parts"),
+                            warn=lambda msg, tn=test_name: log.append(f"[{mock_name}] {msg}"),
+                        )
+                    else:
+                        listening = _build_listening_block(
+                            test_name, audio_root, det.get("listening_parts"),
+                            warn=lambda msg, tn=test_name: log.append(f"[{mock_name}/{tn}] {msg}"),
+                        )
+                    cfg = {}
+                    if listening:
+                        cfg["listening"] = listening
                     if reading:
                         cfg["reading"] = reading
                     if writing:
@@ -384,6 +465,16 @@ def scan_and_scaffold(tests_root=None, verbose=True):
                     continue
 
                 cfg = manifest["tests"][test_name]
+
+                if "listening" not in cfg and remote_audio_mode:
+                    listening = _build_remote_listening_block(
+                        test_name, det.get("listening_audio_url"), det.get("listening_parts"),
+                        warn=lambda msg, tn=test_name: log.append(f"[{mock_name}] {msg}"),
+                    )
+                    if listening:
+                        cfg["listening"] = listening
+                        changed = True
+                        log.append(f"[{mock_name}/{test_name}] backfilled remote 'listening' (audio_url) from PDF scan.")
 
                 if "reading" not in cfg:
                     reading = _build_reading_block(det.get("reading_passages"))

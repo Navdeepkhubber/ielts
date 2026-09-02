@@ -681,6 +681,19 @@ async function startListening(mockId, testName) {
 
   const content = await fetchContent(mockId, testName);
   const ltexts = content?.listening?.parts || [];
+  // Some repackaged-edition books ship one continuous recording per test (hosted
+  // externally, reached via a QR code in the PDF) rather than one local
+  // file per part -- lcfg.audio_url is set instead of each part having
+  // "files"/"file". In that case render a single shared play bar above
+  // all four parts' question sheets instead of one bar per part.
+  const remoteUrl = lcfg.audio_url || null;
+  const singleAudioBarHtml = remoteUrl ? `
+    <div class="audio-bar">
+      <span class="part-label">Full test audio · Q1–${totalQ}</span>
+      <button class="btn btn-primary btn-play" data-remote-url="${esc(remoteUrl)}">▶ Play (once only)</button>
+      <div class="audio-progress"><div class="audio-progress-fill" id="audioFill-remote"></div></div>
+      <span class="audio-time" id="audioTime-remote">not started</span>
+    </div>` : "";
   let materialHtml = "";
   lcfg.parts.forEach((p, i) => {
     const pages = p.pages || [];
@@ -697,17 +710,20 @@ async function startListening(mockId, testName) {
     // "once only" listen, not as separate parts. Old manifests may still
     // have a singular "file" instead of "files"; support both.
     const partFiles = p.files || (p.file ? [p.file] : []);
-    materialHtml += `
-      <div class="listening-part">
+    const audioBarHtml = remoteUrl ? "" : `
         <div class="audio-bar">
           <span class="part-label">Part ${p.part_number || i + 1} · Q${p.questions[0]}–${p.questions[1]}</span>
           <button class="btn btn-primary btn-play" data-part="${i}" data-files='${esc(JSON.stringify(partFiles))}'>▶ Play (once only)</button>
           <div class="audio-progress"><div class="audio-progress-fill" id="audioFill-${i}"></div></div>
           <span class="audio-time" id="audioTime-${i}">not started</span>
-        </div>
+        </div>`;
+    materialHtml += `
+      <div class="listening-part">
+        ${audioBarHtml}
         <div class="question-sheet">${sheetHtml}</div>
       </div>`;
   });
+  materialHtml = singleAudioBarHtml + materialHtml;
   const hasText = ltexts.some(t => t?.text);
 
   app.innerHTML = `
@@ -737,13 +753,16 @@ async function startListening(mockId, testName) {
   // Exam-condition audio: plays exactly once, no pause, no seeking, no
   // replay. A part's files play back-to-back as ONE continuous listen, and
   // starting any part always stops whatever else was playing first --
-  // only one part can ever be audible at a time.
+  // only one part can ever be audible at a time. For repackaged-edition-style
+  // remote-audio tests, there's a single such button for the whole test
+  // (data-remote-url) instead of one per part (data-part/data-files).
   document.querySelectorAll(".btn-play").forEach(btn => {
     btn.addEventListener("click", () => {
       stopActiveListeningAudio(); // kill whatever else was playing
 
-      const i = btn.dataset.part;
-      const files = JSON.parse(btn.dataset.files);
+      const remoteUrl = btn.dataset.remoteUrl;
+      const i = remoteUrl ? "remote" : btn.dataset.part;
+      const files = remoteUrl ? [remoteUrl] : JSON.parse(btn.dataset.files);
       const fillEl = document.getElementById(`audioFill-${i}`);
       const timeEl = document.getElementById(`audioTime-${i}`);
 
@@ -767,7 +786,9 @@ async function startListening(mockId, testName) {
           activeListeningReset = null;
           return;
         }
-        audio.src = `/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/audio?file=${encodeURIComponent(files[fileIdx])}`;
+        audio.src = remoteUrl
+          ? files[fileIdx]
+          : `/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/audio?file=${encodeURIComponent(files[fileIdx])}`;
         fileIdx++;
         audio.play();
       };
