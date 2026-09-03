@@ -13,6 +13,8 @@ import fitz
 SCHEMA_VERSION = 3
 _BRAND_RE = re.compile(r"(?:keenielts\.com|Practice smarter\.\s*Score higher)", re.I)
 _SECTION_HEADER_RE = re.compile(r"^(?:Test\s+\d+|Listening|Reading|Writing|Academic Reading)\s*$", re.I)
+_RUNNING_HEADER_RE = re.compile(r"C\s*A\s*M\s*B\s*R\s*I\s*D\s*G\s*E.*P\s*R\s*A\s*C\s*T\s*I\s*C\s*E", re.I)
+_FOOTER_RE = re.compile(r"^Cambridge\s+IELTS\s+\d+.*(?:Academic|General Training).*\d{1,3}$", re.I)
 _PAGE_NUMBER_RE = re.compile(r"^\s*\d{1,3}\s*$")
 _GAP_RE = re.compile(r"^\s*(\d{1,2})\s*(?:[.…·]{3,}|_{3,})\s*$")
 _INLINE_GAP_RE = re.compile(r"\b(\d{1,2})\s*(?:[.…·]{3,}|_{3,})")
@@ -25,7 +27,11 @@ def _is_noise(span, page):
     if not text or _BRAND_RE.search(text) or _SECTION_HEADER_RE.match(text):
         return True
     y0 = span["bbox"][1]
-    return y0 > page.rect.height * 0.93 and _PAGE_NUMBER_RE.match(text)
+    if y0 < page.rect.height * 0.10 and _RUNNING_HEADER_RE.search(text):
+        return True
+    if y0 > page.rect.height * 0.90 and (_PAGE_NUMBER_RE.match(text) or _FOOTER_RE.match(text)):
+        return True
+    return False
 
 def _font_style(span):
     flags = int(span.get("flags", 0)); font = (span.get("font") or "").lower()
