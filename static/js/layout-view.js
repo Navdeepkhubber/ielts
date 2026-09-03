@@ -1,40 +1,83 @@
-/* Layout-faithful text view: render native PDF text spans at their original coordinates. */
-(function () {
+const layout = (() => {
   "use strict";
-  var layoutApp = document.getElementById("app");
-  if (!layoutApp) return;
-  var style = document.createElement("style");
-  style.id = "layout-text-view-style";
+  const host = document.getElementById("app");
+  if (!host) return null;
+
+  const style = document.createElement("style");
   style.textContent = `
-.layout-text-view{padding:0}.layout-page-stack{display:flex;flex-direction:column;gap:18px}.layout-page{position:relative;width:100%;background:#fff;border:1px solid #e4e8ef;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(25,45,75,.04)}.layout-page-canvas{position:relative;width:var(--pdf-w);height:var(--pdf-h);transform-origin:top left;background:#fff;overflow:hidden}.layout-page-frame{overflow:hidden;width:100%}.layout-span{position:absolute;display:block;white-space:pre;line-height:1.08;transform-origin:left top;user-select:text;color:#17243a}.layout-answer{position:absolute;z-index:20;box-sizing:border-box;min-width:72px;height:26px;padding:2px 7px;border:1px solid #b7c1d0;border-radius:4px;background:rgba(255,255,255,.97);color:#15233b;font:600 13px/20px Inter,system-ui,sans-serif;outline:none}.layout-answer:focus{border-color:#213a61;box-shadow:0 0 0 2px rgba(33,58,97,.12)}.layout-book-view img{display:block;width:100%;height:auto;margin:0 0 14px;border:1px solid #e4e8ef;border-radius:8px}.layout-hidden-material .exam-material{display:none}.layout-audio{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0 0 14px;background:#f7f9fc;border:1px solid #e3e8f0;border-radius:8px}.layout-audio-progress{flex:1;height:5px;background:#dfe5ed;border-radius:99px;overflow:hidden}.layout-audio-fill{height:100%;width:0;background:#213a61}.layout-audio-time{min-width:72px;font:500 12px/1 Inter,system-ui,sans-serif;color:#65738a}
-`;
+    .layout-text-view{padding:0}.layout-page-stack{display:flex;flex-direction:column;gap:18px}
+    .layout-page{position:relative;width:100%;background:#fff;border:1px solid #e4e8ef;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(25,45,75,.04)}
+    .layout-page-frame{position:relative;width:100%;overflow:hidden}
+    .layout-page-canvas{position:relative;transform-origin:top left;background:#fff;overflow:hidden}
+    .layout-span{position:absolute;display:block;white-space:pre;line-height:1.08;user-select:text;color:#17243a}
+    .layout-line{position:absolute;pointer-events:none;background:#b9c4d4}
+    .layout-rect{position:absolute;pointer-events:none;box-sizing:border-box;border:1px solid #cfd6e2}
+    .layout-answer{position:absolute;z-index:20;box-sizing:border-box;min-width:72px;height:26px;padding:2px 7px;border:1px solid #b7c1d0;border-radius:4px;background:rgba(255,255,255,.97);color:#15233b;font:600 13px/20px Inter,system-ui,sans-serif;outline:none}
+    .layout-answer:focus{border-color:#213a61;box-shadow:0 0 0 2px rgba(33,58,97,.12)}
+    .layout-book-view{display:none}.layout-book-view img{display:block;width:100%;height:auto;margin:0 0 14px;border:1px solid #e4e8ef;border-radius:8px}
+  `;
   document.head.appendChild(style);
-  function esc(s){return String(s).replace(/[&<>\"]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]})}
-  function rgb(c){c=Number(c||0);return "rgb("+((c>>16)&255)+","+((c>>8)&255)+","+(c&255)+")"}
-  function api(path,opts){return fetch(path,opts).then(function(r){if(!r.ok)throw new Error(r.status+": "+r.statusText);return (r.headers.get("content-type")||"").indexOf("json")>=0?r.json():r})}
-  function font(f){f=String(f||"").toLowerCase();if(f.indexOf("mono")>=0)return "'IBM Plex Mono',monospace";if(f.indexOf("times")>=0||f.indexOf("serif")>=0)return "Georgia,serif";return "Inter,Arial,Helvetica,sans-serif"}
+
+  function esc(s){return String(s).replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+  function rgb(c){c=Number(c||0);return `rgb(${(c>>16)&255},${(c>>8)&255},${c&255})`}
+  function font(f){f=String(f||"").toLowerCase();if(f.includes("mono"))return "'IBM Plex Mono',monospace";if(f.includes("times")||f.includes("serif"))return "Georgia,serif";return "Inter,Arial,Helvetica,sans-serif"}
+  async function api(path,opts){const r=await fetch(path,opts);if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return (r.headers.get("content-type")||"").includes("json")?r.json():r}
+
   function pageHtml(page,prefix,from,to){
-    var spans=(page.spans||[]).map(function(s,i){var b=s.bbox;var st=["left:"+b[0]+"px","top:"+b[1]+"px","font-size:"+s.size+"px","color:"+rgb(s.color),"font-family:"+font(s.font),"font-weight:"+(s.bold?700:400),"font-style:"+(s.italic?"italic":"normal")].join(";");return '<span class="layout-span" data-layout-span="'+i+'" style="'+st+'">'+esc(s.text)+'</span>'}).join("");
-    var answers=(page.answer_boxes||[]).filter(function(a){return a.question>=from&&a.question<=to}).map(function(a){var b=a.bbox;var w=Math.max(72,b[2]-b[0]);return '<input class="layout-answer" data-layout-answer="'+a.question+'" data-prefix="'+prefix+'" aria-label="Answer for question '+a.question+'" autocomplete="off" spellcheck="false" style="left:'+b[0]+'px;top:'+b[1]+'px;width:'+w+'px">'}).join("");
-    return '<div class="layout-page"><div class="layout-page-frame"><div class="layout-page-canvas" style="--pdf-w:'+page.width+'px;--pdf-h:'+page.height+'px">'+spans+answers+'</div></div></div>';
+    const spans=(page.spans||[]).map((s,i)=>{
+      const b=s.bbox;const st=`left:${b[0]}px;top:${b[1]}px;font-size:${s.size}px;color:${rgb(s.color)};font-family:${font(s.font)};font-weight:${s.bold?700:400};font-style:${s.italic?"italic":"normal"}`;
+      return `<span class="layout-span" data-i="${i}" style="${st}">${esc(s.text)}</span>`;
+    }).join("");
+    const shapes=(page.shapes||[]).map(s=>{
+      const b=s.bbox;
+      if(s.type==="rect") return `<div class="layout-rect" style="left:${b[0]}px;top:${b[1]}px;width:${b[2]-b[0]}px;height:${b[3]-b[1]}px"></div>`;
+      if(s.type==="hline") return `<div class="layout-line" style="left:${b[0]}px;top:${b[1]}px;width:${Math.max(1,b[2]-b[0])}px;height:1px"></div>`;
+      if(s.type==="vline") return `<div class="layout-line" style="left:${b[0]}px;top:${b[1]}px;width:1px;height:${Math.max(1,b[3]-b[1])}px"></div>`;
+      return "";
+    }).join("");
+    const answers=(page.answer_boxes||[]).filter(a=>a.question>=from&&a.question<=to).map(a=>{
+      const b=a.bbox;return `<input class="layout-answer" data-q="${a.question}" data-prefix="${prefix}" aria-label="Answer for question ${a.question}" autocomplete="off" spellcheck="false" style="left:${b[0]}px;top:${b[1]}px;width:${Math.max(72,b[2]-b[0])}px">`;
+    }).join("");
+    return `<div class="layout-page"><div class="layout-page-frame"><div class="layout-page-canvas" style="width:${page.width}px;height:${page.height}px">${shapes}${spans}${answers}</div></div></div>`;
   }
-  function renderLayout(content,kind,cfg,prefix){var pages=content&&content[kind]&&content[kind].pages||[];var groups=kind==="reading"?(cfg.reading.passages||[]):(cfg.listening.parts||[]);if(!pages.length)return null;var html='<div class="layout-text-view"><div class="layout-page-stack">';pages.forEach(function(p){var from=0,to=999;groups.forEach(function(g){if((g.pages||[]).indexOf(p.page)>=0){from=g.questions[0];to=g.questions[1]}});html+=pageHtml(p,prefix,from,to)});return html+'</div></div>'}
-  function wireAnswers(container){container.querySelectorAll(".layout-answer").forEach(function(input){var q=input.dataset.layoutAnswer,prefix=input.dataset.prefix,sheet=document.getElementById(prefix+"-"+q);if(!sheet)return;input.value=sheet.value||"";input.addEventListener("input",function(){sheet.value=input.value;sheet.dispatchEvent(new Event("input"))});input.addEventListener("focus",function(){if(typeof syncNavCurrent==="function")syncNavCurrent(prefix,q)});sheet.addEventListener("input",function(){if(document.activeElement!==input)input.value=sheet.value})})}
-  async function start(kind,mockId,testName){
-    var cfg=await api("/api/mocks/"+encodeURIComponent(mockId)+"/tests/"+encodeURIComponent(testName));var sectionCfg=cfg[kind];if(!sectionCfg)return;var seconds=(sectionCfg.duration_minutes||(kind==="listening"?40:60))*60;
-    var attempt=await api("/api/attempts/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mock_id:mockId,test_name:testName,section:kind,time_allowed_seconds:seconds})});
-    var content=await api("/api/mocks/"+encodeURIComponent(mockId)+"/tests/"+encodeURIComponent(testName)+"/content");var groups=kind==="reading"?sectionCfg.passages.map(function(p,i){return{label:"Passage "+(i+1),from:p.questions[0],to:p.questions[1]}}):sectionCfg.parts.map(function(p,i){return{label:"Part "+(p.part_number||i+1),from:p.questions[0],to:p.questions[1]}});var totalQ=groups.reduce(function(a,g){return a+g.to-g.from+1},0);
-    var material=renderLayout(content,kind,cfg,kind==="reading"?"ans":"lans");if(!material)throw new Error("Layout content is not available. Run the mock scaffold again.");
-    var pages=content[kind].pages||[];var bookHtml='<div class="layout-book-view" style="display:none">'+pages.map(function(p){return '<img src="/api/mocks/'+encodeURIComponent(mockId)+'/page?page='+p.page+'" alt="'+kind+' page '+p.page+'" loading="lazy">'}).join("")+'</div>';
-    var audioHtml="";if(kind==="listening"){audioHtml=(sectionCfg.parts||[]).map(function(part,i){var files=part.files||(part.file?[part.file]:[]);if(!files.length)return"";return '<div class="layout-audio" data-audio-files=\''+esc(JSON.stringify(files))+'\'><button class="btn btn-primary layout-play">▶ Play (once only)</button><span>Part '+(part.part_number||i+1)+'</span><div class="layout-audio-progress"><div class="layout-audio-fill"></div></div><span class="layout-audio-time">not started</span></div>'}).join("")}
-    var shell=document.getElementById("app");shell.innerHTML='<div class="exam-bar"><div class="exam-bar-left"><button class="exam-exit" id="layoutExit">← Exit</button><span class="exam-divider"></span><span class="exam-type">IELTS</span><strong>'+(kind==="reading"?"Reading":"Listening")+'</strong></div><div class="exam-bar-right"><span id="answeredCount">0 / '+totalQ+' answered</span><button class="btn btn-ghost" id="layoutSettings">⚙ Settings</button><button class="btn btn-ghost" id="layoutHide">Hide</button><span class="timer-box">TIME REMAINING <strong id="timer">'+(kind==="reading"?"60:00":"40:00")+'</strong></span></div></div><div class="view-toggle"><button class="vt-btn active" data-vt="text">Text</button><button class="vt-btn" data-vt="book">Book view</button></div><div class="exam-shell"><div class="exam-material">'+audioHtml+material+bookHtml+'</div><div class="exam-answers"><h3>Answer sheet</h3>'+(typeof answerSheetHtml==="function"?answerSheetHtml(groups,kind==="reading"?"ans":"lans"):"")+'<div class="submit-area"><button class="btn btn-primary" id="submitBtn">Submit '+kind+'</button></div></div></div>'+(typeof navBarHtml==="function"?navBarHtml(groups,kind==="reading"?"ans":"lans"):"");
-    var prefix=kind==="reading"?"ans":"lans";window._navPrefix=prefix;window.__layoutExamActive=true;document.body.classList.add("has-exam-navbar");if(typeof wireAnswerSheet==="function")wireAnswerSheet(shell);wireAnswers(shell);if(typeof syncNavAnswered==="function")syncNavAnswered(prefix);
-    shell.querySelectorAll(".layout-page").forEach(function(pageEl){var canvas=pageEl.querySelector(".layout-page-canvas"),frame=pageEl.querySelector(".layout-page-frame");if(!canvas||!frame)return;var w=parseFloat(canvas.style.getPropertyValue("--pdf-w")),h=parseFloat(canvas.style.getPropertyValue("--pdf-h"));function size(){var scale=Math.min(1,Math.max(280,frame.clientWidth)/w);canvas.style.transform="scale("+scale+")";frame.style.height=(h*scale)+"px"}size();window.addEventListener("resize",size)});
-    var toggle=shell.querySelector(".view-toggle");if(toggle)toggle.addEventListener("click",function(e){var btn=e.target.closest(".vt-btn");if(!btn)return;toggle.querySelectorAll(".vt-btn").forEach(function(b){b.classList.toggle("active",b===btn)});var text=shell.querySelector(".layout-text-view"),book=shell.querySelector(".layout-book-view");if(text)text.style.display=btn.dataset.vt==="text"?"":"none";if(book)book.style.display=btn.dataset.vt==="book"?"":"none"});
-    shell.querySelectorAll(".layout-play").forEach(function(btn){btn.addEventListener("click",function(){var bar=btn.closest(".layout-audio"),files=JSON.parse(bar.dataset.audioFiles||"[]");if(!files.length)return;var audio=new Audio(),idx=0,fill=bar.querySelector(".layout-audio-fill"),time=bar.querySelector(".layout-audio-time");btn.disabled=true;btn.textContent="Playing…";function next(){if(idx>=files.length){btn.textContent="✓ Played";time.textContent="finished";return}audio.src="/api/mocks/"+encodeURIComponent(mockId)+"/tests/"+encodeURIComponent(testName)+"/audio?file="+encodeURIComponent(files[idx++]);audio.play()}audio.addEventListener("timeupdate",function(){if(audio.duration){fill.style.width=(audio.currentTime/audio.duration*100)+"%";time.textContent=Math.floor(audio.currentTime)+"s / "+Math.floor(audio.duration)+"s"}});audio.addEventListener("ended",next);next()})});
-    document.getElementById("layoutExit").addEventListener("click",function(){if(typeof navigateTo==="function")navigateTo("home");else location.reload()});document.getElementById("layoutHide").addEventListener("click",function(){shell.classList.toggle("layout-hidden-material")});document.getElementById("layoutSettings").addEventListener("click",function(){if(typeof toast==="function")toast("Settings are unchanged from the standard exam view.")});
-    document.getElementById("submitBtn").addEventListener("click",function(){var left=typeof unansweredCount==="function"?unansweredCount(prefix):0;var submit=function(){if(typeof submitSection==="function")submitSection({attemptId:attempt.attempt_id,mockId:mockId,testName:testName,section:kind,prefix:prefix,label:kind==="reading"?"Reading":"Listening",auto:false,groups:groups})};if(left>0&&typeof confirmModal==="function")confirmModal({title:"Submit with blanks?",body:left+" question"+(left===1?" is":"s are")+" still unanswered. Blank answers are marked wrong.",confirmLabel:"Submit anyway",onConfirm:submit});else submit()});
-    if(typeof startTimer==="function")startTimer(seconds,function(r){if(typeof tickTimer==="function")tickTimer(r,300)},function(){if(typeof submitSection==="function")submitSection({attemptId:attempt.attempt_id,mockId:mockId,testName:testName,section:kind,prefix:prefix,label:kind==="reading"?"Reading":"Listening",auto:true,groups:groups})});
+
+  function buildMaterial(content,kind,cfg,prefix){
+    const pages=content?.[kind]?.pages||[];const groups=kind==="reading"?(cfg.reading.passages||[]):(cfg.listening.parts||[]);if(!pages.length)return "";
+    let html='<div class="layout-text-view"><div class="layout-page-stack">';
+    pages.forEach(p=>{let from=0,to=999;groups.forEach(g=>{if((g.pages||[]).includes(p.page)){from=g.questions[0];to=g.questions[1]}});html+=pageHtml(p,prefix,from,to)});
+    return html+'</div></div>';
   }
-  document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest('[data-action="startReading"],[data-action="startListening"]');if(!t)return;e.preventDefault();e.stopImmediatePropagation();start(t.dataset.action==="startReading"?"reading":"listening",t.dataset.mock,t.dataset.test).catch(function(err){layoutApp.innerHTML='<div class="empty-state"><h3>Couldn\\'t prepare the section</h3><p>'+esc(err.message)+'</p></div>'})},true);
+
+  function wireAnswers(root){
+    root.querySelectorAll('.layout-answer').forEach(input=>{
+      const q=input.dataset.q,prefix=input.dataset.prefix,sheet=document.getElementById(`${prefix}-${q}`);if(!sheet)return;
+      input.value=sheet.value||"";input.addEventListener('input',()=>{sheet.value=input.value;sheet.dispatchEvent(new Event('input'))});
+      sheet.addEventListener('input',()=>{if(document.activeElement!==input)input.value=sheet.value});
+      input.addEventListener('focus',()=>{if(typeof syncNavCurrent==='function')syncNavCurrent(prefix,q)});
+    });
+  }
+
+  function replaceStart(kind){
+    const fn=async(mockId,testName)=>{
+      const cfg=await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}`);const section=cfg[kind];if(!section)throw new Error(`No ${kind} configuration`);
+      const seconds=(section.duration_minutes||(kind==="listening"?40:60))*60;
+      const attempt=await api('/api/attempts/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mock_id:mockId,test_name:testName,section:kind,time_allowed_seconds:seconds})});
+      const content=await api(`/api/mocks/${encodeURIComponent(mockId)}/tests/${encodeURIComponent(testName)}/content`);
+      const groups=(kind==='reading'?section.passages:section.parts).map((g,i)=>({label:kind==='reading'?`Passage ${i+1}`:`Part ${g.part_number||i+1}`,from:g.questions[0],to:g.questions[1]}));
+      const prefix=kind==='reading'?'ans':'lans';const totalQ=groups.reduce((n,g)=>n+g.to-g.from+1,0);const material=buildMaterial(content,kind,cfg,prefix);if(!material)throw new Error('Layout content is not available. Run the mock scaffold again.');
+      const shell=document.getElementById('app');
+      shell.innerHTML=`<div class="exam-bar"><div class="exam-bar-left"><button class="exam-exit" id="layoutExit">← Exit</button><span class="exam-divider"></span><span class="exam-type">IELTS</span><strong>${kind==='reading'?'Reading':'Listening'}</strong></div><div class="exam-bar-right"><span id="answeredCount">0 / ${totalQ} answered</span><button class="btn btn-ghost" id="layoutSettings">⚙ Settings</button><button class="btn btn-ghost" id="layoutHide">Hide</button><span class="timer-box">TIME REMAINING <strong id="timer">${kind==='reading'?'60:00':'40:00'}</strong></span></div></div><div class="exam-shell"><div class="exam-material">${material}</div><div class="exam-answers"><h3>Answer sheet</h3>${typeof answerSheetHtml==='function'?answerSheetHtml(groups,prefix):''}<div class="submit-area"><button class="btn btn-primary" id="submitBtn">Submit ${kind}</button></div></div></div>${typeof navBarHtml==='function'?navBarHtml(groups,prefix):''}`;
+      window._navPrefix=prefix;document.body.classList.add('has-exam-navbar');if(typeof wireAnswerSheet==='function')wireAnswerSheet(shell);wireAnswers(shell);if(typeof syncNavAnswered==='function')syncNavAnswered(prefix);
+      shell.querySelectorAll('.layout-page').forEach(pageEl=>{const canvas=pageEl.querySelector('.layout-page-canvas'),frame=pageEl.querySelector('.layout-page-frame'),w=parseFloat(canvas.style.width),h=parseFloat(canvas.style.height);const size=()=>{const scale=Math.min(1,Math.max(280,frame.clientWidth)/w);canvas.style.transform=`scale(${scale})`;frame.style.height=`${h*scale}px`};size();window.addEventListener('resize',size)});
+      shell.querySelector('#layoutHide').addEventListener('click',()=>shell.classList.toggle('layout-hidden-material'));
+      shell.querySelector('#layoutSettings').addEventListener('click',()=>typeof toast==='function'&&toast('Settings are unchanged from the standard exam view.'));
+      shell.querySelector('#layoutExit').addEventListener('click',()=>typeof navigateTo==='function'?navigateTo('home'):location.reload());
+      shell.querySelector('#submitBtn').addEventListener('click',()=>{const left=typeof unansweredCount==='function'?unansweredCount(prefix):0;const submit=()=>typeof submitSection==='function'&&submitSection({attemptId:attempt.attempt_id,mockId:mockId,testName:testName,section:kind,prefix:prefix,label:kind==='reading'?'Reading':'Listening',auto:false,groups:groups});if(left>0&&typeof confirmModal==='function')confirmModal({title:'Submit with blanks?',body:`${left} question${left===1?' is':'s are'} still unanswered. Blank answers are marked wrong.`,confirmLabel:'Submit anyway',onConfirm:submit});else submit()});
+      if(typeof startTimer==='function')startTimer(seconds,r=>typeof tickTimer==='function'&&tickTimer(r,300),()=>typeof submitSection==='function'&&submitSection({attemptId:attempt.attempt_id,mockId:mockId,testName:testName,section:kind,prefix:prefix,label:kind==='reading'?'Reading':'Listening',auto:true,groups:groups}));
+    };
+    if(kind==='reading')routes.startReading=fn;else routes.startListening=fn;
+  }
+
+  replaceStart('reading');replaceStart('listening');
+  window.__layoutTextReady=true;
 })();
