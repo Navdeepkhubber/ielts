@@ -1,410 +1,156 @@
-"""
-Extracts the actual text of each test section (listening question sheets,
-reading passages + questions) from the book PDF into a local content.json
-per test, so the portal can render selectable, properly typeset text with
-inline answer boxes instead of page images.
+"""Layout-faithful PDF extraction for the IELTS text view.
 
-This is for a PRIVATE, LOCAL study portal working on the user's own copy
-of the book -- the extracted text lives only in the local mock folder,
-next to the PDF it came from.
-
-Text is cleaned of page furniture: running headers ("Test 1", section
-names), lone page numbers, and scan watermarks. The original page images
-remain available in the UI ("Book view") since diagrams/maps don't
-survive text extraction and OCR text from scanned books has errors.
-
-Files are never overwritten once created, so hand-corrections to OCR
-typos are safe.
+The old extractor converted PDF text into prose. This module deliberately does
+not do that. It keeps the PDF's page geometry and text spans, so the browser can
+recreate the printed page as HTML: headings stay where they are, tables retain
+rows/columns, and multi-column question sheets don't collapse into a text wall.
 """
 import json
 import os
 import re
 
-_NOISE_RES = [
-    re.compile(r"^\s*Test\s+\d+\s*$", re.IGNORECASE),           # running header
-    re.compile(r"^\s*(LISTENING|READING|WRITING|ACADEMIC READING)\s*$", re.IGNORECASE),
-    re.compile(r"^\s*\d{1,3}\s*$"),                              # lone page number
-    re.compile(r"^\s*@\w+\s*$"),                                 # scan watermark handles
-    re.compile(r"^\s*[|>_\-~•·=]{1,4}\s*$"),                     # OCR artifacts
-    re.compile(r"^\s*IELTS\s+\d+\s*$", re.IGNORECASE),
-    # Repackaged-edition branding footer, printed on every single page:
-    # "Practice smarter. Score higher. — keenielts.com", sometimes prefixed
-    # with the book title on the same line ("IELTS ... · Academic Practice
-    # smarter..."), sometimes with the "keenielts.com" half wrapped onto its
-    # own line. Matched on the brand name/domain rather than the full
-    # sentence so any wording variant of the tagline is still caught.
-    re.compile(r".*\bkeenielts\.com\b.*", re.IGNORECASE),
-    re.compile(r".*\bKeenIELTS\b.*"),
-    re.compile(r"^\s*Practice smarter\.\s*Score higher\.?\s*[—\-]?\s*$", re.IGNORECASE),
-    # Standalone QR-code/"check your answers" links printed at section starts
-    # (e.g. https://.../check/listening/<id>, https://.../listening-audio/<id>).
-    re.compile(r"^\s*https?://\S+\s*$"),
-    # Letter-spaced section/task heading left over after
-    # _collapse_letter_spacing() turns "S E C T I O N  1  —  Q U E S T I O N S"
-    # back into normal words -- this is a redundant running header (the
-    # manifest already tracks part/passage/task numbers), not passage
-    # content, so it's dropped like the bare LISTENING/READING/WRITING
-    # headers above.
-    re.compile(r"^\s*SECTION\s+\d+(?:\s*[—\-]\s*QUESTIONS)?\s*$", re.IGNORECASE),
-    re.compile(r"^\s*TASK\s+\d+\s*$", re.IGNORECASE),
-]
+import fitz
 
-# Some publishers (seen in newer/repackaged PDF exports) render headings with
-# each letter as its own space-separated glyph run for a decorative kerned
-# look, e.g. "S E C T I O N  1  —  Q U E S T I O N S" instead of "SECTION 1 —
-# QUESTIONS". PyMuPDF extracts that literally, so without undoing it these
-# headings match none of the noise/heading patterns above (which expect real
-# words) and leak into the passage/question text as a stray paragraph.
-_LETTER_SPACED_TOKEN_RE = re.compile(r"^[A-Za-z0-9]$|^[—\-]$")
+SCHEMA_VERSION = 3
+
+_BRAND_RE = re.compile(r"(?:keenielts\\.com|Practice smarter\\.\\s*Score higher)", re.I)
+_SECTION_HEADER_RE = re.compile(r"^(?:Test\\s+\\d+|Listening|Reading|Writing|Academic Reading)\\s*$", re.I)
+_PAGE_NUMBER_RE = re.compile(r"^\\s*\\d{1,3}\\s*$")
+_GAP_RE = re.compile(r"^\\s*(\\d{1,2})\\s*(?:[.…·]{3,}|_{3,})\\s*$")
+_INLINE_GAP_RE = re.compile(r"\\b(\\d{1,2})\\s*(?:[.…·]{3,}|_{3,})")
 
 
-def _collapse_letter_spacing(line):
-    """Undo single-character letter-spacing artifacts (see above). Only
-    fires when the *entire* line is single-character tokens, so normal
-    prose containing real short words/numbers ("a 2 was designed") is left
-    untouched."""
-    tokens = line.split(" ")
-    non_empty = [t for t in tokens if t]
-    if len(non_empty) < 5 or not all(_LETTER_SPACED_TOKEN_RE.match(t) for t in non_empty):
-        return line
-    words = []
-    current = ""
-    for tok in non_empty:
-        if tok.isalpha():
-            current += tok
-        else:
-            if current:
-                words.append(current)
-                current = ""
-            words.append(tok)
-    if current:
-        words.append(current)
-    return " ".join(words)
+def _norm(text):
+    return re.sub(r"\\s+", " ", text or "").strip()
 
 
-# Lines that are structural on their own (never merged into flowing prose):
-_HEADING_LIKE_RES = [
-    re.compile(r"^\s*[QO]uestions?\s+\d+.*$", re.IGNORECASE),               # "Questions 1-10"
-    re.compile(r"^\s*READING PASSAGE\s+\d+.*$", re.IGNORECASE),
-    re.compile(r"^\s*(?:SECTION|PART)\s+\d+\s*$", re.IGNORECASE),
-    re.compile(r"^\s*[A-H]\s*$"),                                            # lone paragraph-letter marker (A, B, C...)
-    re.compile(r"^\s*[A-Z][A-Z\s'.,\-]{3,60}$"),                             # short ALL-CAPS instruction line
-    re.compile(r"^\s*Complete the .{3,60}$", re.IGNORECASE),
-    re.compile(r"^\s*Choose .{3,60}$", re.IGNORECASE),
-    re.compile(r"^\s*Write (?:ONE|NO MORE|TRUE|FALSE) .{0,60}$", re.IGNORECASE),
-    re.compile(r"^\s*\d{1,2}[.)]\s+\S.*$"),                                  # numbered list item "1. ..." / "1) ..."
-]
+def _is_noise(span, page):
+    text = _norm(span.get("text", ""))
+    if not text:
+        return True
+    if _BRAND_RE.search(text) or _SECTION_HEADER_RE.match(text):
+        return True
+    y0 = span["bbox"][1]
+    if y0 > page.rect.height * 0.93 and _PAGE_NUMBER_RE.match(text):
+        return True
+    return False
 
 
-_GAP_RE = re.compile(r"\d{1,2}\s*(?:[.…·]{3,}|_{3,})")
-_QUESTION_GROUP_RE = re.compile(
-    r"^\s*Questions?\s+(\d{1,2})\s*(?:[-–—~]|to|and)\s*(\d{1,2})\b.*$",
-    re.IGNORECASE,
-)
-_QUESTION_ITEM_RE = re.compile(r"(?:^|\s)(\d{1,2})[.)]\s+(.*?)(?=\s+\d{1,2}[.)]\s+|$)")
-_ANSWER_RULES = (
-    (re.compile(r"choose\s+(?:two|three|four|five|six|seven|eight|nine|ten)", re.IGNORECASE), "multi_choice"),
-    (re.compile(r"choose\s+(?:the\s+)?correct\s+letter", re.IGNORECASE), "single_choice"),
-    (re.compile(r"true.*false.*not\s+given", re.IGNORECASE | re.DOTALL), "true_false_not_given"),
-    (re.compile(r"match", re.IGNORECASE), "matching"),
-    (re.compile(r"complete|write", re.IGNORECASE), "text"),
-)
+def _font_style(span):
+    flags = int(span.get("flags", 0))
+    font = (span.get("font") or "").lower()
+    bold = bool(flags & 16) or "bold" in font or "semibold" in font or "heavy" in font
+    italic = bool(flags & 2) or "italic" in font or "oblique" in font
+    return bold, italic
 
 
-def _is_heading_like(line):
-    return any(rx.match(line) for rx in _HEADING_LIKE_RES)
+def _span_payload(span):
+    bold, italic = _font_style(span)
+    return {
+        "bbox": [round(v, 2) for v in span["bbox"]],
+        "text": span.get("text", ""),
+        "size": round(float(span.get("size", 10)), 2),
+        "font": span.get("font"),
+        "bold": bold,
+        "italic": italic,
+        "color": int(span.get("color", 0)),
+    }
 
 
-def _reflow_paragraphs(lines, mode):
-    """
-    mode="prose": merges printed-line-wrap fragments into flowing
-    paragraphs (reading passages) -- everything not heading-like or
-    gapped gets joined, since real prose has no reason to break lines
-    except where the PDF happened to wrap them.
-
-    mode="list": listening question sheets (notes/table/summary
-    completion, matching, multiple choice) are inherently structured --
-    each printed line is already a complete bullet/field, not a wrapped
-    sentence fragment. Merging them produces an unreadable wall of text,
-    so list mode keeps one line per block and only strips noise.
-
-    Both modes handle hyphenated line-end word breaks when merging
-    ("environ-" + "ment" -> "environment").
-    """
-    if mode == "list":
-        return [ln.strip() for ln in lines if ln.strip()]
-
-    blocks = []
-    buf = []
-
-    def flush():
-        if not buf:
-            return
-        text = ""
-        for ln in buf:
-            if text.endswith("-") and text[:-1] and text[-2:-1].isalpha():
-                text = text[:-1] + ln
-            elif text:
-                text += " " + ln
-            else:
-                text = ln
-        blocks.append(text.strip())
-        buf.clear()
-
-    for raw in lines:
-        line = raw.strip()
-        if not line:
-            flush()
+def _extract_page(page, page_number, q_from=None, q_to=None):
+    data = page.get_text("dict")
+    spans = []
+    answer_boxes = []
+    for block in data.get("blocks", []):
+        if "lines" not in block:
             continue
-        if _is_heading_like(line) or _GAP_RE.search(line):
-            flush()
-            blocks.append(line)
-            continue
-        buf.append(line)
-    flush()
-    return [b for b in blocks if b]
+        for line in block.get("lines", []):
+            for raw in line.get("spans", []):
+                if _is_noise(raw, page):
+                    continue
+                payload = _span_payload(raw)
+                spans.append(payload)
+                text = payload["text"]
+                m = _GAP_RE.match(text)
+                if m:
+                    q = int(m.group(1))
+                    if (q_from is None or q >= q_from) and (q_to is None or q <= q_to):
+                        answer_boxes.append({"question": q, "bbox": payload["bbox"], "mode": "replace_gap"})
+                else:
+                    for match in _INLINE_GAP_RE.finditer(text):
+                        q = int(match.group(1))
+                        if (q_from is None or q >= q_from) and (q_to is None or q <= q_to):
+                            answer_boxes.append({"question": q, "bbox": payload["bbox"], "mode": "inline_gap"})
+    return {"page": page_number, "width": round(page.rect.width, 2), "height": round(page.rect.height, 2), "spans": spans, "answer_boxes": answer_boxes}
 
 
-def _clean_page_text(text, mode="prose"):
-    lines = []
-    for raw in text.splitlines():
-        line = raw.rstrip()
-        # Letter-spacing is only collapsed to *test* whether a line is a
-        # decorative running header in disguise -- the kept line is always
-        # the untouched original, so a genuine short all-caps-letters line
-        # (e.g. an "A B C D E" list of answer-option labels) is never
-        # rewritten, only a line that turns out to BE noise gets dropped.
-        if any(rx.match(_collapse_letter_spacing(line)) for rx in _NOISE_RES):
-            continue
-        lines.append(line)
-    paragraphs = _reflow_paragraphs(lines, mode)
-    return "\n\n".join(paragraphs)
+def _page_numbers_for_test(test_cfg):
+    reading = []
+    for passage in test_cfg.get("reading", {}).get("passages", []):
+        reading.extend((p, passage["questions"]) for p in passage.get("pages", []))
+    listening = []
+    for part in test_cfg.get("listening", {}).get("parts", []):
+        listening.extend((p, part["questions"]) for p in part.get("pages", []))
+    writing = []
+    for task in ("task1", "task2"):
+        if test_cfg.get("writing", {}).get(task, {}).get("page"):
+            writing.append((test_cfg["writing"][task]["page"], None))
+    return reading, listening, writing
 
 
-def _native_page_texts(pdf_path, page_numbers):
-    """Read native PDF blocks in visual order, preserving layout boundaries."""
-    import fitz
-
+def _build_pages(pdf_path, refs):
     document = fitz.open(pdf_path)
     try:
-        output = []
-        for page_number in page_numbers:
-            if not 1 <= page_number <= len(document):
+        pages = []
+        seen = set()
+        for page_number, qrange in refs:
+            if page_number in seen or not 1 <= page_number <= len(document):
                 continue
-            blocks = document[page_number - 1].get_text("blocks", sort=True)
-            output.append("\n".join(block[4].rstrip() for block in blocks if block[4].strip()))
-        return output
+            seen.add(page_number)
+            pages.append(_extract_page(document[page_number - 1], page_number, *(qrange or (None, None))))
+        pages.sort(key=lambda p: p["page"])
+        return pages
     finally:
         document.close()
-
-
-def _native_page_layout(pdf_path, page_numbers):
-    """Return native spans with page coordinates and visual metadata."""
-    import fitz
-
-    document = fitz.open(pdf_path)
-    try:
-        layout = []
-        for page_number in page_numbers:
-            if not 1 <= page_number <= len(document):
-                continue
-            for block in document[page_number - 1].get_text("dict")["blocks"]:
-                for line in block.get("lines", []):
-                    for span in line.get("spans", []):
-                        if span.get("text", "").strip():
-                            layout.append({
-                                "page": page_number,
-                                "bbox": [round(value, 2) for value in span["bbox"]],
-                                "text": span["text"],
-                                "font": span.get("font"),
-                                "size": round(span.get("size", 0), 2),
-                                "color": span.get("color", 0),
-                                "flags": span.get("flags", 0),
-                            })
-        return layout
-    finally:
-        document.close()
-
-
-def _pages_to_text(pages_text, page_numbers, mode="prose", pdf_path=None):
-    """page_numbers are 1-indexed. mode: "prose" (reading) or "list" (listening)."""
-    chunks = []
-    native_texts = _native_page_texts(pdf_path, page_numbers) if pdf_path else None
-    for index, p in enumerate(page_numbers):
-        if 1 <= p <= len(pages_text):
-            source = native_texts[index] if native_texts is not None else pages_text[p - 1]
-            t = _clean_page_text(source, mode=mode)
-            if t:
-                chunks.append(t)
-    return "\n\n".join(chunks)
-
-
-def _answer_type(instruction):
-    for pattern, answer_type in _ANSWER_RULES:
-        if pattern.search(instruction):
-            return answer_type
-    return "unknown"
-
-
-def _question_numbers(start, end):
-    return list(range(start, end + 1))
-
-
-def _structured_question_groups(text, question_range=None):
-    """Parse question groups while retaining raw text when PDF order is imperfect."""
-    lines = text.splitlines()
-    groups = []
-    current = None
-    for line in lines:
-        match = _QUESTION_GROUP_RE.match(line.strip())
-        if match:
-            if current:
-                groups.append(current)
-            start, end = int(match.group(1)), int(match.group(2))
-            current = {
-                "questions": [start, end],
-                "instruction": "",
-                "answer_type": "unknown",
-                "items": [],
-                "text": line.strip(),
-            }
-            continue
-        if current is None:
-            continue
-        current["text"] += "\n" + line
-        stripped = line.strip()
-        if not current["instruction"] and stripped and not re.match(r"^\d{1,2}[.)]", stripped):
-            current["instruction"] = stripped
-        for item in _QUESTION_ITEM_RE.finditer(line):
-            number = int(item.group(1))
-            if current["questions"][0] <= number <= current["questions"][1]:
-                current["items"].append({
-                    "number": number,
-                    "prompt": item.group(2).strip(),
-                    "answer": {"required": True, "type": "unknown"},
-                })
-    if current:
-        groups.append(current)
-    selected_groups = []
-    for group in groups:
-        if question_range and (
-            group["questions"][1] < question_range[0]
-            or group["questions"][0] > question_range[1]
-        ):
-            continue
-        group["answer_type"] = _answer_type(group["instruction"] + "\n" + group["text"])
-        numbers = {item["number"] for item in group["items"]}
-        for number in _question_numbers(*group["questions"]):
-            if number not in numbers:
-                group["items"].append({
-                    "number": number,
-                    "prompt": "",
-                    "answer": {"required": True, "type": group["answer_type"]},
-                })
-        for item in group["items"]:
-            item["answer"]["type"] = group["answer_type"]
-        duplicate = next(
-            (existing for existing in selected_groups if existing["questions"] == group["questions"]),
-            None,
-        )
-        if duplicate is None:
-            selected_groups.append(group)
-        else:
-            duplicate["text"] += "\n\n" + group["text"]
-            items_by_number = {item["number"]: item for item in duplicate["items"]}
-            for item in group["items"]:
-                items_by_number.setdefault(item["number"], item)
-            duplicate["items"] = list(items_by_number.values())
-            if duplicate["answer_type"] == "unknown" and group["answer_type"] != "unknown":
-                duplicate["answer_type"] = group["answer_type"]
-    return selected_groups
-
-
-def _structured_paragraphs(text):
-    """Split reading text into labeled paragraphs without discarding raw content."""
-    paragraphs = []
-    current = None
-    for block in text.split("\n\n"):
-        block = block.strip()
-        if not block:
-            continue
-        label_match = re.match(r"^([A-H])\s+(.*)$", block, re.DOTALL)
-        if label_match:
-            if current:
-                paragraphs.append(current)
-            current = {"label": label_match.group(1), "text": label_match.group(2).strip()}
-        elif current:
-            current["text"] += "\n\n" + block
-        else:
-            paragraphs.append({"label": None, "text": block})
-    if current:
-        paragraphs.append(current)
-    return paragraphs
 
 
 def build_content_for_test(pages_text, test_cfg, pdf_path=None):
-    """
-    test_cfg: one test's manifest entry (with listening/reading blocks).
-    Returns raw text plus structured question groups and reading paragraphs.
-    including only sections that have pages configured.
-    """
-    content = {}
-    listening = test_cfg.get("listening", {})
-    parts = []
-    any_listening_pages = False
-    for part in listening.get("parts", []):
-        pages = part.get("pages") or []
-        text = _pages_to_text(pages_text, pages, mode="list", pdf_path=pdf_path) if pages else ""
-        if text:
-            any_listening_pages = True
-        parts.append({
-            "pages": pages,
-            "text": text,
-            "layout": _native_page_layout(pdf_path, pages) if pdf_path and pages else [],
-            "question_groups": _structured_question_groups(text, part.get("questions")),
-        })
-    if any_listening_pages:
-        content["listening"] = {"parts": parts}
-
-    reading = test_cfg.get("reading", {})
-    passages = []
-    any_reading = False
-    for passage in reading.get("passages", []):
-        pages = passage.get("pages") or []
-        text = _pages_to_text(pages_text, pages, mode="prose", pdf_path=pdf_path) if pages else ""
-        if text:
-            any_reading = True
-        passages.append({
-            "pages": pages,
-            "text": text,
-            "layout": _native_page_layout(pdf_path, pages) if pdf_path and pages else [],
-            "paragraphs": _structured_paragraphs(text),
-            "question_groups": _structured_question_groups(text, passage.get("questions")),
-        })
-    if any_reading:
-        content["reading"] = {"passages": passages}
-    return content
+    """Return a layout document. `pages_text` remains accepted for scaffold API compatibility."""
+    if not pdf_path:
+        raise ValueError("pdf_path is required for layout extraction")
+    reading_refs, listening_refs, writing_refs = _page_numbers_for_test(test_cfg)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "renderer": "pdf-layout-html",
+        "reading": {"pages": _build_pages(pdf_path, reading_refs)},
+        "listening": {"pages": _build_pages(pdf_path, listening_refs)},
+        "writing": {"pages": _build_pages(pdf_path, writing_refs)},
+    }
 
 
-def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name, pdf_path=None):
-    """
-    Writes content/<Test N>.json for each test that doesn't have one yet.
-    Never overwrites -- hand-fixed OCR typos stay fixed.
-    """
-    for test_name, cfg in manifest.get("tests", {}).items():
-        out_dir = os.path.join(mock_dir, "content")
-        out_path = os.path.join(out_dir, f"{test_name}.json")
-        if os.path.isfile(out_path):
-            continue
-        content = build_content_for_test(pages_text, cfg, pdf_path=pdf_path)
-        if not content:
-            continue
-        os.makedirs(out_dir, exist_ok=True)
-        with open(out_path, "w") as f:
-            json.dump(content, f, indent=2, ensure_ascii=False)
-        secs = " + ".join(sorted(content.keys()))
-        log.append(
-            f"[{mock_name}/{test_name}] extracted {secs} text into content/{test_name}.json "
-            f"-- the portal will show selectable text with inline answer boxes "
-            f"(use the Book view toggle for diagrams/maps; hand-fix any OCR typos in that file)."
-        )
+def scaffold_content_files(mock_dir, manifest, pages_text, log, mock_name):
+    os.makedirs(os.path.join(mock_dir, "content"), exist_ok=True)
+    for test_name, test_cfg in manifest.get("tests", {}).items():
+        out_path = os.path.join(mock_dir, "content", f"{test_name}.json")
+        try:
+            pdf_file = manifest.get("pdf_file", "main.pdf")
+            pdf_path = os.path.join(mock_dir, pdf_file)
+            if not os.path.isfile(pdf_path):
+                log.append(f"[{mock_name}/{test_name}] layout extraction skipped: {pdf_file} missing")
+                continue
+            content = build_content_for_test(pages_text, test_cfg, pdf_path=pdf_path)
+            existing_version = None
+            if os.path.isfile(out_path):
+                try:
+                    with open(out_path, encoding="utf-8") as f:
+                        existing_version = json.load(f).get("schema_version")
+                except (OSError, ValueError):
+                    pass
+            if existing_version != SCHEMA_VERSION:
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump(content, f, ensure_ascii=False, separators=(",", ":"))
+                log.append(f"[{mock_name}/{test_name}] generated layout-faithful content/{test_name}.json (schema {SCHEMA_VERSION})")
+            else:
+                log.append(f"[{mock_name}/{test_name}] layout content already current")
+        except Exception as exc:
+            log.append(f"[{mock_name}/{test_name}] layout extraction failed: {exc}")
