@@ -1,15 +1,11 @@
-/* IELTS Practice Portal bootstrap.
-   Load the complete legacy application first so its routes/utilities exist,
-   then let the layout renderer replace the Reading/Listening start handlers. */
+/* IELTS Practice Portal front-end entry point.
+   The complete portal UI lives in app-legacy.js. Keep this tiny bootstrap
+   so the existing UI, Firebase integration, authentication, navigation,
+   scoring, and other portal behavior remain unchanged while test-content
+   extraction/display is rebuilt independently. */
 (function () {
   'use strict';
-
-  var legacy = document.createElement('script');
-  legacy.src = '/static/js/app-legacy.js?v=5';
-  legacy.onload = function () {
-    var layout = document.createElement('script');
-    layout.src = '/static/js/layout-view.js?v=5';
-    document.head.appendChild(layout);
-  };
-  document.head.appendChild(legacy);
+  var script = document.createElement('script');
+  script.src = '/static/js/app-legacy.js?v=6';
+  document.head.appendChild(script);
 })();
