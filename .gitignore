@@ -1,5 +1,5 @@
 # Ignore all mock test content
-tests/*
+# tests/*
 
 # Keep the folder itself
 !tests/.gitkeep

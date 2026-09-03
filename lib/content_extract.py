@@ -27,7 +27,60 @@ _NOISE_RES = [
     re.compile(r"^\s*@\w+\s*$"),                                 # scan watermark handles
     re.compile(r"^\s*[|>_\-~•·=]{1,4}\s*$"),                     # OCR artifacts
     re.compile(r"^\s*IELTS\s+\d+\s*$", re.IGNORECASE),
+    # Repackaged-edition branding footer, printed on every single page:
+    # "Practice smarter. Score higher. — keenielts.com", sometimes prefixed
+    # with the book title on the same line ("IELTS ... · Academic Practice
+    # smarter..."), sometimes with the "keenielts.com" half wrapped onto its
+    # own line. Matched on the brand name/domain rather than the full
+    # sentence so any wording variant of the tagline is still caught.
+    re.compile(r".*\bkeenielts\.com\b.*", re.IGNORECASE),
+    re.compile(r".*\bKeenIELTS\b.*"),
+    re.compile(r"^\s*Practice smarter\.\s*Score higher\.?\s*[—\-]?\s*$", re.IGNORECASE),
+    # Standalone QR-code/"check your answers" links printed at section starts
+    # (e.g. https://.../check/listening/<id>, https://.../listening-audio/<id>).
+    re.compile(r"^\s*https?://\S+\s*$"),
+    # Letter-spaced section/task heading left over after
+    # _collapse_letter_spacing() turns "S E C T I O N  1  —  Q U E S T I O N S"
+    # back into normal words -- this is a redundant running header (the
+    # manifest already tracks part/passage/task numbers), not passage
+    # content, so it's dropped like the bare LISTENING/READING/WRITING
+    # headers above.
+    re.compile(r"^\s*SECTION\s+\d+(?:\s*[—\-]\s*QUESTIONS)?\s*$", re.IGNORECASE),
+    re.compile(r"^\s*TASK\s+\d+\s*$", re.IGNORECASE),
 ]
+
+# Some publishers (seen in newer/repackaged PDF exports) render headings with
+# each letter as its own space-separated glyph run for a decorative kerned
+# look, e.g. "S E C T I O N  1  —  Q U E S T I O N S" instead of "SECTION 1 —
+# QUESTIONS". PyMuPDF extracts that literally, so without undoing it these
+# headings match none of the noise/heading patterns above (which expect real
+# words) and leak into the passage/question text as a stray paragraph.
+_LETTER_SPACED_TOKEN_RE = re.compile(r"^[A-Za-z0-9]$|^[—\-]$")
+
+
+def _collapse_letter_spacing(line):
+    """Undo single-character letter-spacing artifacts (see above). Only
+    fires when the *entire* line is single-character tokens, so normal
+    prose containing real short words/numbers ("a 2 was designed") is left
+    untouched."""
+    tokens = line.split(" ")
+    non_empty = [t for t in tokens if t]
+    if len(non_empty) < 5 or not all(_LETTER_SPACED_TOKEN_RE.match(t) for t in non_empty):
+        return line
+    words = []
+    current = ""
+    for tok in non_empty:
+        if tok.isalpha():
+            current += tok
+        else:
+            if current:
+                words.append(current)
+                current = ""
+            words.append(tok)
+    if current:
+        words.append(current)
+    return " ".join(words)
+
 
 # Lines that are structural on their own (never merged into flowing prose):
 _HEADING_LIKE_RES = [
@@ -116,7 +169,12 @@ def _clean_page_text(text, mode="prose"):
     lines = []
     for raw in text.splitlines():
         line = raw.rstrip()
-        if any(rx.match(line) for rx in _NOISE_RES):
+        # Letter-spacing is only collapsed to *test* whether a line is a
+        # decorative running header in disguise -- the kept line is always
+        # the untouched original, so a genuine short all-caps-letters line
+        # (e.g. an "A B C D E" list of answer-option labels) is never
+        # rewritten, only a line that turns out to BE noise gets dropped.
+        if any(rx.match(_collapse_letter_spacing(line)) for rx in _NOISE_RES):
             continue
         lines.append(line)
     paragraphs = _reflow_paragraphs(lines, mode)
