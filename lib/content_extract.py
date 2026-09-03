@@ -12,7 +12,6 @@ import fitz
 
 SCHEMA_VERSION = 3
 _BRAND_RE = re.compile(r"(?:keenielts\.com|Practice smarter\.\s*Score higher)", re.I)
-_SECTION_HEADER_RE = re.compile(r"^(?:Test\s+\d+|Listening|Reading|Writing|Academic Reading)\s*$", re.I)
 _RUNNING_HEADER_RE = re.compile(r"C\s*A\s*M\s*B\s*R\s*I\s*D\s*G\s*E.*P\s*R\s*A\s*C\s*T\s*I\s*C\s*E", re.I)
 _FOOTER_RE = re.compile(r"^Cambridge\s+IELTS\s+\d+.*(?:Academic|General Training).*\d{1,3}$", re.I)
 _PAGE_NUMBER_RE = re.compile(r"^\s*\d{1,3}\s*$")
@@ -24,7 +23,7 @@ def _norm(text):
 
 def _is_noise(span, page):
     text = _norm(span.get("text", ""))
-    if not text or _BRAND_RE.search(text) or _SECTION_HEADER_RE.match(text):
+    if not text or _BRAND_RE.search(text):
         return True
     y0 = span["bbox"][1]
     if y0 < page.rect.height * 0.10 and _RUNNING_HEADER_RE.search(text):
